@@ -9,7 +9,7 @@ from ygworker.data_sources.fx import fetch_usd_krw_rate
 def test_fetch_usd_krw_rate_success(httpx_mock: HTTPXMock):
     # URL 기반(query string 순서 무관)이 아니라 host+path만 매칭
     httpx_mock.add_response(
-        url=re.compile(r"^https://api\.exchangerate\.host/latest"),
+        url=re.compile(r"^https://api\.frankfurter\.dev/v1/latest"),
         json={"rates": {"KRW": 1395.42}, "base": "USD"},
     )
     rate = fetch_usd_krw_rate()
