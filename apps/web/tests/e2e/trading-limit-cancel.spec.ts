@@ -18,7 +18,7 @@ test.describe("Trading — limit + cancel", () => {
 
     // 환전: KRW → USD 1,400,000 (대략 $1000)
     await page.goto("/app/fx");
-    await page.locator('input[type="number"]').first().fill("1400000");
+    await page.getByLabel(/금액/).fill("1400000");
     await page.getByRole("button", { name: /^환전/ }).click();
     await expect(page.getByText(/완료/)).toBeVisible({ timeout: 5_000 });
     await page.waitForTimeout(2000);  // reload 후 잔고 반영 대기
@@ -26,9 +26,8 @@ test.describe("Trading — limit + cancel", () => {
     // 지정가 매수 — 의도적으로 낮은 가격으로 미체결 펜딩 만들기
     await page.goto("/app/trade/AAPL");
     await page.getByRole("button", { name: "지정가" }).first().click();
-    // 수량(첫 번째 number input), 지정가(두 번째)
-    await page.locator('input[type="number"]').nth(0).fill("1");
-    await page.locator('input[type="number"]').nth(1).fill("50");  // 도달 X
+    await page.getByLabel("수량").fill("1");
+    await page.getByLabel(/지정가/).fill("50");  // 도달 X
     await page.getByRole("button", { name: /^매수.*지정가/ }).click();
 
     await expect(page.getByText(/주문 접수됨/)).toBeVisible({ timeout: 10_000 });

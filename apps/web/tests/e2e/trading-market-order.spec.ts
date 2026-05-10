@@ -27,7 +27,7 @@ test.describe("Trading — market order", () => {
 
     // 시장가 매수 1주
     await page.getByRole("button", { name: "시장가" }).first().click();
-    await page.locator('input[type="number"]').first().fill("1");
+    await page.getByLabel("수량").fill("1");
     await page.getByRole("button", { name: /^매수.*시장가/ }).click();
 
     await expect(page.getByText(/체결됨/)).toBeVisible({ timeout: 10_000 });
@@ -48,13 +48,13 @@ test.describe("Trading — market order", () => {
     test.skip(!isKrOpen, "KR 장 마감 시간이라 스킵");
 
     await signupAndGoToTrade(page, "005930.KS");
-    await page.locator('input[type="number"]').first().fill("1");
+    await page.getByLabel("수량").fill("1");
     await page.getByRole("button", { name: /^매수.*시장가/ }).click();
     await expect(page.getByText(/체결됨/)).toBeVisible({ timeout: 10_000 });
 
     // 매도
     await page.getByRole("button", { name: "매도" }).first().click();
-    await page.locator('input[type="number"]').first().fill("1");
+    await page.getByLabel("수량").fill("1");
     await page.getByRole("button", { name: /^매도.*시장가/ }).click();
     await expect(page.getByText(/체결됨/)).toBeVisible({ timeout: 10_000 });
 

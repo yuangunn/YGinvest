@@ -88,8 +88,9 @@ export function OrderForm({ portfolioId, symbol, currency, lastPrice }: Props) {
         </Button>
       </div>
       <div className="space-y-1">
-        <Label>수량</Label>
+        <Label htmlFor="order-quantity">수량</Label>
         <Input
+          id="order-quantity"
           type="number"
           min="1"
           step="1"
@@ -100,8 +101,9 @@ export function OrderForm({ portfolioId, symbol, currency, lastPrice }: Props) {
       </div>
       {type === "limit" && (
         <div className="space-y-1">
-          <Label>지정가 ({currency})</Label>
+          <Label htmlFor="order-limit-price">지정가 ({currency})</Label>
           <Input
+            id="order-limit-price"
             type="number"
             min="0.0001"
             step="any"

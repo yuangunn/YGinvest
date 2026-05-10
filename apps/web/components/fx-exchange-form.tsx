@@ -70,8 +70,8 @@ export function FxExchangeForm({
         {rate && <> · 현재 환율 1 USD = ₩{rate}</>}
       </div>
       <div className="space-y-1">
-        <Label>금액 ({direction === "KRW_TO_USD" ? "KRW" : "USD"})</Label>
-        <Input type="number" step="any" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+        <Label htmlFor="fx-amount">금액 ({direction === "KRW_TO_USD" ? "KRW" : "USD"})</Label>
+        <Input id="fx-amount" type="number" step="any" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} required />
       </div>
       {message && (
         <Alert variant={message.kind === "ok" ? "default" : "destructive"}>
