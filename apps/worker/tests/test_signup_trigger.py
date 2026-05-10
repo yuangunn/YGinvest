@@ -3,6 +3,7 @@ import uuid
 
 import pytest
 from dotenv import load_dotenv
+from postgrest.exceptions import APIError
 from supabase import create_client
 
 load_dotenv()
@@ -114,7 +115,7 @@ def test_global_portfolio_uniqueness_per_user(supabase_admin, cleanup_user):
     user_id = res.user.id
     cleanup_user.append(user_id)
 
-    with pytest.raises(Exception):
+    with pytest.raises(APIError):
         supabase_admin.table("portfolios").insert(
             {
                 "user_id": user_id,

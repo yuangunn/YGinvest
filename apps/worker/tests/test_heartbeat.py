@@ -5,7 +5,10 @@ from ygworker.jobs.heartbeat import run_heartbeat
 
 def test_heartbeat_logs_with_supabase_reachable():
     fake_client = MagicMock()
-    fake_client.table.return_value.select.return_value.limit.return_value.execute.return_value.data = []
+    execute_mock = (
+        fake_client.table.return_value.select.return_value.limit.return_value.execute
+    )
+    execute_mock.return_value.data = []
     logger = MagicMock()
 
     run_heartbeat(fake_client, logger)
