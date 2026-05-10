@@ -1,0 +1,15 @@
+{
+  "name": "yginvest",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "web": "npm --prefix apps/web run dev",
+    "web:build": "npm --prefix apps/web run build",
+    "web:test": "npm --prefix apps/web test",
+    "web:e2e": "npm --prefix apps/web run test:e2e",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:diff": "supabase db diff"
+  }
+}
