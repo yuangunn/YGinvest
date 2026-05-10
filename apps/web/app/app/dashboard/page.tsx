@@ -58,11 +58,30 @@ export default async function DashboardPage() {
         <CardContent className="text-sm text-muted-foreground space-y-2">
           <div>
             <Link href="/app/trade/search" className="text-foreground underline">
-              → 종목 검색하기 (Plan #2 완료)
+              → 종목 검색
             </Link>
           </div>
-          <div>· 매수/매도 + 환전 (Plan #3)</div>
-          <div>· 종목 상세 차트 + 지표 (Plan #4)</div>
+          <div>
+            <Link href="/app/portfolio/holdings" className="text-foreground underline">
+              → 보유 종목
+            </Link>
+          </div>
+          <div>
+            <Link href="/app/portfolio/orders" className="text-foreground underline">
+              → 주문 내역
+            </Link>
+          </div>
+          <div>
+            <Link href="/app/portfolio/transactions" className="text-foreground underline">
+              → 체결·환전 내역
+            </Link>
+          </div>
+          <div>
+            <Link href="/app/fx" className="text-foreground underline">
+              → 환전 (KRW ↔ USD)
+            </Link>
+          </div>
+          <div className="pt-2 border-t">· 종목 차트 + 지표 (Plan #4)</div>
           <div>· 친구방 + 리더보드 (Plan #5)</div>
         </CardContent>
       </Card>
