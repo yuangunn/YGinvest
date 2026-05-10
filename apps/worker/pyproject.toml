@@ -28,6 +28,7 @@ select = ["E", "F", "W", "I", "B", "UP", "N"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+pythonpath = ["src"]
 
 [tool.uv]
 package = false
