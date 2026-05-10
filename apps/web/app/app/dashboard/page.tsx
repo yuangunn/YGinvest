@@ -17,7 +17,7 @@ export default async function DashboardPage() {
     .select("krw_balance, usd_balance, starting_krw, starting_usd")
     .eq("user_id", user.id)
     .is("room_id", null)
-    .single();
+    .maybeSingle();
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
