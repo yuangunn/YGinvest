@@ -73,3 +73,74 @@ def test_lookup_unknown_symbol_returns_404(mock_quote, client):
         headers={"X-Worker-Secret": "test-secret"},
     )
     assert r.status_code == 404
+
+
+@patch("ygworker.rpc.stocks.fetch_history")
+def test_bars_returns_ohlcv(mock_history, client):
+    c, _ = client
+    mock_history.return_value = [
+        {
+            "ts": "2026-05-08T13:30:00+00:00",
+            "open": 100, "high": 105, "low": 99, "close": 102, "volume": 1_000_000,
+        },
+    ]
+    r = c.post(
+        "/rpc/stocks/bars",
+        json={"symbol": "AAPL", "interval": "15m", "period": "60d"},
+        headers={"X-Worker-Secret": "test-secret"},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["symbol"] == "AAPL"
+    assert body["interval"] == "15m"
+    assert len(body["bars"]) == 1
+    mock_history.assert_called_with("AAPL", period="60d", interval="15m")
+
+
+def test_bars_unauthenticated_401(client):
+    c, _ = client
+    r = c.post("/rpc/stocks/bars", json={"symbol": "AAPL", "interval": "15m"})
+    assert r.status_code == 401
+
+
+@patch("ygworker.rpc.stocks.fetch_news")
+def test_news_returns_items(mock_news, client):
+    c, _ = client
+    mock_news.return_value = [
+        {
+            "title": "Apple news",
+            "link": "https://example.com/1",
+            "publisher": "Reuters",
+            "published_at": "2026-05-08T00:00:00+00:00",
+        },
+    ]
+    r = c.post(
+        "/rpc/stocks/news",
+        json={"symbol": "AAPL", "limit": 5},
+        headers={"X-Worker-Secret": "test-secret"},
+    )
+    assert r.status_code == 200
+    assert r.json()["news"][0]["title"] == "Apple news"
+
+
+@patch("ygworker.rpc.stocks.fetch_key_metrics")
+def test_financials_returns_metrics(mock_metrics, client):
+    c, _ = client
+    mock_metrics.return_value = {
+        "trailing_eps": 6.32,
+        "forward_pe": 28.5,
+        "dividend_yield": 0.0042,
+        "beta": 1.21,
+        "profit_margin": 0.247,
+        "roe": 1.43,
+        "debt_to_equity": 195.0,
+    }
+    r = c.post(
+        "/rpc/stocks/financials",
+        json={"symbol": "AAPL"},
+        headers={"X-Worker-Secret": "test-secret"},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["trailing_eps"] == 6.32
+    assert body["forward_pe"] == 28.5
