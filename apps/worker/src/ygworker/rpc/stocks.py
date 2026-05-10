@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException
@@ -33,7 +33,7 @@ def make_router(supabase: Any, secret: str) -> APIRouter:
         if quote is None:
             raise HTTPException(status_code=404, detail="not_found")
 
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         # ad-hoc 조회된 종목은 한국어명을 알 수 없음 (yfinance에 한국어 표기 없음).
         # 한국 종목(.KS/.KQ)이면 quote.name이 영문일 것 — 실제 표시는 search 컴포넌트의
         # `name_ko ?? name` 폴백에 의존. 향후 pykrx로 한국어명 보강 가능.

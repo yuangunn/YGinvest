@@ -31,14 +31,16 @@ export function StockSearch() {
   const [lookupError, setLookupError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (q.trim().length === 0) {
-      setResults([]);
-      setShowLookup(false);
-      return;
-    }
-    setLoading(true);
     const t = setTimeout(async () => {
-      const res = await fetch(`/api/stocks/search?q=${encodeURIComponent(q)}`);
+      const trimmed = q.trim();
+      if (trimmed.length === 0) {
+        setResults([]);
+        setShowLookup(false);
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      const res = await fetch(`/api/stocks/search?q=${encodeURIComponent(trimmed)}`);
       const json = await res.json();
       setResults(json.results ?? []);
       setShowLookup((json.results ?? []).length === 0);

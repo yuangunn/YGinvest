@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import date as date_type
 from datetime import timedelta
-from typing import Literal
+from typing import Any, Literal
 
 from pykrx import stock
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -19,7 +19,9 @@ class KrxStockMaster:
     market_cap: float
 
 
-def _find_business_date_with_data(market: str, max_lookback_days: int = 7) -> tuple[str, "pd.DataFrame"]:
+def _find_business_date_with_data(
+    market: str, max_lookback_days: int = 7
+) -> tuple[str, Any]:
     """오늘부터 거꾸로 가며 KRX가 데이터를 주는 영업일을 찾는다.
 
     Saturday/Sunday/공휴일에는 빈 DataFrame을 반환하므로 직전 영업일까지 거슬러간다.

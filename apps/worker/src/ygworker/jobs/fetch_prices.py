@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from ygworker.data_sources.yahoo import fetch_quotes
@@ -23,7 +23,7 @@ def run_fetch_prices(supabase: Any, logger: Any) -> None:
 
     logger.info("fetch_prices.start", count=len(symbols))
     quotes = fetch_quotes(symbols)
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
 
     for q in quotes:
         supabase.table("stocks").update(

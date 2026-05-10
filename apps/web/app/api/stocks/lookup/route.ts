@@ -21,7 +21,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "not_found" }, { status: 404 });
     }
     return NextResponse.json(result);
-  } catch (e) {
+  } catch {
     return NextResponse.json({ error: "worker_unreachable" }, { status: 503 });
   }
 }

@@ -29,5 +29,5 @@ def test_fetch_usd_krw_rate_raises_after_3_failures(httpx_mock: HTTPXMock):
     httpx_mock.add_response(status_code=500)
     httpx_mock.add_response(status_code=500)
     httpx_mock.add_response(status_code=500)
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa: B017 — tenacity wraps in RetryError
         fetch_usd_krw_rate()

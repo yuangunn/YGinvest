@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from ygworker.data_sources.kr_top import KR_TOP_100
@@ -22,7 +22,7 @@ def run_bootstrap_stocks(
         return
 
     logger.info("bootstrap_stocks.start", kr_limit=kr_limit, us_limit=us_limit)
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
 
     records: list[dict] = []
 

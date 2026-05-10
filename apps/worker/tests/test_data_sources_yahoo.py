@@ -67,7 +67,7 @@ def test_fetch_quote_invalid_symbol_returns_none(mock_ticker):
 def test_fetch_quote_raises_after_retries(mock_ticker):
     mock_ticker.side_effect = RuntimeError("Yahoo down")
     # tenacity는 마지막 실패를 RetryError로 wrapping. 어떤 예외든 발생하면 OK
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa: B017
         fetch_quote("AAPL")
 
 

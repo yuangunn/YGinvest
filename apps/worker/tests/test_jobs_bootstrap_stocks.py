@@ -22,9 +22,10 @@ def _yq(symbol: str, market: str, currency: str = "USD", price: float = 100.0) -
 @patch("ygworker.jobs.bootstrap_stocks.fetch_quote")
 def test_bootstrap_skips_if_table_not_empty(mock_quote):
     fake_supabase = MagicMock()
-    fake_supabase.table.return_value.select.return_value.limit.return_value.execute.return_value.data = [
-        {"symbol": "AAPL"}
-    ]
+    select_mock = (
+        fake_supabase.table.return_value.select.return_value.limit.return_value.execute
+    )
+    select_mock.return_value.data = [{"symbol": "AAPL"}]
     logger = MagicMock()
 
     run_bootstrap_stocks(fake_supabase, logger)
@@ -36,8 +37,12 @@ def test_bootstrap_skips_if_table_not_empty(mock_quote):
 @patch("ygworker.jobs.bootstrap_stocks.fetch_quote")
 def test_bootstrap_inserts_kr_top_and_us_top(mock_quote):
     fake_supabase = MagicMock()
-    fake_supabase.table.return_value.select.return_value.limit.return_value.execute.return_value.data = []
-    fake_supabase.table.return_value.upsert.return_value.execute.return_value.data = []
+    select_mock = (
+        fake_supabase.table.return_value.select.return_value.limit.return_value.execute
+    )
+    select_mock.return_value.data = []
+    upsert_mock = fake_supabase.table.return_value.upsert.return_value.execute
+    upsert_mock.return_value.data = []
     logger = MagicMock()
 
     # 모든 yfinance 호출에 가짜 quote 반환

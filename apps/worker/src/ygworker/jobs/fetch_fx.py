@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from ygworker.data_sources.fx import fetch_usd_krw_rate
@@ -17,7 +17,7 @@ def run_fetch_fx(supabase: Any, logger: Any) -> None:
             "base": "USD",
             "quote": "KRW",
             "rate": rate,
-            "ts": datetime.now(timezone.utc).isoformat(),
+            "ts": datetime.now(UTC).isoformat(),
         }
     ).execute()
     logger.info("fetch_fx.done", rate=rate)
