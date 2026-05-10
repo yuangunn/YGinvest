@@ -1,4 +1,6 @@
 from dataclasses import dataclass
+from datetime import date as date_type
+from datetime import timedelta
 from typing import Literal
 
 from pykrx import stock
@@ -17,11 +19,38 @@ class KrxStockMaster:
     market_cap: float
 
 
+def _find_business_date_with_data(market: str, max_lookback_days: int = 7) -> tuple[str, "pd.DataFrame"]:
+    """오늘부터 거꾸로 가며 KRX가 데이터를 주는 영업일을 찾는다.
+
+    Saturday/Sunday/공휴일에는 빈 DataFrame을 반환하므로 직전 영업일까지 거슬러간다.
+    """
+    today = date_type.today()
+    for offset in range(max_lookback_days):
+        candidate = today - timedelta(days=offset)
+        date_str = candidate.strftime("%Y%m%d")
+        try:
+            df = stock.get_market_cap_by_ticker(date_str, market=market)
+            if not df.empty:
+                return date_str, df
+        except Exception:
+            # pykrx가 응답을 받지 못한 경우 (휴장일 등). 다음 날 시도.
+            continue
+    raise RuntimeError(
+        f"pykrx가 최근 {max_lookback_days}일 동안 {market} 데이터를 반환하지 않음"
+    )
+
+
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=1, max=8))
-def list_top_stocks(market: Market, limit: int = 100, date: str | None = None) -> list[KrxStockMaster]:
+def list_top_stocks(
+    market: Market, limit: int = 100, date: str | None = None
+) -> list[KrxStockMaster]:
     """KOSPI/KOSDAQ 시가총액 상위 N개 마스터 정보."""
-    # date=None이면 pykrx가 가장 최근 영업일 사용
-    cap_df = stock.get_market_cap_by_ticker(date or "", market=market)
+    if date:
+        cap_df = stock.get_market_cap_by_ticker(date, market=market)
+    else:
+        # date=None: 최근 영업일을 자동 검색 (주말·공휴일 회피)
+        _, cap_df = _find_business_date_with_data(market)
+
     cap_df = cap_df.sort_values("시가총액", ascending=False).head(limit)
 
     out: list[KrxStockMaster] = []

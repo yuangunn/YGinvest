@@ -18,4 +18,6 @@ COPY src ./src
 
 ENV PYTHONPATH=/app/src
 
+EXPOSE 8080
+
 CMD ["uv", "run", "--no-dev", "python", "-m", "ygworker.main"]

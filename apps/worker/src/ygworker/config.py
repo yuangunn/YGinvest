@@ -11,6 +11,8 @@ class Settings:
     supabase_url: str
     supabase_service_role_key: str
     log_level: str = "INFO"
+    rpc_port: int = 8080
+    rpc_secret: str = "dev-secret-change-me"
 
 
 def load_settings() -> Settings:
@@ -18,6 +20,8 @@ def load_settings() -> Settings:
         supabase_url=_required("SUPABASE_URL"),
         supabase_service_role_key=_required("SUPABASE_SERVICE_ROLE_KEY"),
         log_level=os.environ.get("LOG_LEVEL", "INFO"),
+        rpc_port=int(os.environ.get("WORKER_RPC_PORT", "8080")),
+        rpc_secret=os.environ.get("WORKER_RPC_SECRET", "dev-secret-change-me"),
     )
 
 
