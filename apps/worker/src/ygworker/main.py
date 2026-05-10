@@ -12,6 +12,7 @@ from ygworker.jobs.bootstrap_stocks import run_bootstrap_stocks
 from ygworker.jobs.fetch_fx import run_fetch_fx
 from ygworker.jobs.fetch_prices import run_fetch_prices
 from ygworker.jobs.heartbeat import run_heartbeat
+from ygworker.jobs.matching_engine import run_matching_engine
 from ygworker.market_hours import is_any_market_open
 from ygworker.rpc.app import build_app
 from ygworker.supabase_client import make_client
@@ -72,6 +73,13 @@ async def main_async() -> None:
         trigger="interval",
         minutes=30,
         id="fetch_fx",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        _wrap_in_thread(run_matching_engine, supabase, logger),
+        trigger="interval",
+        seconds=60,
+        id="matching_engine",
         replace_existing=True,
     )
     scheduler.start()
