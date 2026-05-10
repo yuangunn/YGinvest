@@ -25,9 +25,13 @@ test.describe("Trading — limit + cancel", () => {
 
     // 지정가 매수 — 의도적으로 낮은 가격으로 미체결 펜딩 만들기
     await page.goto("/app/trade/AAPL");
-    await page.getByRole("button", { name: "지정가" }).first().click();
+    // BuySellSheet의 매수 버튼 클릭 → Sheet 오픈
+    await page.getByRole("button", { name: "매수", exact: true }).click();
+    // Sheet 안에서 지정가 토글
+    await page.getByRole("button", { name: "지정가" }).click();
     await page.getByLabel("수량").fill("1");
     await page.getByLabel(/지정가/).fill("50");  // 도달 X
+    // Sheet의 제출 버튼 (매수 (지정가))
     await page.getByRole("button", { name: /^매수.*지정가/ }).click();
 
     await expect(page.getByText(/주문 접수됨/)).toBeVisible({ timeout: 10_000 });

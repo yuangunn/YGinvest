@@ -912,7 +912,14 @@ UI: dashboard와 trade/search 페이지에 카테고리별 가로 스크롤 카�
 
 ---
 
-## 13. v2/v3 로드맵 (비목표)
+## 13. v1.5 / v2 / v3 로드맵 (비목표)
+
+### v1.5 (v1 다 끝낸 직후)
+
+| Plan | 내용 |
+|------|------|
+| **Plan #8: Design Polish** | shadcn 기본 스타일 → 커스텀 디자인 시스템. 브랜딩, 타이포그래피, 색상 팔레트, 마이크로인터랙션. `redesign-skill` 또는 `frontend-design` 스킬 활용 |
+| Plan #4.5 (선택) | 인트라데이 봉, RSI/MACD/볼린저, 뉴스, 재무제표, 포트폴리오 overview |
 
 ### v2 (다음 마일스톤)
 

@@ -9,6 +9,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from ygworker.config import load_settings
 from ygworker.jobs.bootstrap_stocks import run_bootstrap_stocks
+from ygworker.jobs.fetch_daily_bars import run_fetch_daily_bars
 from ygworker.jobs.fetch_fx import run_fetch_fx
 from ygworker.jobs.fetch_prices import run_fetch_prices
 from ygworker.jobs.heartbeat import run_heartbeat
@@ -82,6 +83,24 @@ async def main_async() -> None:
         id="matching_engine",
         replace_existing=True,
     )
+    # KR 장 마감 후 (16:00 KST). Scheduler는 timezone="Asia/Seoul"이라 hour=16 = KST 16:00.
+    scheduler.add_job(
+        _wrap_in_thread(run_fetch_daily_bars, supabase, logger),
+        trigger="cron",
+        hour=16,
+        minute=0,
+        id="fetch_daily_bars_kr",
+        replace_existing=True,
+    )
+    # US 장 마감 후 (다음날 07:00 KST 안전 마진)
+    scheduler.add_job(
+        _wrap_in_thread(run_fetch_daily_bars, supabase, logger),
+        trigger="cron",
+        hour=7,
+        minute=0,
+        id="fetch_daily_bars_us",
+        replace_existing=True,
+    )
     scheduler.start()
     logger.info("worker.scheduler_started")
 
@@ -89,6 +108,12 @@ async def main_async() -> None:
     # NOTE: run_fetch_fx 내부에서 예외를 catch + log하므로 외부 API 일시 장애여도
     #       워커 부팅이 죽지 않음. 다음 30분 사이클에 자동 재시도.
     await asyncio.to_thread(run_fetch_fx, supabase, logger)
+
+    # stock_bars가 비어있으면 부팅 시 1회 일봉 backfill
+    bars_check = supabase.table("stock_bars").select("symbol").limit(1).execute()
+    if not bars_check.data:
+        logger.info("worker.bootstrap_daily_bars")
+        await asyncio.to_thread(run_fetch_daily_bars, supabase, logger)
 
     # FastAPI 시작
     app = build_app(supabase=supabase, secret=settings.rpc_secret)

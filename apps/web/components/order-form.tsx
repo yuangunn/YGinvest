@@ -11,10 +11,11 @@ type Props = {
   symbol: string;
   currency: string;
   lastPrice: number | null;
+  forceSide?: "buy" | "sell";
 };
 
-export function OrderForm({ portfolioId, symbol, currency, lastPrice }: Props) {
-  const [side, setSide] = useState<"buy" | "sell">("buy");
+export function OrderForm({ portfolioId, symbol, currency, lastPrice, forceSide }: Props) {
+  const [side, setSide] = useState<"buy" | "sell">(forceSide ?? "buy");
   const [type, setType] = useState<"market" | "limit">("market");
   const [quantity, setQuantity] = useState<string>("1");
   const [limitPrice, setLimitPrice] = useState<string>(lastPrice ? String(lastPrice) : "");
@@ -55,22 +56,24 @@ export function OrderForm({ portfolioId, symbol, currency, lastPrice }: Props) {
 
   return (
     <form onSubmit={submit} className="space-y-3">
-      <div className="flex gap-2">
-        <Button
-          type="button"
-          variant={side === "buy" ? "default" : "outline"}
-          onClick={() => setSide("buy")}
-        >
-          매수
-        </Button>
-        <Button
-          type="button"
-          variant={side === "sell" ? "default" : "outline"}
-          onClick={() => setSide("sell")}
-        >
-          매도
-        </Button>
-      </div>
+      {!forceSide && (
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant={side === "buy" ? "default" : "outline"}
+            onClick={() => setSide("buy")}
+          >
+            매수
+          </Button>
+          <Button
+            type="button"
+            variant={side === "sell" ? "default" : "outline"}
+            onClick={() => setSide("sell")}
+          >
+            매도
+          </Button>
+        </div>
+      )}
       <div className="flex gap-2">
         <Button
           type="button"

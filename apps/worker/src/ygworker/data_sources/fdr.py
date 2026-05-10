@@ -8,6 +8,7 @@ US: `fdr.DataReader(symbol)`은 종목 1개의 시계열을 반환.
 """
 
 from dataclasses import dataclass
+from datetime import date, timedelta
 from typing import Any
 
 import FinanceDataReader as fdr  # noqa: N813 — FDR 라이브러리 관행적으로 'fdr' alias
@@ -87,3 +88,36 @@ def _is_nan(value: Any) -> bool:
         return value != value  # NaN 체크
     except Exception:
         return False
+
+
+@retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=0.5, min=0.5, max=2))
+def fetch_daily_history(symbol: str, days: int = 365) -> list[dict]:
+    """심볼의 일봉 OHLCV를 days일 만큼 가져온다.
+
+    Returns: list of dicts with keys (ts, open, high, low, close, volume).
+    NaN이 있는 행은 제외.
+    """
+    start = (date.today() - timedelta(days=days)).strftime("%Y-%m-%d")
+    df = fdr.DataReader(symbol, start)
+    if df is None or df.empty:
+        return []
+
+    out: list[dict] = []
+    for idx, row in df.iterrows():
+        values = [row.get(k) for k in ("Open", "High", "Low", "Close", "Volume")]
+        if any(_is_nan(v) for v in values):
+            continue
+        try:
+            out.append(
+                {
+                    "ts": idx.to_pydatetime() if hasattr(idx, "to_pydatetime") else idx,
+                    "open": float(row["Open"]),
+                    "high": float(row["High"]),
+                    "low": float(row["Low"]),
+                    "close": float(row["Close"]),
+                    "volume": int(row["Volume"]),
+                }
+            )
+        except (ValueError, TypeError):
+            continue
+    return out

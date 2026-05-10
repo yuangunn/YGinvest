@@ -81,8 +81,12 @@ export default async function DashboardPage() {
               → 환전 (KRW ↔ USD)
             </Link>
           </div>
-          <div className="pt-2 border-t">· 종목 차트 + 지표 (Plan #4)</div>
-          <div>· 친구방 + 리더보드 (Plan #5)</div>
+          <div>
+            <Link href="/app/watchlist" className="text-foreground underline">
+              → 관심 종목
+            </Link>
+          </div>
+          <div className="pt-2 border-t">· 친구방 + 리더보드 (Plan #5)</div>
         </CardContent>
       </Card>
     </div>
