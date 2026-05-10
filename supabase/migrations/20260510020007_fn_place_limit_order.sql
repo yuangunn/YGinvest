@@ -41,8 +41,11 @@ begin
   if p_side not in ('buy', 'sell') then
     raise exception 'invalid_side';
   end if;
-  if p_quantity <= 0 or p_limit_price <= 0 then
-    raise exception 'invalid_input';
+  if p_quantity <= 0 then
+    raise exception 'invalid_quantity';
+  end if;
+  if p_limit_price <= 0 then
+    raise exception 'invalid_limit_price';
   end if;
 
   v_fee_rate := _calc_fee_rate(v_market, p_side);
@@ -65,6 +68,8 @@ begin
     end if;
   else
     -- 매도 예약: 보유 충분한지 확인 (실제 차감은 체결 시 — 단, 동시 주문 보호 위해 체크만)
+    -- IMPORTANT: 이 holdings FOR UPDATE 락이 동시 매도 지정가의 직렬화 anchor.
+    -- 아래 orders sum 쿼리의 FOR UPDATE는 이미 펜딩이 있을 때만 효력 — 첫 펜딩은 이 락이 보호.
     select quantity into v_holding
     from holdings where portfolio_id = p_portfolio_id and symbol = p_symbol
     for update;

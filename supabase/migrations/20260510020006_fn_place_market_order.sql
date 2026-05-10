@@ -14,6 +14,9 @@ as $$
   end;
 $$;
 
+revoke all on function _calc_fee_rate(text, text) from public;
+grant execute on function _calc_fee_rate(text, text) to authenticated, service_role;
+
 create or replace function public.place_market_order(
   p_portfolio_id uuid,
   p_symbol text,
@@ -55,7 +58,8 @@ begin
   -- 2) 종목 + 가격
   select currency, market, last_price, last_price_at
   into v_currency, v_market, v_price, v_price_at
-  from stocks where symbol = p_symbol and is_active;
+  from stocks where symbol = p_symbol and is_active
+  for share;
   if not found then
     raise exception 'stock_not_found';
   end if;

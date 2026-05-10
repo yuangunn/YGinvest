@@ -12,19 +12,25 @@ declare
   v_reserved numeric;
   v_reserved_ccy text;
 begin
-  select o.portfolio_id, o.status, o.side, o.reserved_amount, o.reserved_currency, p.user_id
-  into v_portfolio_id, v_status, v_side, v_reserved, v_reserved_ccy, v_user_id
-  from orders o
-  join portfolios p on p.id = o.portfolio_id
-  where o.id = p_order_id
-  for update;
-
-  if not found then
+  -- Lock portfolios FIRST (consistent with place_market_order/place_limit_order)
+  select o.portfolio_id into v_portfolio_id
+  from orders o where o.id = p_order_id;
+  if v_portfolio_id is null then
     raise exception 'order_not_found';
   end if;
+
+  select user_id into v_user_id
+  from portfolios where id = v_portfolio_id
+  for update;
   if v_user_id <> auth.uid() then
     raise exception 'unauthorized';
   end if;
+
+  -- Now lock orders
+  select status, side, reserved_amount, reserved_currency
+  into v_status, v_side, v_reserved, v_reserved_ccy
+  from orders where id = p_order_id
+  for update;
   if v_status <> 'pending' then
     raise exception 'order_not_pending';
   end if;
