@@ -42,7 +42,9 @@ def _market_from_info(info: dict, symbol: str) -> str:
     return "NASDAQ"  # default for US tickers without exchange
 
 
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=1, max=8))
+# 외부 API 응답이 자주 일시 실패하는데, 재시도 대기를 짧게 — 부팅 시 200개 호출이
+# 누적 대기로 너무 느려지면 안 됨. 실패한 종목은 fetch_prices 잡이 1분마다 재시도.
+@retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=0.5, min=0.5, max=2))
 def fetch_quote(symbol: str) -> Optional[YahooQuote]:
     """yfinance에서 1개 종목 시세를 가져옴. 빈/유효하지 않은 응답은 None 반환."""
     info = yf.Ticker(symbol).info

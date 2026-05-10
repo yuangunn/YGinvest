@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Any
 
-from ygworker.data_sources.krx import KrxStockMaster, list_top_stocks
+from ygworker.data_sources.kr_top import KR_TOP_100
 from ygworker.data_sources.us_top import US_TOP_100
 from ygworker.data_sources.yahoo import YahooQuote, fetch_quote
 
@@ -9,7 +9,11 @@ from ygworker.data_sources.yahoo import YahooQuote, fetch_quote
 def run_bootstrap_stocks(
     supabase: Any, logger: Any, kr_limit: int = 100, us_limit: int = 100
 ) -> None:
-    """stocks 테이블이 비어있으면 KR 상위 + US 상위를 prefetch한다."""
+    """stocks 테이블이 비어있으면 KR 상위 + US 상위를 prefetch한다.
+
+    yfinance 호출이 실패해도 메타데이터(symbol, market, name)는 항상 삽입.
+    가격(last_price)은 실패 시 NULL → fetch_prices 잡이 이후 갱신.
+    """
     existing = (
         supabase.table("stocks").select("symbol").limit(1).execute().data
     )
@@ -22,29 +26,25 @@ def run_bootstrap_stocks(
 
     records: list[dict] = []
 
-    # KR — KOSPI + KOSDAQ
-    try:
-        kospi = list_top_stocks("KOSPI", limit=kr_limit // 2)
-        kosdaq = list_top_stocks("KOSDAQ", limit=kr_limit // 2)
-    except Exception as exc:
-        logger.error("bootstrap_stocks.kr_master_failed", error=str(exc))
-        kospi, kosdaq = [], []
-
-    for masters in (kospi, kosdaq):
-        for m in masters:
-            quote = _safe_quote(m.symbol, logger)
-            records.append(_to_stock_row(m, quote, now))
-
-    # US — top 100 하드코딩 리스트에서 us_limit개
-    for symbol in US_TOP_100[:us_limit]:
+    # KR
+    for symbol, market_enum, name_ko in KR_TOP_100[:kr_limit]:
         quote = _safe_quote(symbol, logger)
-        if quote is None:
-            continue
-        records.append(_us_to_stock_row(symbol, quote, now))
+        records.append(_kr_to_stock_row(symbol, market_enum, name_ko, quote, now))
+
+    # US
+    for symbol, market_enum, name in US_TOP_100[:us_limit]:
+        quote = _safe_quote(symbol, logger)
+        records.append(_us_to_stock_row(symbol, market_enum, name, quote, now))
 
     if records:
         supabase.table("stocks").upsert(records, on_conflict="symbol").execute()
-        logger.info("bootstrap_stocks.done", inserted=len(records))
+        with_price = sum(1 for r in records if r.get("last_price") is not None)
+        logger.info(
+            "bootstrap_stocks.done",
+            inserted=len(records),
+            with_price=with_price,
+            without_price=len(records) - with_price,
+        )
     else:
         logger.warning("bootstrap_stocks.no_records")
 
@@ -53,26 +53,30 @@ def _safe_quote(symbol: str, logger: Any) -> YahooQuote | None:
     try:
         return fetch_quote(symbol)
     except Exception as exc:
-        logger.warning("bootstrap_stocks.quote_failed", symbol=symbol, error=str(exc))
+        logger.warning(
+            "bootstrap_stocks.quote_failed", symbol=symbol, error=str(exc)
+        )
         return None
 
 
-def _to_stock_row(master: KrxStockMaster, quote: YahooQuote | None, now: str) -> dict:
+def _kr_to_stock_row(
+    symbol: str, market_enum: str, name_ko: str, quote: YahooQuote | None, now: str
+) -> dict:
     base = {
-        "symbol": master.symbol,
-        "market": master.market,
+        "symbol": symbol,
+        "market": market_enum,
         "currency": "KRW",
-        "name": master.name_ko,
-        "name_ko": master.name_ko,
-        "market_cap": master.market_cap,
+        "name": name_ko,
+        "name_ko": name_ko,
         "is_active": True,
         "updated_at": now,
     }
     if quote is not None:
         base.update({
-            "name": quote.name or master.name_ko,
+            "name": quote.name or name_ko,
             "last_price": quote.price,
             "last_price_at": now,
+            "market_cap": quote.market_cap,
             "per": quote.per,
             "sector": quote.sector,
             "fifty_two_week_high": quote.fifty_two_week_high,
@@ -81,20 +85,28 @@ def _to_stock_row(master: KrxStockMaster, quote: YahooQuote | None, now: str) ->
     return base
 
 
-def _us_to_stock_row(symbol: str, quote: YahooQuote, now: str) -> dict:
-    return {
+def _us_to_stock_row(
+    symbol: str, market_enum: str, name: str, quote: YahooQuote | None, now: str
+) -> dict:
+    base = {
         "symbol": symbol,
-        "market": quote.market,
-        "currency": quote.currency,
-        "name": quote.name,
+        "market": market_enum,
+        "currency": "USD",
+        "name": name,
         "name_ko": None,
-        "market_cap": quote.market_cap,
-        "per": quote.per,
-        "sector": quote.sector,
-        "last_price": quote.price,
-        "last_price_at": now,
-        "fifty_two_week_high": quote.fifty_two_week_high,
-        "fifty_two_week_low": quote.fifty_two_week_low,
         "is_active": True,
         "updated_at": now,
     }
+    if quote is not None:
+        base.update({
+            "name": quote.name or name,
+            "market": quote.market or market_enum,
+            "last_price": quote.price,
+            "last_price_at": now,
+            "market_cap": quote.market_cap,
+            "per": quote.per,
+            "sector": quote.sector,
+            "fifty_two_week_high": quote.fifty_two_week_high,
+            "fifty_two_week_low": quote.fifty_two_week_low,
+        })
+    return base

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,8 +55,13 @@ export default async function DashboardPage() {
         <CardHeader>
           <CardTitle className="text-base">곧 추가될 기능</CardTitle>
         </CardHeader>
-        <CardContent className="text-sm text-muted-foreground space-y-1">
-          <div>· 종목 검색 및 매수/매도 (Plan #2-3)</div>
+        <CardContent className="text-sm text-muted-foreground space-y-2">
+          <div>
+            <Link href="/app/trade/search" className="text-foreground underline">
+              → 종목 검색하기 (Plan #2 완료)
+            </Link>
+          </div>
+          <div>· 매수/매도 + 환전 (Plan #3)</div>
           <div>· 종목 상세 차트 + 지표 (Plan #4)</div>
           <div>· 친구방 + 리더보드 (Plan #5)</div>
         </CardContent>
