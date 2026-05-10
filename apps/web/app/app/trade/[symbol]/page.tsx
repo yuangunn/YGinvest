@@ -1,6 +1,7 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OrderForm } from "@/components/order-form";
 
 const KRW = new Intl.NumberFormat("ko-KR", { style: "currency", currency: "KRW", maximumFractionDigits: 0 });
 const USD = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
@@ -8,6 +9,11 @@ const USD = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" 
 export default async function StockDetail({ params }: { params: Promise<{ symbol: string }> }) {
   const { symbol } = await params;
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/auth/login");
+
   const { data: stock } = await supabase
     .from("stocks")
     .select("*")
@@ -15,6 +21,13 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
     .single();
 
   if (!stock) notFound();
+
+  const { data: portfolio } = await supabase
+    .from("portfolios")
+    .select("id, krw_balance, usd_balance")
+    .eq("user_id", user.id)
+    .is("room_id", null)
+    .single();
 
   const fmt = stock.currency === "KRW" ? KRW : USD;
 
@@ -53,8 +66,22 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
         <CardHeader>
           <CardTitle className="text-base">거래</CardTitle>
         </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          매수/매도는 Plan #3에서 추가됩니다. 차트와 지표는 Plan #4에서 추가됩니다.
+        <CardContent>
+          {portfolio ? (
+            <OrderForm
+              portfolioId={portfolio.id}
+              symbol={stock.symbol}
+              currency={stock.currency}
+              lastPrice={stock.last_price ? Number(stock.last_price) : null}
+            />
+          ) : (
+            <div className="text-sm text-muted-foreground">포트폴리오 로딩 실패</div>
+          )}
+          <div className="text-xs text-muted-foreground mt-3">
+            잔고: {portfolio?.krw_balance ? KRW.format(Number(portfolio.krw_balance)) : "—"}
+            {" · "}
+            {portfolio?.usd_balance ? USD.format(Number(portfolio.usd_balance)) : "$0"}
+          </div>
         </CardContent>
       </Card>
     </div>
