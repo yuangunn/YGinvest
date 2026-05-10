@@ -90,10 +90,19 @@ v0.2.1 패치 (data sources 안정화):
 - **FinanceDataReader 도입**: pykrx 1.0.x가 KRX API 변경에 호환 안 되어 FDR로 교체. KOSPI 948 + KOSDAQ 1820 동적 조회 + 시가총액 정렬로 자동 top 100 선정
 - **yfinance rate limit 해결**: bootstrap이 yfinance 대신 FDR을 사용 → 200종목 28초에 198/200 가격 채워짐 (이전엔 0/200). yfinance는 ad-hoc lookup에만 사용
 
+### Plan #3 — Trading Core ✅ 완료
+
+- [x] DB 4개 테이블: holdings, orders (reserved 잔고 추적), trades, fx_transactions + RLS + 정합성 제약 (filled_quantity bound, terminal state, reserved pair)
+- [x] 6개 PG 함수 (atomic + auth + locks): place_market_order, place_limit_order, cancel_order, match_limit_order, exchange_currency, expire_pending_order
+- [x] Worker: matching_engine 잡 (1분 주기, 만료 처리 + 매칭)
+- [x] Web API 7개: /api/orders (POST/GET, market+limit), /api/orders/[id] (DELETE), /api/fx/{exchange,transactions}, /api/holdings, /api/trades
+- [x] Web UI: 종목 상세에 매수/매도 폼, /app/portfolio/{holdings,orders,transactions}, /app/fx
+- [x] 시뮬 수수료: KR buy 0.015%, KR sell 0.215%, US 0.05%, FX 0.5%
+- [x] 테스트: 워커 단위 39 + 통합 (signup 3 + trading 7) + Web E2E 6/8 (장 마감으로 KR 시장가 2 SKIP) = **누적 55+ PASS**
+
 ### 다음 plans
 
-- Plan #3: Trading Core (시장가/지정가/환전, 매칭 엔진)
-- Plan #4: Trading UI (종목 상세 + 차트 + 매수/매도)
+- Plan #4: Trading UI (종목 상세 차트 + 매수/매도 BottomSheet + 뉴스/재무)
 - Plan #5: Rooms & Leaderboard (친구방, 글로벌·방 랭킹)
 - Plan #6: 배당 시뮬, 분할/병합, Web Push, 룰 기반 추천
 - Plan #7: PWA & Polish (manifest, 서비스 워커, 다크/라이트)
@@ -103,6 +112,9 @@ v0.2.1 패치 (data sources 안정화):
 - **워커 RPC가 안 잡힘**: 워커가 떠있는지 (`curl http://localhost:8080/health`), 그리고 `apps/web/.env.local`의 `WORKER_RPC_URL`/`WORKER_RPC_SECRET`이 워커 `.env`와 일치하는지 확인
 - **stocks 테이블이 비어있음**: 워커 부팅 시 bootstrap_stocks가 한 번 돌아야 함. yfinance rate limit 시 가격은 NULL로 들어가지만 종목은 들어감
 - **포트 8080 충돌**: 이전 워커 인스턴스가 살아있을 수 있음. `netstat -ano | grep 8080`으로 확인 후 kill
+- **시장가 주문 거부 (`market_closed`)**: 한국 장(평일 09:00–15:30 KST) 또는 미국 장(평일 22:30–05:00 KST 서머타임) 시간대인지 확인. 지정가는 24/7 가능
+- **지정가 매칭 안 됨**: 워커 로그에서 `matching_engine` 출력 확인. 가격이 limit 도달 안 했으면 정상. 30분 stale 가격은 매칭 스킵
+- **환전 `fx_rate_unavailable`**: 워커가 `fetch_fx`를 한 번 이상 실행해야 fx_rates에 행이 들어감. 워커 부팅 시 즉시 실행됨
 - **트리거가 안 도는 것 같으면**: `supabase db reset`. 마이그레이션 순서대로 적용됨
 - **Vercel 가입 후 redirect 안 됨**: Site URL/Redirect URLs 재확인
 - **`.env.local` 변경 후 반영 안됨**: `npm run dev` 재시작
