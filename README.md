@@ -62,7 +62,7 @@ cd apps/worker && uv run pytest          # heartbeat unit + signup_trigger 통�
 
 ## 진행 상태
 
-### Plan #1 — Foundation ✅ 완료
+### Plan #1 — Foundation ✅ 완료 (master)
 
 - [x] 모노레포 부트스트랩 (`apps/web`, `apps/worker`, `supabase/`)
 - [x] Supabase 스키마: profiles, portfolios (글로벌만), notification_settings + RLS
@@ -74,9 +74,24 @@ cd apps/worker && uv run pytest          # heartbeat unit + signup_trigger 통�
 - [x] GitHub Actions CI (web, worker)
 - [x] 테스트: 통합 3, 단위 2, E2E 2 — **7/7 PASS**
 
+### Plan #2 — Stock Universe & Price Feed ✅ 완료
+
+- [x] DB: stocks (pg_trgm 검색 인덱스), fx_rates 시계열 + RLS
+- [x] 워커 데이터 소스: yahoo (yfinance) · krx (pykrx, fallback) · fx (exchangerate.host) — 모두 TDD with mocks
+- [x] 워커 잡: bootstrap_stocks (KR top 100 + US top 100 하드코딩), fetch_prices (1분 / 장중), fetch_fx (30분)
+- [x] AsyncIOScheduler + FastAPI 통합 (1 process, port 8080)
+- [x] /rpc/stocks/lookup ad-hoc ticker 조회 (X-Worker-Secret 인증)
+- [x] Web: /api/stocks/{search,lookup}
+- [x] Web: /app/trade/{search,[symbol]} 페이지 (한국어 이름·심볼·가격 표시)
+- [x] E2E: 검색 → 상세 페이지 (KR 한국어, US 심볼, 알 수 없는 심볼 fallback)
+- [x] 테스트: 워커 단위/통합 36 + Web E2E 5 = **누적 41/41 PASS**
+
+알려진 한계:
+- **pykrx 호환성**: 현재 KRX API 변경으로 pykrx 1.0.x 동작 안 함. KR 종목 마스터는 `kr_top.py`에 하드코딩 (KOSPI 50 + KOSDAQ 50, 한국어명 포함)
+- **yfinance rate limiting**: Yahoo Finance가 빠른 200건 호출에 SSL 에러로 응답 → 부팅 시 가격 비어있을 수 있음. fetch_prices 잡이 1분마다 점진적 갱신
+
 ### 다음 plans
 
-- Plan #2: Stock Universe & Price Feed (yfinance/PyKRX, 검색)
 - Plan #3: Trading Core (시장가/지정가/환전, 매칭 엔진)
 - Plan #4: Trading UI (종목 상세 + 차트 + 매수/매도)
 - Plan #5: Rooms & Leaderboard (친구방, 글로벌·방 랭킹)
@@ -85,6 +100,9 @@ cd apps/worker && uv run pytest          # heartbeat unit + signup_trigger 통�
 
 ## 디버깅 팁
 
+- **워커 RPC가 안 잡힘**: 워커가 떠있는지 (`curl http://localhost:8080/health`), 그리고 `apps/web/.env.local`의 `WORKER_RPC_URL`/`WORKER_RPC_SECRET`이 워커 `.env`와 일치하는지 확인
+- **stocks 테이블이 비어있음**: 워커 부팅 시 bootstrap_stocks가 한 번 돌아야 함. yfinance rate limit 시 가격은 NULL로 들어가지만 종목은 들어감
+- **포트 8080 충돌**: 이전 워커 인스턴스가 살아있을 수 있음. `netstat -ano | grep 8080`으로 확인 후 kill
 - **트리거가 안 도는 것 같으면**: `supabase db reset`. 마이그레이션 순서대로 적용됨
 - **Vercel 가입 후 redirect 안 됨**: Site URL/Redirect URLs 재확인
 - **`.env.local` 변경 후 반영 안됨**: `npm run dev` 재시작
