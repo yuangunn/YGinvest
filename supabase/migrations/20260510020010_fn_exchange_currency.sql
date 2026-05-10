@@ -54,6 +54,10 @@ begin
     -- USD → KRW: krw_amount = usd * rate * (1 - fee_pct)
     v_to_amount := p_from_amount * v_rate * (1 - v_fee_pct);
   end if;
+
+  if v_to_amount <= 0 then
+    raise exception 'amount_too_small';
+  end if;
   if v_balance < p_from_amount then
     raise exception 'insufficient_balance';
   end if;

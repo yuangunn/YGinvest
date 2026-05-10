@@ -26,6 +26,9 @@ begin
     return json_build_object('expired', false, 'reason', 'not_yet_expired');
   end if;
 
+  -- Lock portfolios row for balance mutation
+  perform 1 from portfolios where id = v_portfolio_id for update;
+
   -- 잔고 환원 (매수만)
   if v_side = 'buy' and v_reserved is not null and v_reserved > 0 then
     if v_reserved_ccy = 'KRW' then

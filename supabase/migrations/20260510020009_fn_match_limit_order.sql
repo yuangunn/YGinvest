@@ -39,6 +39,9 @@ begin
     return json_build_object('matched', false, 'reason', 'not_pending');
   end if;
 
+  -- Lock portfolios row for balance mutation (consistency with place_market_order/cancel_order)
+  perform 1 from portfolios where id = v_portfolio_id for update;
+
   -- 2) 가격 조회 + stale 체크 (for share: 워커가 동시에 stocks.last_price 갱신해도 일관성)
   select currency, market, last_price, last_price_at
   into v_currency, v_market, v_current_price, v_price_at
