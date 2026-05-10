@@ -1,0 +1,51 @@
+# Node
+node_modules/
+.next/
+out/
+dist/
+*.tsbuildinfo
+.turbo/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+.python-version
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Env
+.env
+.env.local
+.env.*.local
+!.env.local.example
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test/coverage
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+htmlcov/
+
+# Supabase
+supabase/.branches/
+supabase/.temp/
+
+# Cloud CLI
+.vercel
+.railway
