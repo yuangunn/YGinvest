@@ -1,9 +1,8 @@
 from datetime import UTC, datetime
 from typing import Any
 
-from ygworker.data_sources.kr_top import KR_TOP_100
+from ygworker.data_sources.fdr import fetch_us_close, list_kr_top
 from ygworker.data_sources.us_top import US_TOP_100
-from ygworker.data_sources.yahoo import YahooQuote, fetch_quote
 
 
 def run_bootstrap_stocks(
@@ -11,8 +10,8 @@ def run_bootstrap_stocks(
 ) -> None:
     """stocks 테이블이 비어있으면 KR 상위 + US 상위를 prefetch한다.
 
-    yfinance 호출이 실패해도 메타데이터(symbol, market, name)는 항상 삽입.
-    가격(last_price)은 실패 시 NULL → fetch_prices 잡이 이후 갱신.
+    KR: FinanceDataReader StockListing — KOSPI + KOSDAQ 시가총액 상위 N개. 1번 호출로 가격까지.
+    US: us_top.US_TOP_100 (하드코딩 큐레이션) + FDR DataReader로 종가 fetch.
     """
     existing = (
         supabase.table("stocks").select("symbol").limit(1).execute().data
@@ -26,15 +25,47 @@ def run_bootstrap_stocks(
 
     records: list[dict] = []
 
-    # KR
-    for symbol, market_enum, name_ko in KR_TOP_100[:kr_limit]:
-        quote = _safe_quote(symbol, logger)
-        records.append(_kr_to_stock_row(symbol, market_enum, name_ko, quote, now))
+    # KR: 한 번의 FDR 호출로 list + 가격 + 한국어명
+    try:
+        kr_items = list_kr_top(limit=kr_limit)
+    except Exception as exc:
+        logger.error("bootstrap_stocks.kr_listing_failed", error=str(exc))
+        kr_items = []
 
-    # US
+    for item in kr_items:
+        records.append({
+            "symbol": item.symbol,
+            "market": item.market,
+            "currency": "KRW",
+            "name": item.name_ko,
+            "name_ko": item.name_ko,
+            "market_cap": item.market_cap,
+            "last_price": item.last_price,
+            "last_price_at": now if item.last_price is not None else None,
+            "is_active": True,
+            "updated_at": now,
+        })
+
+    # US: 하드코딩 마스터 + FDR로 가격
     for symbol, market_enum, name in US_TOP_100[:us_limit]:
-        quote = _safe_quote(symbol, logger)
-        records.append(_us_to_stock_row(symbol, market_enum, name, quote, now))
+        try:
+            close = fetch_us_close(symbol)
+        except Exception as exc:
+            logger.warning(
+                "bootstrap_stocks.us_close_failed", symbol=symbol, error=str(exc)
+            )
+            close = None
+        records.append({
+            "symbol": symbol,
+            "market": market_enum,
+            "currency": "USD",
+            "name": name,
+            "name_ko": None,
+            "last_price": close,
+            "last_price_at": now if close is not None else None,
+            "is_active": True,
+            "updated_at": now,
+        })
 
     if records:
         supabase.table("stocks").upsert(records, on_conflict="symbol").execute()
@@ -47,66 +78,3 @@ def run_bootstrap_stocks(
         )
     else:
         logger.warning("bootstrap_stocks.no_records")
-
-
-def _safe_quote(symbol: str, logger: Any) -> YahooQuote | None:
-    try:
-        return fetch_quote(symbol)
-    except Exception as exc:
-        logger.warning(
-            "bootstrap_stocks.quote_failed", symbol=symbol, error=str(exc)
-        )
-        return None
-
-
-def _kr_to_stock_row(
-    symbol: str, market_enum: str, name_ko: str, quote: YahooQuote | None, now: str
-) -> dict:
-    base = {
-        "symbol": symbol,
-        "market": market_enum,
-        "currency": "KRW",
-        "name": name_ko,
-        "name_ko": name_ko,
-        "is_active": True,
-        "updated_at": now,
-    }
-    if quote is not None:
-        base.update({
-            "name": quote.name or name_ko,
-            "last_price": quote.price,
-            "last_price_at": now,
-            "market_cap": quote.market_cap,
-            "per": quote.per,
-            "sector": quote.sector,
-            "fifty_two_week_high": quote.fifty_two_week_high,
-            "fifty_two_week_low": quote.fifty_two_week_low,
-        })
-    return base
-
-
-def _us_to_stock_row(
-    symbol: str, market_enum: str, name: str, quote: YahooQuote | None, now: str
-) -> dict:
-    base = {
-        "symbol": symbol,
-        "market": market_enum,
-        "currency": "USD",
-        "name": name,
-        "name_ko": None,
-        "is_active": True,
-        "updated_at": now,
-    }
-    if quote is not None:
-        base.update({
-            "name": quote.name or name,
-            "market": quote.market or market_enum,
-            "last_price": quote.price,
-            "last_price_at": now,
-            "market_cap": quote.market_cap,
-            "per": quote.per,
-            "sector": quote.sector,
-            "fifty_two_week_high": quote.fifty_two_week_high,
-            "fifty_two_week_low": quote.fifty_two_week_low,
-        })
-    return base
