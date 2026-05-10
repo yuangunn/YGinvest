@@ -4,6 +4,7 @@ import pandas as pd
 
 from ygworker.data_sources.fdr import (
     KrListingItem,
+    fetch_daily_history,
     fetch_us_close,
     list_kr_top,
 )
@@ -81,3 +82,54 @@ def test_fetch_us_close_returns_last_close(mock_reader):
 def test_fetch_us_close_returns_none_when_empty(mock_reader):
     mock_reader.return_value = pd.DataFrame()
     assert fetch_us_close("INVALID") is None
+
+
+@patch("ygworker.data_sources.fdr.fdr.DataReader")
+def test_fetch_daily_history_returns_ohlcv_list(mock_reader):
+    df = pd.DataFrame(
+        {
+            "Open": [100.0, 102.0, 105.0],
+            "High": [103.0, 106.0, 108.0],
+            "Low": [99.0, 101.0, 104.0],
+            "Close": [102.0, 105.0, 107.0],
+            "Volume": [1_000_000, 1_200_000, 1_500_000],
+        },
+        index=pd.to_datetime(["2026-05-08", "2026-05-09", "2026-05-12"]),
+    )
+    mock_reader.return_value = df
+
+    bars = fetch_daily_history("AAPL", days=10)
+
+    assert len(bars) == 3
+    assert bars[0]["ts"].isoformat().startswith("2026-05-08")
+    assert bars[0]["open"] == 100.0
+    assert bars[0]["high"] == 103.0
+    assert bars[0]["low"] == 99.0
+    assert bars[0]["close"] == 102.0
+    assert bars[0]["volume"] == 1_000_000
+
+
+@patch("ygworker.data_sources.fdr.fdr.DataReader")
+def test_fetch_daily_history_returns_empty_on_no_data(mock_reader):
+    mock_reader.return_value = pd.DataFrame()
+    assert fetch_daily_history("INVALID", days=10) == []
+
+
+@patch("ygworker.data_sources.fdr.fdr.DataReader")
+def test_fetch_daily_history_skips_nan_rows(mock_reader):
+    df = pd.DataFrame(
+        {
+            "Open": [100.0, float("nan"), 105.0],
+            "High": [103.0, 106.0, 108.0],
+            "Low": [99.0, 101.0, 104.0],
+            "Close": [102.0, 105.0, 107.0],
+            "Volume": [1_000_000, 1_200_000, 1_500_000],
+        },
+        index=pd.to_datetime(["2026-05-08", "2026-05-09", "2026-05-12"]),
+    )
+    mock_reader.return_value = df
+
+    bars = fetch_daily_history("AAPL", days=10)
+    assert len(bars) == 2
+    assert bars[0]["close"] == 102.0
+    assert bars[1]["close"] == 107.0
