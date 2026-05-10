@@ -90,6 +90,17 @@ v0.2.1 패치 (data sources 안정화):
 - **FinanceDataReader 도입**: pykrx 1.0.x가 KRX API 변경에 호환 안 되어 FDR로 교체. KOSPI 948 + KOSDAQ 1820 동적 조회 + 시가총액 정렬로 자동 top 100 선정
 - **yfinance rate limit 해결**: bootstrap이 yfinance 대신 FDR을 사용 → 200종목 28초에 198/200 가격 채워짐 (이전엔 0/200). yfinance는 ad-hoc lookup에만 사용
 
+### Plan #4 — Trading UI ✅ 완료
+
+- [x] DB: stock_bars (OHLCV 시계열), watchlists 테이블 + RLS
+- [x] 워커: fetch_daily_history (FDR) + fetch_daily_bars 잡 (KR 16:00 / US 07:00 KST cron + 부팅 시 backfill)
+- [x] Web API: /api/stocks/[symbol]/bars (interval=1d/1h/15m), /api/watchlist (GET/POST/DELETE)
+- [x] Web UI: Lightweight Charts v5 일봉 캔들 + MA20/MA60, BuySellSheet (BottomSheet), WatchlistButton, /app/watchlist 페이지
+- [x] OrderForm refactored: forceSide prop으로 side 토글 숨김 (BuySellSheet 내부에서 사용)
+- [x] 테스트: 워커 단위 49 + Web E2E 9/9 (2 SKIP은 KR 시장가, 정상) = **누적 70+ PASS**
+
+v1.5에서 추가 예정: 인트라데이 봉(15분/1시간), RSI/MACD/볼린저, 뉴스, 재무제표 요약, 포트폴리오 overview.
+
 ### Plan #3 — Trading Core ✅ 완료
 
 - [x] DB 4개 테이블: holdings, orders (reserved 잔고 추적), trades, fx_transactions + RLS + 정합성 제약 (filled_quantity bound, terminal state, reserved pair)
@@ -102,10 +113,10 @@ v0.2.1 패치 (data sources 안정화):
 
 ### 다음 plans
 
-- Plan #4: Trading UI (종목 상세 차트 + 매수/매도 BottomSheet + 뉴스/재무)
 - Plan #5: Rooms & Leaderboard (친구방, 글로벌·방 랭킹)
 - Plan #6: 배당 시뮬, 분할/병합, Web Push, 룰 기반 추천
 - Plan #7: PWA & Polish (manifest, 서비스 워커, 다크/라이트)
+- Plan #8 (v1.5): Design Polish — shadcn 기본 → 커스텀 디자인 시스템
 
 ## 디버깅 팁
 
