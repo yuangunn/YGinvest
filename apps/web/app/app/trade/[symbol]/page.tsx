@@ -1,7 +1,9 @@
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { StockChart } from "@/components/stock-chart";
+import { ChartArea } from "@/components/chart-area";
+import { StockNews } from "@/components/stock-news";
+import { StockFinancials } from "@/components/stock-financials";
 import { BuySellSheet } from "@/components/buy-sell-sheet";
 import { WatchlistButton } from "@/components/watchlist-button";
 
@@ -72,10 +74,13 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">일봉 차트 (최근 1년)</CardTitle>
+          <CardTitle className="text-base">차트</CardTitle>
         </CardHeader>
         <CardContent>
-          <StockChart bars={(bars ?? []).map((b) => ({ ...b, ts: String(b.ts) }))} />
+          <ChartArea
+            symbol={stock.symbol}
+            initialBars={(bars ?? []).map((b) => ({ ...b, ts: String(b.ts) }))}
+          />
         </CardContent>
       </Card>
 
@@ -113,6 +118,24 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
           <div>PER: {stock.per ?? "—"}</div>
           <div>52주 최고: {stock.fifty_two_week_high ? fmt.format(Number(stock.fifty_two_week_high)) : "—"}</div>
           <div>52주 최저: {stock.fifty_two_week_low ? fmt.format(Number(stock.fifty_two_week_low)) : "—"}</div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">재무 지표</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <StockFinancials symbol={stock.symbol} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">뉴스</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <StockNews symbol={stock.symbol} />
         </CardContent>
       </Card>
     </div>

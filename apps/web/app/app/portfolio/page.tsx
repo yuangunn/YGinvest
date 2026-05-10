@@ -1,4 +1,4 @@
 import { redirect } from "next/navigation";
 export default function Portfolio() {
-  redirect("/app/portfolio/holdings");
+  redirect("/app/portfolio/overview");
 }

@@ -62,6 +62,11 @@ export default async function DashboardPage() {
             </Link>
           </div>
           <div>
+            <Link href="/app/portfolio/overview" className="text-foreground underline">
+              → 포트폴리오 Overview
+            </Link>
+          </div>
+          <div>
             <Link href="/app/portfolio/holdings" className="text-foreground underline">
               → 보유 종목
             </Link>

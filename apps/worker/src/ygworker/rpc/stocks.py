@@ -4,7 +4,8 @@ from typing import Any
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel
 
-from ygworker.data_sources.yahoo import fetch_quote
+from ygworker.data_sources.yahoo import fetch_history, fetch_quote
+from ygworker.data_sources.yahoo_news import fetch_key_metrics, fetch_news
 
 
 class LookupRequest(BaseModel):
@@ -62,5 +63,37 @@ def make_router(supabase: Any, secret: str) -> APIRouter:
             currency=quote.currency,
             price=quote.price,
         )
+
+    class BarsRequest(BaseModel):
+        symbol: str
+        interval: str = "15m"
+        period: str = "60d"
+
+    @router.post("/rpc/stocks/bars")
+    def bars(req: BarsRequest, _: None = Depends(_check_secret)) -> dict:
+        if req.interval not in ("15m", "1h", "1d"):
+            raise HTTPException(status_code=400, detail="invalid_interval")
+        bars_data = fetch_history(req.symbol, period=req.period, interval=req.interval)
+        out = []
+        for b in bars_data:
+            ts = b["ts"].isoformat() if hasattr(b["ts"], "isoformat") else str(b["ts"])
+            out.append({**b, "ts": ts})
+        return {"symbol": req.symbol, "interval": req.interval, "bars": out}
+
+    class NewsRequest(BaseModel):
+        symbol: str
+        limit: int = 10
+
+    @router.post("/rpc/stocks/news")
+    def news(req: NewsRequest, _: None = Depends(_check_secret)) -> dict:
+        items = fetch_news(req.symbol, limit=req.limit)
+        return {"symbol": req.symbol, "news": items}
+
+    class FinancialsRequest(BaseModel):
+        symbol: str
+
+    @router.post("/rpc/stocks/financials")
+    def financials(req: FinancialsRequest, _: None = Depends(_check_secret)) -> dict:
+        return fetch_key_metrics(req.symbol)
 
     return router

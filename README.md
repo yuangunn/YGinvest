@@ -90,6 +90,17 @@ v0.2.1 패치 (data sources 안정화):
 - **FinanceDataReader 도입**: pykrx 1.0.x가 KRX API 변경에 호환 안 되어 FDR로 교체. KOSPI 948 + KOSDAQ 1820 동적 조회 + 시가총액 정렬로 자동 top 100 선정
 - **yfinance rate limit 해결**: bootstrap이 yfinance 대신 FDR을 사용 → 200종목 28초에 198/200 가격 채워짐 (이전엔 0/200). yfinance는 ad-hoc lookup에만 사용
 
+### Plan #4.5 — Trading UI Polish ✅ 완료
+
+- [x] 차트 인터벌 토글 (1d/1h/15m) — 일봉은 DB 캐시, 인트라데이는 워커 RPC on-demand
+- [x] 지표 토글 (MA20/60, RSI(14), Bollinger 밴드 — 클라이언트 계산)
+- [x] 종목 뉴스 카드 (yfinance Ticker.news lazy-load)
+- [x] 핵심 재무 지표 카드 (EPS, Forward P/E, 베타, ROE, 부채비율 등)
+- [x] 포트폴리오 Overview 페이지 (총자산 + 누적 수익률 + 자산 배분 도넛 with recharts)
+- [x] 워커 RPC 추가: /rpc/stocks/{bars,news,financials}
+- [x] lib/indicators.ts (RSI/MACD/Bollinger 순수 함수, numerical 검증)
+- [x] 테스트: 워커 +9 (yahoo 2 + yahoo_news 4 + RPC 3) + Web E2E +1 = **누적 80+ PASS**
+
 ### Plan #4 — Trading UI ✅ 완료
 
 - [x] DB: stock_bars (OHLCV 시계열), watchlists 테이블 + RLS
