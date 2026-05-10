@@ -77,3 +77,31 @@ def fetch_quotes(symbols: list[str]) -> list[YahooQuote]:
             # 호출 실패는 로그만 하고 계속 (호출자가 logger 주입)
             continue
     return out
+
+
+@retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=0.5, min=0.5, max=2))
+def fetch_history(symbol: str, period: str = "60d", interval: str = "15m") -> list[dict]:
+    """yfinance Ticker.history() 래핑.
+
+    period: '1d', '5d', '60d', '1y', '2y', '5y', '10y', 'max'
+    interval: '15m', '1h', '1d'
+    """
+    df = yf.Ticker(symbol).history(period=period, interval=interval)
+    if df is None or df.empty:
+        return []
+    out: list[dict] = []
+    for idx, row in df.iterrows():
+        try:
+            volume = row.get("Volume")
+            volume_int = 0 if volume is None or volume != volume else int(volume)
+            out.append({
+                "ts": idx.to_pydatetime() if hasattr(idx, "to_pydatetime") else idx,
+                "open": float(row["Open"]),
+                "high": float(row["High"]),
+                "low": float(row["Low"]),
+                "close": float(row["Close"]),
+                "volume": volume_int,
+            })
+        except (ValueError, TypeError, KeyError):
+            continue
+    return out

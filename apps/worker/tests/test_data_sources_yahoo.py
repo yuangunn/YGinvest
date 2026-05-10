@@ -4,6 +4,7 @@ import pytest
 
 from ygworker.data_sources.yahoo import (
     YahooQuote,
+    fetch_history,
     fetch_quote,
     fetch_quotes,
 )
@@ -80,3 +81,33 @@ def test_fetch_quotes_batches(mock_fq):
     ]
     quotes = fetch_quotes(["AAPL", "BAD", "MSFT"])
     assert [q.symbol for q in quotes] == ["AAPL", "MSFT"]
+
+
+@patch("ygworker.data_sources.yahoo.yf.Ticker")
+def test_fetch_history_returns_ohlcv_list(mock_ticker):
+    import pandas as pd
+    df = pd.DataFrame(
+        {
+            "Open": [100.0, 102.0],
+            "High": [103.0, 106.0],
+            "Low": [99.0, 101.0],
+            "Close": [102.0, 105.0],
+            "Volume": [1_000_000, 1_500_000],
+        },
+        index=pd.to_datetime(["2026-05-08 09:30", "2026-05-08 09:45"]),
+    )
+    mock_ticker.return_value.history.return_value = df
+
+    bars = fetch_history("AAPL", period="60d", interval="15m")
+    assert len(bars) == 2
+    assert bars[0]["open"] == 100.0
+    assert bars[0]["close"] == 102.0
+    assert bars[0]["volume"] == 1_000_000
+    mock_ticker.return_value.history.assert_called_with(period="60d", interval="15m")
+
+
+@patch("ygworker.data_sources.yahoo.yf.Ticker")
+def test_fetch_history_returns_empty_on_no_data(mock_ticker):
+    import pandas as pd
+    mock_ticker.return_value.history.return_value = pd.DataFrame()
+    assert fetch_history("INVALID", period="1d", interval="1d") == []
