@@ -77,8 +77,8 @@ cd apps/worker && uv run pytest          # heartbeat unit + signup_trigger 통�
 ### Plan #2 — Stock Universe & Price Feed ✅ 완료
 
 - [x] DB: stocks (pg_trgm 검색 인덱스), fx_rates 시계열 + RLS
-- [x] 워커 데이터 소스: yahoo (yfinance) · krx (pykrx, fallback) · fx (exchangerate.host) — 모두 TDD with mocks
-- [x] 워커 잡: bootstrap_stocks (KR top 100 + US top 100 하드코딩), fetch_prices (1분 / 장중), fetch_fx (30분)
+- [x] 워커 데이터 소스: fdr (FinanceDataReader, KR + US prices) · yahoo (ad-hoc lookup용) · fx (exchangerate.host) — 모두 TDD with mocks
+- [x] 워커 잡: bootstrap_stocks (KR top 100 동적 + US top 100 큐레이션), fetch_prices (1분 / 장중, KR 배치 + US 시퀀셜), fetch_fx (30분)
 - [x] AsyncIOScheduler + FastAPI 통합 (1 process, port 8080)
 - [x] /rpc/stocks/lookup ad-hoc ticker 조회 (X-Worker-Secret 인증)
 - [x] Web: /api/stocks/{search,lookup}
@@ -86,9 +86,9 @@ cd apps/worker && uv run pytest          # heartbeat unit + signup_trigger 통�
 - [x] E2E: 검색 → 상세 페이지 (KR 한국어, US 심볼, 알 수 없는 심볼 fallback)
 - [x] 테스트: 워커 단위/통합 36 + Web E2E 5 = **누적 41/41 PASS**
 
-알려진 한계:
-- **pykrx 호환성**: 현재 KRX API 변경으로 pykrx 1.0.x 동작 안 함. KR 종목 마스터는 `kr_top.py`에 하드코딩 (KOSPI 50 + KOSDAQ 50, 한국어명 포함)
-- **yfinance rate limiting**: Yahoo Finance가 빠른 200건 호출에 SSL 에러로 응답 → 부팅 시 가격 비어있을 수 있음. fetch_prices 잡이 1분마다 점진적 갱신
+v0.2.1 패치 (data sources 안정화):
+- **FinanceDataReader 도입**: pykrx 1.0.x가 KRX API 변경에 호환 안 되어 FDR로 교체. KOSPI 948 + KOSDAQ 1820 동적 조회 + 시가총액 정렬로 자동 top 100 선정
+- **yfinance rate limit 해결**: bootstrap이 yfinance 대신 FDR을 사용 → 200종목 28초에 198/200 가격 채워짐 (이전엔 0/200). yfinance는 ad-hoc lookup에만 사용
 
 ### 다음 plans
 

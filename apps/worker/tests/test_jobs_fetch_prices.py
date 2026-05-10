@@ -1,73 +1,65 @@
 from unittest.mock import MagicMock, patch
 
-from ygworker.data_sources.yahoo import YahooQuote
+import pandas as pd
+
 from ygworker.jobs.fetch_prices import run_fetch_prices
 
 
-def _yq(symbol, price=100.0, market="NASDAQ", currency="USD"):
-    return YahooQuote(
-        symbol=symbol,
-        name=f"{symbol} Corp",
-        currency=currency,
-        market=market,
-        price=price,
-        market_cap=None,
-        per=None,
-        sector=None,
-        fifty_two_week_high=None,
-        fifty_two_week_low=None,
-    )
-
-
-@patch("ygworker.jobs.fetch_prices.fetch_quotes")
-def test_fetch_prices_updates_active_stocks(mock_fetch):
+@patch("ygworker.jobs.fetch_prices.fetch_us_close")
+@patch("ygworker.jobs.fetch_prices._fetch_listing")
+def test_fetch_prices_updates_kr_via_batch_and_us_per_symbol(mock_listing, mock_us):
     fake = MagicMock()
     fake.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
-        {"symbol": "AAPL"},
-        {"symbol": "MSFT"},
         {"symbol": "005930.KS"},
+        {"symbol": "000660.KS"},
+        {"symbol": "AAPL"},
     ]
-    mock_fetch.return_value = [
-        _yq("AAPL", 158.5),
-        _yq("MSFT", 380.0),
-        _yq("005930.KS", 70000.0, "KRX_KS", "KRW"),
+    mock_listing.side_effect = [
+        pd.DataFrame({"Code": ["005930", "000660"], "Close": [268500.0, 1686000.0]}),
+        pd.DataFrame(),  # KOSDAQ 빈
     ]
+    mock_us.return_value = 158.5
     logger = MagicMock()
 
     run_fetch_prices(fake, logger)
 
-    mock_fetch.assert_called_once_with(["AAPL", "MSFT", "005930.KS"])
     update_calls = fake.table.return_value.update.call_args_list
     assert len(update_calls) == 3
-    updated_payload = [c.args[0] if c.args else c.kwargs for c in update_calls]
-    assert all("last_price" in p and "last_price_at" in p for p in updated_payload)
+    payloads = [c.args[0] if c.args else c.kwargs for c in update_calls]
+    assert all("last_price" in p and "last_price_at" in p for p in payloads)
+    # KR/US 모두 업데이트
+    update_prices = [p["last_price"] for p in payloads]
+    assert 268500.0 in update_prices
+    assert 158.5 in update_prices
 
 
-@patch("ygworker.jobs.fetch_prices.fetch_quotes")
-def test_fetch_prices_handles_empty_universe(mock_fetch):
+@patch("ygworker.jobs.fetch_prices.fetch_us_close")
+@patch("ygworker.jobs.fetch_prices._fetch_listing")
+def test_fetch_prices_handles_empty_universe(mock_listing, mock_us):
     fake = MagicMock()
     fake.table.return_value.select.return_value.eq.return_value.execute.return_value.data = []
     logger = MagicMock()
 
     run_fetch_prices(fake, logger)
 
-    mock_fetch.assert_not_called()
+    mock_listing.assert_not_called()
+    mock_us.assert_not_called()
     logger.info.assert_called_with("fetch_prices.skip", reason="no_active_symbols")
 
 
-@patch("ygworker.jobs.fetch_prices.fetch_quotes")
-def test_fetch_prices_skips_failed_quotes(mock_fetch):
+@patch("ygworker.jobs.fetch_prices.fetch_us_close")
+@patch("ygworker.jobs.fetch_prices._fetch_listing")
+def test_fetch_prices_skips_us_failures(mock_listing, mock_us):
     fake = MagicMock()
     fake.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
         {"symbol": "AAPL"},
-        {"symbol": "BAD_SYMBOL"},
+        {"symbol": "BAD"},
     ]
-    # fetch_quotes는 실패한 심볼은 자동 누락
-    mock_fetch.return_value = [_yq("AAPL", 158.5)]
+    mock_us.side_effect = [158.5, RuntimeError("rate limited")]
     logger = MagicMock()
 
     run_fetch_prices(fake, logger)
 
     update_calls = fake.table.return_value.update.call_args_list
+    # AAPL만 update, BAD는 skip
     assert len(update_calls) == 1
-    # 업데이트된 건 AAPL뿐. BAD_SYMBOL는 update 호출 없음
