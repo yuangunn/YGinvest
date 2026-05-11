@@ -149,12 +149,40 @@ v0.5.1 패치 (같이 배포된 데이터 소스 안정화):
 - [x] Web: `/app/portfolio/transactions`에 배당 섹션 추가 (gross/tax/net + ex_date 표시)
 - [x] 테스트: 워커 단위 +12 (data source 6 + fetch 3 + apply 3) + 통합 +7 (US/KR 배당, 중복 방지, 2:1 split, 1:2 merge, full dilution DELETE, BUY 주문 rebalance) = **누적 103 unit/integration + 9 E2E 통과**
 
-### 다음 plans
+### Plan #7 — Web Push Notifications ✅ 완료
 
-- Plan #7: Web Push 알림 (VAPID + service worker + 6개 트리거: 체결/만료/방시작·종료/배당/분할)
-- Plan #8: 룰 기반 종목 추천 (top_gainers/losers/volume_surge/near_52w_high/low_per_value 5 카테고리)
-- Plan #9: PWA & Polish (manifest, 다크/라이트, 모바일 UX)
-- Plan #10 (v1.5): Design Polish — shadcn 기본 → 커스텀 디자인 시스템
+- [x] DB: `push_subscriptions`, `notification_queue` 테이블 + RLS, notification_settings UPDATE 정책 idempotent 추가
+- [x] PG 헬퍼: `enqueue_notification(user_id, type, title, body, url, dedup_key)` — settings ON 체크 + dedup_key unique INSERT (race-safe)
+- [x] 워커 잡 3개: `send_notifications` (1분, 큐 디스패치), `notify_expiring_orders` (1시간, 24h 만료 임박 스캔), `notify_room_lifecycle` (1시간, 방 시작/종료 임박)
+- [x] 워커 데이터 소스: `notify.py` (pywebpush wrapper, 410 Gone → NotificationGone)
+- [x] matching_engine + apply_dividend + apply_corporate_action: enqueue 통합 (6 trigger types 모두)
+- [x] Web: `/sw.js` 서비스 워커 (push + click handler), `lib/push.ts` (subscribe/unsubscribe + raw base64url ArrayBuffer 변환)
+- [x] Web API: `/api/push/{subscribe,unsubscribe}`, `/api/notification-settings` (GET + PATCH)
+- [x] Web: `/app/settings` 페이지 + 6개 type별 토글 + 대시보드 링크
+- [x] VAPID 키 설정 (`NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` env vars)
+- [x] 테스트: 워커 단위 +11 (notify 3 + send 4 + expiring 2 + room_lifecycle 2) + 통합 +3 (enqueue/dedup/settings gate) = **누적 117 unit/integration + 9 E2E 통과**
+
+### Web Push 운영 노트
+
+```bash
+# 키 1회 생성 (운영자)
+npx web-push generate-vapid-keys
+
+# Vercel env vars
+vercel env add NEXT_PUBLIC_VAPID_PUBLIC_KEY production
+# (raw base64url public 키 입력)
+
+# Railway env vars
+railway variables set VAPID_PRIVATE_KEY=... VAPID_SUBJECT=mailto:rms6654@gmail.com
+```
+
+iOS Safari는 16.4+ + 홈 화면 추가 후에만 푸시 동작. 데스크톱 Chrome/Firefox/Edge는 즉시 동작.
+
+### 다음 plans (Plan #7 이후)
+
+- Plan #8: 룰 기반 종목 추천
+- Plan #9: PWA & Polish
+- Plan #10 (v1.5): Design Polish
 
 ## 디버깅 팁
 
@@ -176,6 +204,10 @@ v0.5.1 패치 (같이 배포된 데이터 소스 안정화):
 - **`infinite recursion detected in policy for relation room_members`**: 정책이 자기 자신을 서브쿼리 — `_user_room_ids()` security definer 헬퍼로 우회 (마이그레이션 5_009)
 - **KR 일봉 안 보임**: `fetch_daily_history`가 FDR에 KR 심볼 넘길 땐 `.KS`/`.KQ` 떼야 함. 로컬은 워커 한 번 돌리면 backfill됨
 - **배당이 적용 안 됨**: `dividend_events` 테이블 확인. yfinance가 ex_date를 못 가져오는 KR 종목 다수 (yfinance 한계 — v1.5에서 FDR 보완)
+- **푸시가 안 옴**: 1) `/app/settings`에서 푸시 켜기 + 종류 ON 확인 2) DevTools → Application → Service Workers에서 sw.js 등록됐는지 3) Application → Push Messaging에서 endpoint 확인 4) `select * from notification_queue order by created_at desc limit 5` — pending 상태인지/sent로 마킹됐는지
+- **VAPID 키 mismatch**: applicationServerKey 잘못된 형식이면 `InvalidStateError`. raw uncompressed point base64url 필요 — `npx web-push generate-vapid-keys` 사용
+- **iOS Safari 푸시 안 됨**: 16.4+ + 홈 화면 추가 필수. 일반 Safari 탭에선 동작 안 함
+- **알림 큐 `no_subscription`**: 알림은 큐에 들어왔지만 사용자가 푸시 미구독. `/app/settings`에서 켜야
 - **분할 후 보유 수량 0**: `floor(qty × ratio) = 0`이면 holdings row 삭제됨 (CHECK constraint). leftover_cash로 잔고에 환원됨
 - **펜딩 주문이 분할 후 자동 취소**: floor(qty × ratio) = 0인 케이스. BUY 주문이면 reserved_amount가 잔고에 환원됨
 - **`already_applied`**: PG 함수가 중복 호출 방지. 이미 처리된 이벤트라 정상
