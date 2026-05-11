@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
 export function CancelOrderButton({ orderId }: { orderId: string }) {
@@ -10,10 +11,11 @@ export function CancelOrderButton({ orderId }: { orderId: string }) {
     const res = await fetch(`/api/orders/${orderId}`, { method: "DELETE" });
     setLoading(false);
     if (res.ok) {
+      toast.success("주문 취소됨");
       location.reload();
     } else {
       const err = await res.json().catch(() => ({}));
-      alert(err.error ?? "취소 실패");
+      toast.error(`취소 실패: ${err.error ?? "오류"}`);
     }
   }
   return (

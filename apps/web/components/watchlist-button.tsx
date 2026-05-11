@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
 type Props = {
@@ -17,10 +18,11 @@ export function WatchlistButton({ symbol, initialWatched }: Props) {
       const method = watched ? "DELETE" : "POST";
       const res = await fetch(`/api/watchlist/${encodeURIComponent(symbol)}`, { method });
       if (res.ok) {
+        toast.success(watched ? "관심종목 해제됨" : "관심종목 추가됨");
         setWatched(!watched);
       } else {
         const err = await res.json().catch(() => ({}));
-        alert(err.error ?? "오류");
+        toast.error(`실패: ${err.error ?? "오류"}`);
       }
     });
   }
