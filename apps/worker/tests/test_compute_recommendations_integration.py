@@ -105,19 +105,20 @@ class _Logger:
 
 
 def test_compute_recommendations_round_trip(admin, cleanup):
-    # KR 종목: 오늘 +10% + 거래량 5배 — top_gainers + volume_surge 진입 기대
+    # KR 종목: 오늘 +100% + 거래량 100배 — 실제 시장 종목보다 항상 큰 변동률로
+    # top_gainers/volume_surge에 #1로 진입 보장 (테스트가 production 데이터와 충돌 X)
     _seed_stock_and_bars(
         admin,
         cleanup,
         "TEST_KR1.KS",
         "KRW",
-        last_price=11000,
+        last_price=20000,
         market_cap=1_000_000_000_000,
         per=8.5,
-        hi=11500,
-        today_close=11000,
+        hi=21000,
+        today_close=20000,
         prev_closes=[10000, 9900, 9800, 9900, 10000],
-        today_vol=500_000,
+        today_vol=10_000_000,
         prev_vols=[100_000] * 5,
     )
 

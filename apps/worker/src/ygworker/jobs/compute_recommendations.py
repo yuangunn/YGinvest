@@ -50,16 +50,28 @@ def run_compute_recommendations(supabase: Any, logger: Any) -> None:
     logger.info("compute_recommendations.start", count=len(stocks))
     symbols = [s["symbol"] for s in stocks]
 
-    # 최근 14일치 일봉 (today + 5 prev + 휴장 여유)
+    # 최근 14일치 일봉. PostgREST가 서버측 max-rows 1000을 강제하므로
+    # `.range()`로 페이지네이션. stocks 200 × 14일 = ~2800 rows.
     cutoff = (date.today() - timedelta(days=14)).isoformat()
-    bars = (
-        supabase.table("stock_bars")
-        .select("symbol, ts, close, volume")
-        .gte("ts", cutoff)
-        .in_("symbol", symbols)
-        .execute()
-        .data
-    )
+    bars: list[dict] = []
+    page_size = 1000
+    offset = 0
+    while True:
+        page = (
+            supabase.table("stock_bars")
+            .select("symbol, ts, close, volume")
+            .gte("ts", cutoff)
+            .in_("symbol", symbols)
+            .range(offset, offset + page_size - 1)
+            .execute()
+            .data
+        )
+        if not page:
+            break
+        bars.extend(page)
+        if len(page) < page_size:
+            break
+        offset += page_size
 
     # symbol → sorted (desc by ts) bars
     by_symbol: dict[str, list[dict]] = defaultdict(list)

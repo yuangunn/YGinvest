@@ -80,10 +80,14 @@ def test_run_compute_writes_recommendations_after_delete():
             50_000_000, [20_000_000] * 5,  # 2.5x — below 3.0 threshold
         )
     )
+    # 페이지네이션: 첫 .range() 호출엔 모든 데이터, 두 번째엔 빈 결과
     bars_chain = (
-        fake.table.return_value.select.return_value.gte.return_value.in_.return_value.execute
+        fake.table.return_value.select.return_value.gte.return_value.in_.return_value.range.return_value.execute
     )
-    bars_chain.return_value.data = bars_data
+    bars_chain.side_effect = [
+        MagicMock(data=bars_data),
+        MagicMock(data=[]),
+    ]
 
     logger = MagicMock()
     run_compute_recommendations(fake, logger)
