@@ -6,6 +6,7 @@ import { StockNews } from "@/components/stock-news";
 import { StockFinancials } from "@/components/stock-financials";
 import { BuySellSheet } from "@/components/buy-sell-sheet";
 import { WatchlistButton } from "@/components/watchlist-button";
+import { getSelectedPortfolioId } from "@/lib/portfolio-context";
 
 const KRW = new Intl.NumberFormat("ko-KR", { style: "currency", currency: "KRW", maximumFractionDigits: 0 });
 const USD = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
@@ -24,13 +25,15 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
     .single();
   if (!stock) notFound();
 
+  const portfolioId = await getSelectedPortfolioId(supabase, user.id);
   const [{ data: portfolio }, { data: bars }, { data: watch }] = await Promise.all([
-    supabase
-      .from("portfolios")
-      .select("id, krw_balance, usd_balance")
-      .eq("user_id", user.id)
-      .is("room_id", null)
-      .single(),
+    portfolioId
+      ? supabase
+          .from("portfolios")
+          .select("id, krw_balance, usd_balance, status")
+          .eq("id", portfolioId)
+          .single()
+      : Promise.resolve({ data: null }),
     supabase
       .from("stock_bars")
       .select("ts, open, high, low, close, volume")
@@ -38,11 +41,14 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
       .eq("interval", "1d")
       .order("ts", { ascending: true })
       .limit(365),
-    supabase
-      .from("watchlists")
-      .select("symbol")
-      .eq("symbol", decodedSymbol)
-      .maybeSingle(),
+    portfolioId
+      ? supabase
+          .from("watchlists")
+          .select("symbol")
+          .eq("portfolio_id", portfolioId)
+          .eq("symbol", decodedSymbol)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
 
   const fmt = stock.currency === "KRW" ? KRW : USD;

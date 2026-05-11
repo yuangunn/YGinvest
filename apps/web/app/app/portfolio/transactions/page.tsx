@@ -1,16 +1,30 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getSelectedPortfolioId } from "@/lib/portfolio-context";
 
 export default async function TransactionsPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
-  const [trades, fx] = await Promise.all([
-    supabase.from("trades").select("*").order("executed_at", { ascending: false }).limit(50),
-    supabase.from("fx_transactions").select("*").order("executed_at", { ascending: false }).limit(50),
-  ]);
+  const portfolioId = await getSelectedPortfolioId(supabase, user.id);
+  const [trades, fx] = portfolioId
+    ? await Promise.all([
+        supabase
+          .from("trades")
+          .select("*")
+          .eq("portfolio_id", portfolioId)
+          .order("executed_at", { ascending: false })
+          .limit(50),
+        supabase
+          .from("fx_transactions")
+          .select("*")
+          .eq("portfolio_id", portfolioId)
+          .order("executed_at", { ascending: false })
+          .limit(50),
+      ])
+    : [{ data: null }, { data: null }];
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-4">

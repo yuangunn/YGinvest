@@ -1,30 +1,22 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-
-async function getGlobalPortfolioId(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string
-) {
-  const { data } = await supabase
-    .from("portfolios")
-    .select("id")
-    .eq("user_id", userId)
-    .is("room_id", null)
-    .single();
-  return data?.id ?? null;
-}
+import { getSelectedPortfolioId } from "@/lib/portfolio-context";
 
 export async function POST(
   _request: Request,
-  { params }: { params: Promise<{ symbol: string }> }
+  { params }: { params: Promise<{ symbol: string }> },
 ) {
   const { symbol } = await params;
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
 
-  const portfolioId = await getGlobalPortfolioId(supabase, user.id);
-  if (!portfolioId) return NextResponse.json({ error: "no_portfolio" }, { status: 404 });
+  const portfolioId = await getSelectedPortfolioId(supabase, user.id);
+  if (!portfolioId) {
+    return NextResponse.json({ error: "no_portfolio" }, { status: 404 });
+  }
 
   const { error } = await supabase
     .from("watchlists")
@@ -42,15 +34,19 @@ export async function POST(
 
 export async function DELETE(
   _request: Request,
-  { params }: { params: Promise<{ symbol: string }> }
+  { params }: { params: Promise<{ symbol: string }> },
 ) {
   const { symbol } = await params;
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
 
-  const portfolioId = await getGlobalPortfolioId(supabase, user.id);
-  if (!portfolioId) return NextResponse.json({ error: "no_portfolio" }, { status: 404 });
+  const portfolioId = await getSelectedPortfolioId(supabase, user.id);
+  if (!portfolioId) {
+    return NextResponse.json({ error: "no_portfolio" }, { status: 404 });
+  }
 
   const { error } = await supabase
     .from("watchlists")

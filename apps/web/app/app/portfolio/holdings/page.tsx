@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent } from "@/components/ui/card";
+import { getSelectedPortfolioId } from "@/lib/portfolio-context";
 
 const KRW = new Intl.NumberFormat("ko-KR", { style: "currency", currency: "KRW", maximumFractionDigits: 0 });
 const USD = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
@@ -11,9 +12,13 @@ export default async function HoldingsPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
-  const { data: holdings } = await supabase
-    .from("holdings")
-    .select("portfolio_id, symbol, quantity, avg_cost, updated_at, stocks(name, name_ko, currency, market, last_price)");
+  const portfolioId = await getSelectedPortfolioId(supabase, user.id);
+  const { data: holdings } = portfolioId
+    ? await supabase
+        .from("holdings")
+        .select("portfolio_id, symbol, quantity, avg_cost, updated_at, stocks(name, name_ko, currency, market, last_price)")
+        .eq("portfolio_id", portfolioId)
+    : { data: null };
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-4">

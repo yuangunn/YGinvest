@@ -2,18 +2,21 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FxExchangeForm } from "@/components/fx-exchange-form";
+import { getSelectedPortfolioId } from "@/lib/portfolio-context";
 
 export default async function FxPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
-  const { data: portfolio } = await supabase
-    .from("portfolios")
-    .select("id, krw_balance, usd_balance")
-    .eq("user_id", user.id)
-    .is("room_id", null)
-    .single();
+  const portfolioId = await getSelectedPortfolioId(supabase, user.id);
+  const { data: portfolio } = portfolioId
+    ? await supabase
+        .from("portfolios")
+        .select("id, krw_balance, usd_balance, status")
+        .eq("id", portfolioId)
+        .single()
+    : { data: null };
 
   const { data: fx } = await supabase
     .from("fx_rates")
