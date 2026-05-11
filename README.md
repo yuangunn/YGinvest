@@ -122,9 +122,24 @@ v1.5에서 추가 예정: 인트라데이 봉(15분/1시간), RSI/MACD/볼린저
 - [x] 시뮬 수수료: KR buy 0.015%, KR sell 0.215%, US 0.05%, FX 0.5%
 - [x] 테스트: 워커 단위 39 + 통합 (signup 3 + trading 7) + Web E2E 6/8 (장 마감으로 KR 시장가 2 SKIP) = **누적 55+ PASS**
 
+### Plan #5 — Rooms & Leaderboard ✅ 완료
+
+- [x] DB: rooms, room_members, portfolio_snapshots 테이블 + RLS 멤버 가시성 확장 (security definer 헬퍼 `_user_room_ids()`로 재귀 방지)
+- [x] PG 함수 5개: `_gen_invite_code`, `create_room`, `join_room`, `transition_room_lifecycle`, `compute_portfolio_value`
+- [x] 워커 잡 2개: `portfolio_snapshot` (5분), `room_lifecycle` (1분)
+- [x] 쿠키 기반 PortfolioSwitcher — 8개 페이지 + watchlist API가 선택된 portfolio 사용
+- [x] 7개 Web API: `/api/rooms` (POST/GET), `/api/rooms/[id]`, `/api/rooms/join`, `/api/leaderboard/{global,rooms/[id]}`, `/api/portfolio/select`
+- [x] 5개 페이지: `/app/rooms` (목록), `/app/rooms/{new,join,[id]}`, `/app/leaderboard`
+- [x] 6자 영숫자 초대 코드 (`ABCDEFGHJKLMNPQRSTUVWXYZ23456789`, 0/O/1/I 제외) + 복사 버튼
+- [x] 종료된 방의 펜딩 BUY 주문 reserved_amount 자동 환원 (리더보드 정확도)
+- [x] 테스트: 워커 단위 +6 (snapshot 3 + lifecycle 3) + 통합 +6 (room flows) + Web E2E +1 (2-account 방 흐름) = **누적 84 unit + 6 integration + 9 E2E 통과**
+
+v0.5.1 패치 (같이 배포된 데이터 소스 안정화):
+- **FDR KR 일봉**: `fetch_daily_history`가 `.KS`/`.KQ` suffix를 떼고 FDR에 호출 (FDR은 bare code만 받음) — 그 전엔 KR 종목 일봉이 한 종목도 채워지지 않았음. 로컬 백필 후 KR 24,170개 일봉 채워짐.
+- **yfinance 뉴스 shape**: yfinance가 `{title, link, publisher}` top-level에서 `{content: {title, provider, clickThroughUrl, pubDate}}` 중첩 구조로 바꿔서 모든 뉴스 카드가 빈 필드로 나오던 문제. 두 shape 다 지원 + skip-empty 가드 추가.
+
 ### 다음 plans
 
-- Plan #5: Rooms & Leaderboard (친구방, 글로벌·방 랭킹)
 - Plan #6: 배당 시뮬, 분할/병합, Web Push, 룰 기반 추천
 - Plan #7: PWA & Polish (manifest, 서비스 워커, 다크/라이트)
 - Plan #8 (v1.5): Design Polish — shadcn 기본 → 커스텀 디자인 시스템
@@ -142,6 +157,12 @@ v1.5에서 추가 예정: 인트라데이 봉(15분/1시간), RSI/MACD/볼린저
 - **`.env.local` 변경 후 반영 안됨**: `npm run dev` 재시작
 - **Playwright "browser not found"**: `npx playwright install chromium` 재실행
 - **Railway 워커 즉시 종료**: `BlockingScheduler.start()`가 main의 마지막 라인이어야
+- **방 가입 시 `room_not_found_or_ended`**: invite_code 잘못됐거나 방이 ended. 호스트가 새 방 만들거나 ends_at 확인
+- **리더보드가 비어있음**: 워커 부팅 후 5분 대기 (첫 portfolio_snapshot). `select * from portfolio_snapshots limit 5` 확인
+- **PortfolioSwitcher 없음 / 빈 드롭다운**: 사용자가 글로벌 포트폴리오 없는 신규 가입 직후일 수 있음. `supabase db reset` 후 가입부터 다시
+- **방 전환 후 잔고 안 바뀜**: 쿠키 set 후 자동 reload이 일어나야 함. 안 되면 DevTools → Application → Cookies → `yginvest_portfolio` 직접 확인
+- **`infinite recursion detected in policy for relation room_members`**: 정책이 자기 자신을 서브쿼리 — `_user_room_ids()` security definer 헬퍼로 우회 (마이그레이션 5_009)
+- **KR 일봉 안 보임**: `fetch_daily_history`가 FDR에 KR 심볼 넘길 땐 `.KS`/`.KQ` 떼야 함. 로컬은 워커 한 번 돌리면 backfill됨
 
 ## 라이선스
 
