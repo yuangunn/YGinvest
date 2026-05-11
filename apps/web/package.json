@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
+    "@serwist/next": "^9.5.11",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.4",
     "class-variance-authority": "^0.7.1",
@@ -23,6 +24,7 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "recharts": "^3.8.1",
+    "serwist": "^9.5.11",
     "shadcn": "^4.7.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",
