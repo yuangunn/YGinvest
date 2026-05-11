@@ -213,10 +213,30 @@ NOTE: 실제 NXT 가격 spread는 시뮬 안 함 (yfinance/FDR 한계). KRX 종�
 - [x] 대시보드 5섹션: KR top_gainers / volume_surge / low_per_value + US top_gainers / near_52w_high
 - [x] 테스트: 워커 단위 +7 (helper 5 + e2e 2) + 통합 +1 = **누적 153 unit/integration + 9 E2E 통과**
 
-### 다음 plans (Plan #8 이후)
+### Plan #9 — PWA & Polish ✅ 완료
 
-- Plan #9: PWA & Polish (manifest, 다크/라이트, 모바일 UX)
-- Plan #10 (v1.5): NXT Phase B (가격 spread + 미드포인트 호가) + Design Polish
+설치 가능한 PWA + 다크/라이트 토글 + 모바일 하단 네비게이션.
+
+- [x] `manifest.json` + 192/512/maskable PNG 아이콘 + apple-touch-icon (180) — Pillow 일회 스크립트로 생성 (DejaVuSans-Bold, "YG" glyph on blue-600)
+- [x] Next.js metadata API: `manifest`, `appleWebApp.capable`, `icons.apple`. `viewport`에 themeColor 미디어쿼리(light/dark) + `viewportFit=cover` (iOS 노치)
+- [x] `next-themes` ThemeProvider (`attribute=class`, `defaultTheme=system`, `enableSystem`) — globals.css의 `:root`/`.dark` CSS vars 둘 다 정의돼 있어 양쪽 모드 안전
+- [x] `ThemeToggle` 헤더 버튼 (lucide-react Sun/Moon/Monitor, 3-state 순환) — 하이드레이션 mismatch는 next-themes의 theme/resolvedTheme 직접 사용으로 회피 (별도 mount 추적 X)
+- [x] `BottomNav` 모바일 하단 5탭 (홈/거래/자산/방/설정, `md:hidden`, `env(safe-area-inset-bottom)` 대응, 활성 라우트 prefix 매칭)
+- [x] iOS Safari 16.4+ "홈 화면 추가" → PWA 모드 실행 시 Plan #7 Web Push 작동 가능
+
+### PWA 설치 가이드
+
+- **데스크톱 Chrome/Edge**: 주소창 우측의 ⊕ 또는 "앱 설치"
+- **Android Chrome**: 메뉴 → "홈 화면에 추가"
+- **iOS Safari 16.4+**: 공유 → "홈 화면에 추가" → PWA 아이콘 탭으로 실행해야 Web Push 동작 (일반 Safari 탭에선 X)
+
+NOTE: `start_url=/app/dashboard`라 로그아웃 상태에서 첫 실행 시 자동으로 `/auth/login`으로 redirect됨 (정상).
+
+### 다음 plans (Plan #9 이후)
+
+- Plan #10 (v1.5): NXT Phase B (가격 spread + 미드포인트 호가) + Design Polish (shadcn 기본 → 커스텀 디자인 시스템)
+- 오프라인 모드 / 캐시 전략 (Workbox/Serwist)
+- 사용자별 개인화 추천
 
 ## 디버깅 팁
 
@@ -247,6 +267,11 @@ NOTE: 실제 NXT 가격 spread는 시뮬 안 함 (yfinance/FDR 한계). KRX 종�
 - **추천 섹션이 비어있음**: 1) `select count(*) from recommendations` 0이면 워커가 아직 안 돌았거나 stock_bars가 부족 (각 종목당 ≥2일치 필요) 2) 부팅 시 자동 1회 실행됨 — 부팅 후 1분 내 채워짐 3) `compute_recommendations.skip / no_stocks` 로그면 stocks 테이블 비어있음
 - **추천 갱신 안 됨**: cron 1시간 주기. 강제 즉시 갱신은 워커 재배포 (`railway up`)
 - **추천 카테고리 빈 카드 없음**: 영역이 통째로 안 보이면 정상 — `RecommendationsSection` 빈 결과 시 `null` 반환
+- **PWA "설치" 버튼 안 보임**: 1) `/manifest.json` 200 응답 (`curl -I`) 2) HTTPS 필수 (Vercel 자동 OK) 3) DevTools → Application → Manifest 에러 확인 4) Chrome은 사용자 engagement(여러 번 방문) 후에야 prompt
+- **테마 토글 후 깜빡임 (FOUC)**: layout.tsx에서 `<html className="dark">` 강제 지정 제거됐는지 확인. next-themes가 동적으로 클래스 주입
+- **BottomNav가 데스크톱에서도 보임**: `md:hidden` 누락 또는 Tailwind breakpoint(md=768px) 미만 viewport
+- **iOS 홈 화면 추가 후 푸시 안 옴**: Safari 16.4+ + PWA 모드(아이콘 탭) 필수. 일반 Safari 탭은 X
+- **Theme이 잘못 적용됨**: localStorage `theme` 키 확인 (next-themes 저장 위치). 클리어 후 재시도
 - **분할 후 보유 수량 0**: `floor(qty × ratio) = 0`이면 holdings row 삭제됨 (CHECK constraint). leftover_cash로 잔고에 환원됨
 - **펜딩 주문이 분할 후 자동 취소**: floor(qty × ratio) = 0인 케이스. BUY 주문이면 reserved_amount가 잔고에 환원됨
 - **`already_applied`**: PG 함수가 중복 호출 방지. 이미 처리된 이벤트라 정상
