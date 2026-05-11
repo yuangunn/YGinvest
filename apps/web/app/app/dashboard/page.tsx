@@ -94,7 +94,17 @@ export default async function DashboardPage() {
               → 관심 종목
             </Link>
           </div>
-          <div className="pt-2 border-t">· 친구방 + 리더보드 (Plan #5)</div>
+          <div>
+            <Link href="/app/rooms" className="text-foreground underline">
+              → 친구방
+            </Link>
+          </div>
+          <div>
+            <Link href="/app/leaderboard" className="text-foreground underline">
+              → 글로벌 리더보드
+            </Link>
+          </div>
+          <div className="pt-2 border-t">· 배당/분할/Push/추천 (Plan #6)</div>
         </CardContent>
       </Card>
     </div>
