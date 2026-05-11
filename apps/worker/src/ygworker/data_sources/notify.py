@@ -10,7 +10,7 @@ from typing import Any
 from pywebpush import WebPushException, webpush
 
 
-class NotificationGone(Exception):
+class NotificationGone(Exception):  # noqa: N818 — domain-specific naming
     """구독이 만료됨(410 Gone). 호출자가 push_subscriptions에서 삭제해야."""
 
 

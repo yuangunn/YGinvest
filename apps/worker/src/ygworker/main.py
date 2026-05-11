@@ -16,8 +16,11 @@ from ygworker.jobs.fetch_fx import run_fetch_fx
 from ygworker.jobs.fetch_prices import run_fetch_prices
 from ygworker.jobs.heartbeat import run_heartbeat
 from ygworker.jobs.matching_engine import run_matching_engine
+from ygworker.jobs.notify_expiring_orders import run_notify_expiring_orders
+from ygworker.jobs.notify_room_lifecycle import run_notify_room_lifecycle
 from ygworker.jobs.portfolio_snapshot import run_portfolio_snapshot
 from ygworker.jobs.room_lifecycle import run_room_lifecycle
+from ygworker.jobs.send_notifications import run_send_notifications
 from ygworker.market_hours import is_any_market_open
 from ygworker.rpc.app import build_app
 from ygworker.supabase_client import make_client
@@ -35,11 +38,11 @@ def _make_logger(level: str) -> Any:
     return structlog.get_logger()
 
 
-def _wrap_in_thread(fn, *args):
+def _wrap_in_thread(fn, *args, **kwargs):
     """sync 잡을 asyncio 이벤트 루프에서 안전하게 실행."""
 
     async def runner():
-        return await asyncio.to_thread(fn, *args)
+        return await asyncio.to_thread(fn, *args, **kwargs)
 
     return runner
 
@@ -137,6 +140,36 @@ async def main_async() -> None:
         hour=9,
         minute=0,
         id="apply_corporate_events",
+        replace_existing=True,
+    )
+    # 1분 주기: notification_queue dispatch (push)
+    scheduler.add_job(
+        _wrap_in_thread(
+            run_send_notifications,
+            supabase,
+            logger,
+            vapid_private_key=settings.vapid_private_key,
+            vapid_subject=settings.vapid_subject,
+        ),
+        trigger="interval",
+        minutes=1,
+        id="send_notifications",
+        replace_existing=True,
+    )
+    # 1시간 주기: 만료 임박 주문 스캔
+    scheduler.add_job(
+        _wrap_in_thread(run_notify_expiring_orders, supabase, logger),
+        trigger="interval",
+        hours=1,
+        id="notify_expiring_orders",
+        replace_existing=True,
+    )
+    # 1시간 주기: 방 시작/종료 임박 스캔
+    scheduler.add_job(
+        _wrap_in_thread(run_notify_room_lifecycle, supabase, logger),
+        trigger="interval",
+        hours=1,
+        id="notify_room_lifecycle",
         replace_existing=True,
     )
     scheduler.start()

@@ -31,11 +31,13 @@ def test_matching_engine_calls_match_for_each_pending():
 
     run_matching_engine(fake, logger)
 
-    rpc_calls = fake.rpc.call_args_list
-    assert len(rpc_calls) == 2
-    # Each call should pass match_limit_order with order_id
-    for call in rpc_calls:
-        assert call.args[0] == "match_limit_order"
+    # match_limit_order는 정확히 2번 호출 (각 pending order 1번)
+    # enqueue_notification은 matched=True인 o1에서만 1번 추가로 호출됨
+    match_calls = [
+        c for c in fake.rpc.call_args_list if c.args[0] == "match_limit_order"
+    ]
+    assert len(match_calls) == 2
+    for call in match_calls:
         assert call.args[1] == {"p_order_id": "o1"} or call.args[1] == {"p_order_id": "o2"}
 
 
@@ -71,8 +73,12 @@ def test_matching_engine_continues_on_rpc_error():
 
     run_matching_engine(fake, logger)
 
-    # Both orders attempted (errors don't stop the loop)
-    assert fake.rpc.call_count == 2
+    # match_limit_order는 정확히 2번 시도됨 (errors don't stop the loop)
+    # enqueue_notification은 matched=True인 o2에서만 추가
+    match_calls = [
+        c for c in fake.rpc.call_args_list if c.args[0] == "match_limit_order"
+    ]
+    assert len(match_calls) == 2
     logger.error.assert_called()
 
 
