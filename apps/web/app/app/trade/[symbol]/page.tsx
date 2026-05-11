@@ -6,6 +6,7 @@ import { StockNews } from "@/components/stock-news";
 import { StockFinancials } from "@/components/stock-financials";
 import { BuySellSheet } from "@/components/buy-sell-sheet";
 import { WatchlistButton } from "@/components/watchlist-button";
+import { KrSessionBadge } from "@/components/kr-session-badge";
 import { getSelectedPortfolioId } from "@/lib/portfolio-context";
 
 const KRW = new Intl.NumberFormat("ko-KR", { style: "currency", currency: "KRW", maximumFractionDigits: 0 });
@@ -58,7 +59,10 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
     <div className="max-w-3xl mx-auto p-6 space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-xs text-muted-foreground">{stock.symbol} · {stock.market}</div>
+          <div className="text-xs text-muted-foreground flex items-center gap-2">
+            <span>{stock.symbol} · {stock.market}</span>
+            {stock.currency === "KRW" && <KrSessionBadge />}
+          </div>
           <h1 className="text-2xl font-bold">{symbolName}</h1>
         </div>
         <WatchlistButton symbol={stock.symbol} initialWatched={!!watch} />

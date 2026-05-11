@@ -1,24 +1,33 @@
-// KR/US 장 운영 시간 판정. spec §6.3 기준.
+// KR/US 장 운영 시간 판정. spec §6.3 + Plan #7.5 NXT 확장.
 // 휴장일 정확도는 워커의 pandas-market-calendars가 더 정확하지만
 // 클라이언트/서버 즉시 판정이 필요해 간단한 요일 기반 체크.
+// KR 공휴일 정확도는 워커가 가격 갱신 차단으로 보완 (price_stale 가드).
 
 export type MarketEnum = "KRX_KS" | "KRX_KQ" | "NASDAQ" | "NYSE";
+export type KrSession = "pre" | "regular" | "after" | "closed";
 
-const KR_OPEN_HOUR = 9;
-const KR_CLOSE_HOUR = 15;
-const KR_CLOSE_MIN = 30;
+function _kstParts(date: Date): { day: number; minutes: number } {
+  // KST = UTC+9. getUTC*는 사용자 로컬 TZ 무관하게 UTC 기준이므로
+  // (utc + 9h)의 UTC 메소드로 KST 시각 추출.
+  const kst = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+  return {
+    day: kst.getUTCDay(), // 0=Sun, 6=Sat
+    minutes: kst.getUTCHours() * 60 + kst.getUTCMinutes(),
+  };
+}
+
+export function getKrSession(date: Date = new Date()): KrSession {
+  const { day, minutes } = _kstParts(date);
+  if (day === 0 || day === 6) return "closed";
+  // half-open intervals — end excluded (08:50, 15:20, 20:00 → closed)
+  if (minutes >= 8 * 60 && minutes < 8 * 60 + 50) return "pre";
+  if (minutes >= 9 * 60 && minutes < 15 * 60 + 20) return "regular";
+  if (minutes >= 15 * 60 + 30 && minutes < 20 * 60) return "after";
+  return "closed";
+}
 
 export function isKrOpenAt(date: Date): boolean {
-  // KST = UTC+9
-  const kst = new Date(date.getTime() + 9 * 60 * 60 * 1000);
-  const day = kst.getUTCDay(); // 0=일, 6=토
-  if (day === 0 || day === 6) return false;
-  const h = kst.getUTCHours();
-  const m = kst.getUTCMinutes();
-  if (h < KR_OPEN_HOUR) return false;
-  if (h > KR_CLOSE_HOUR) return false;
-  if (h === KR_CLOSE_HOUR && m > KR_CLOSE_MIN) return false;
-  return true;
+  return getKrSession(date) !== "closed";
 }
 
 export function isUsOpenAt(date: Date): boolean {
