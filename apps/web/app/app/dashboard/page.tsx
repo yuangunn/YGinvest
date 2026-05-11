@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSelectedPortfolioId } from "@/lib/portfolio-context";
+import { RecommendationsSection } from "@/components/recommendations-section";
 
 const KRW = new Intl.NumberFormat("ko-KR", { style: "currency", currency: "KRW" });
 const USD = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
@@ -54,6 +55,13 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <RecommendationsSection category="top_gainers" scope="KR" />
+      <RecommendationsSection category="volume_surge" scope="KR" />
+      <RecommendationsSection category="low_per_value" scope="KR" />
+      <RecommendationsSection category="top_gainers" scope="US" />
+      <RecommendationsSection category="near_52w_high" scope="US" />
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">곧 추가될 기능</CardTitle>
@@ -109,7 +117,7 @@ export default async function DashboardPage() {
               → 설정 (푸시 알림)
             </Link>
           </div>
-          <div className="pt-2 border-t">· 룰 기반 추천 (Plan #8)</div>
+          <div className="pt-2 border-t">· PWA & Polish (Plan #9)</div>
         </CardContent>
       </Card>
     </div>
