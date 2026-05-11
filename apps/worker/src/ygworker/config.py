@@ -13,6 +13,8 @@ class Settings:
     log_level: str = "INFO"
     rpc_port: int = 8080
     rpc_secret: str = "dev-secret-change-me"
+    vapid_private_key: str = ""
+    vapid_subject: str = "mailto:rms6654@gmail.com"
 
 
 def load_settings() -> Settings:
@@ -22,6 +24,8 @@ def load_settings() -> Settings:
         log_level=os.environ.get("LOG_LEVEL", "INFO"),
         rpc_port=int(os.environ.get("WORKER_RPC_PORT", "8080")),
         rpc_secret=os.environ.get("WORKER_RPC_SECRET", "dev-secret-change-me"),
+        vapid_private_key=os.environ.get("VAPID_PRIVATE_KEY", ""),
+        vapid_subject=os.environ.get("VAPID_SUBJECT", "mailto:rms6654@gmail.com"),
     )
 
 

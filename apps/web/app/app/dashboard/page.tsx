@@ -104,7 +104,12 @@ export default async function DashboardPage() {
               → 글로벌 리더보드
             </Link>
           </div>
-          <div className="pt-2 border-t">· 배당/분할/Push/추천 (Plan #6)</div>
+          <div>
+            <Link href="/app/settings" className="text-foreground underline">
+              → 설정 (푸시 알림)
+            </Link>
+          </div>
+          <div className="pt-2 border-t">· 룰 기반 추천 (Plan #8)</div>
         </CardContent>
       </Card>
     </div>
