@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { BottomNav } from "@/components/bottom-nav";
 import { LogoutButton } from "@/components/logout-button";
 import { PortfolioSwitcher } from "@/components/portfolio-switcher";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   getSelectedPortfolioId,
   listUserPortfolios,
@@ -30,11 +32,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="font-semibold">YGinvest</div>
         <div className="flex items-center gap-3 text-sm">
           <PortfolioSwitcher portfolios={portfolios} selectedId={selectedId} />
-          <span className="text-muted-foreground">{profile?.display_name ?? user.email}</span>
+          <ThemeToggle />
+          <span className="text-muted-foreground hidden sm:inline">
+            {profile?.display_name ?? user.email}
+          </span>
           <LogoutButton />
         </div>
       </header>
-      <main className="flex-1">{children}</main>
+      <main className="flex-1 pb-20 md:pb-0">{children}</main>
+      <BottomNav />
     </div>
   );
 }
