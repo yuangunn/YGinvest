@@ -6,7 +6,9 @@ import pytest
 from ygworker.market_hours import (
     is_any_market_open,
     is_kr_market_open,
+    is_kr_open_extended,
     is_us_market_open,
+    kr_session_label,
 )
 
 KST = ZoneInfo("Asia/Seoul")
@@ -54,3 +56,51 @@ def test_is_any_market_open_kr_only():
 def test_is_any_market_open_neither():
     ts = datetime(2026, 5, 9, 12, 0, tzinfo=KST)  # 토요일 정오 KST
     assert is_any_market_open(ts) is False
+
+
+@pytest.mark.parametrize(
+    "ts_iso, expected",
+    [
+        # 프리마켓 08:00-08:50
+        ("2026-05-11T08:00:00+09:00", True),
+        ("2026-05-11T08:30:00+09:00", True),
+        ("2026-05-11T08:49:00+09:00", True),
+        ("2026-05-11T08:50:00+09:00", False),  # 휴장 시작
+        ("2026-05-11T08:55:00+09:00", False),
+        # 정규장 09:00-15:20
+        ("2026-05-11T09:00:00+09:00", True),
+        ("2026-05-11T12:00:00+09:00", True),
+        ("2026-05-11T15:19:00+09:00", True),
+        ("2026-05-11T15:20:00+09:00", False),  # 휴장 시작
+        ("2026-05-11T15:25:00+09:00", False),
+        # 애프터마켓 15:30-20:00
+        ("2026-05-11T15:30:00+09:00", True),
+        ("2026-05-11T18:00:00+09:00", True),
+        ("2026-05-11T19:59:00+09:00", True),
+        ("2026-05-11T20:00:00+09:00", False),  # 마감
+        # 주말은 False
+        ("2026-05-09T10:00:00+09:00", False),
+        # 07:59 — 프리마켓 전
+        ("2026-05-11T07:59:00+09:00", False),
+    ],
+)
+def test_is_kr_open_extended(ts_iso, expected):
+    ts = datetime.fromisoformat(ts_iso)
+    assert is_kr_open_extended(ts) is expected
+
+
+@pytest.mark.parametrize(
+    "ts_iso, expected",
+    [
+        ("2026-05-11T08:30:00+09:00", "pre"),
+        ("2026-05-11T08:55:00+09:00", "closed"),  # 휴장
+        ("2026-05-11T10:00:00+09:00", "regular"),
+        ("2026-05-11T15:25:00+09:00", "closed"),  # 휴장
+        ("2026-05-11T17:00:00+09:00", "after"),
+        ("2026-05-11T21:00:00+09:00", "closed"),
+        ("2026-05-09T10:00:00+09:00", "closed"),  # 토요일
+    ],
+)
+def test_kr_session_label(ts_iso, expected):
+    ts = datetime.fromisoformat(ts_iso)
+    assert kr_session_label(ts) == expected
