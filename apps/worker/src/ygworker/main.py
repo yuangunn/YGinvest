@@ -8,7 +8,9 @@ import uvicorn
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from ygworker.config import load_settings
+from ygworker.jobs.apply_corporate_events import run_apply_corporate_events
 from ygworker.jobs.bootstrap_stocks import run_bootstrap_stocks
+from ygworker.jobs.fetch_corporate_data import run_fetch_corporate_data
 from ygworker.jobs.fetch_daily_bars import run_fetch_daily_bars
 from ygworker.jobs.fetch_fx import run_fetch_fx
 from ygworker.jobs.fetch_prices import run_fetch_prices
@@ -117,6 +119,24 @@ async def main_async() -> None:
         trigger="interval",
         minutes=1,
         id="room_lifecycle",
+        replace_existing=True,
+    )
+    # 매일 06:00 KST: yfinance에서 dividends + splits fetch
+    scheduler.add_job(
+        _wrap_in_thread(run_fetch_corporate_data, supabase, logger),
+        trigger="cron",
+        hour=6,
+        minute=0,
+        id="fetch_corporate_data",
+        replace_existing=True,
+    )
+    # 매일 09:00 KST: ex_date 도달한 dividend/action 적용
+    scheduler.add_job(
+        _wrap_in_thread(run_apply_corporate_events, supabase, logger),
+        trigger="cron",
+        hour=9,
+        minute=0,
+        id="apply_corporate_events",
         replace_existing=True,
     )
     scheduler.start()

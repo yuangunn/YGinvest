@@ -138,11 +138,23 @@ v0.5.1 패치 (같이 배포된 데이터 소스 안정화):
 - **FDR KR 일봉**: `fetch_daily_history`가 `.KS`/`.KQ` suffix를 떼고 FDR에 호출 (FDR은 bare code만 받음) — 그 전엔 KR 종목 일봉이 한 종목도 채워지지 않았음. 로컬 백필 후 KR 24,170개 일봉 채워짐.
 - **yfinance 뉴스 shape**: yfinance가 `{title, link, publisher}` top-level에서 `{content: {title, provider, clickThroughUrl, pubDate}}` 중첩 구조로 바꿔서 모든 뉴스 카드가 빈 필드로 나오던 문제. 두 shape 다 지원 + skip-empty 가드 추가.
 
+### Plan #6 — Corporate Actions (Dividends + Splits) ✅ 완료
+
+- [x] DB: `dividend_events`, `dividend_payouts`, `corporate_actions` 테이블 + RLS (events/actions 누구나 읽기, payouts 본인만, INSERT/UPDATE는 service_role만)
+- [x] PG 함수 2개:
+  - `apply_dividend(event_id)` — KR 15.4% / US 15% 원천징수, holders 모두에게 atomic 적용
+  - `apply_corporate_action(action_id)` — split/reverse_split, floor(qty × ratio) + leftover_cash 환원 + 펜딩 주문 자동 조정 (수량/limit_price/reserved 재계산, new_qty=0 시 cancel)
+- [x] 워커 데이터 소스: `yahoo_corporate.py` (yfinance Ticker.dividends/.splits, today 필터)
+- [x] 워커 잡 2개: `fetch_corporate_data` (매일 06:00 KST), `apply_corporate_events` (매일 09:00 KST)
+- [x] Web: `/app/portfolio/transactions`에 배당 섹션 추가 (gross/tax/net + ex_date 표시)
+- [x] 테스트: 워커 단위 +12 (data source 6 + fetch 3 + apply 3) + 통합 +7 (US/KR 배당, 중복 방지, 2:1 split, 1:2 merge, full dilution DELETE, BUY 주문 rebalance) = **누적 103 unit/integration + 9 E2E 통과**
+
 ### 다음 plans
 
-- Plan #6: 배당 시뮬, 분할/병합, Web Push, 룰 기반 추천
-- Plan #7: PWA & Polish (manifest, 서비스 워커, 다크/라이트)
-- Plan #8 (v1.5): Design Polish — shadcn 기본 → 커스텀 디자인 시스템
+- Plan #7: Web Push 알림 (VAPID + service worker + 6개 트리거: 체결/만료/방시작·종료/배당/분할)
+- Plan #8: 룰 기반 종목 추천 (top_gainers/losers/volume_surge/near_52w_high/low_per_value 5 카테고리)
+- Plan #9: PWA & Polish (manifest, 다크/라이트, 모바일 UX)
+- Plan #10 (v1.5): Design Polish — shadcn 기본 → 커스텀 디자인 시스템
 
 ## 디버깅 팁
 
@@ -163,6 +175,10 @@ v0.5.1 패치 (같이 배포된 데이터 소스 안정화):
 - **방 전환 후 잔고 안 바뀜**: 쿠키 set 후 자동 reload이 일어나야 함. 안 되면 DevTools → Application → Cookies → `yginvest_portfolio` 직접 확인
 - **`infinite recursion detected in policy for relation room_members`**: 정책이 자기 자신을 서브쿼리 — `_user_room_ids()` security definer 헬퍼로 우회 (마이그레이션 5_009)
 - **KR 일봉 안 보임**: `fetch_daily_history`가 FDR에 KR 심볼 넘길 땐 `.KS`/`.KQ` 떼야 함. 로컬은 워커 한 번 돌리면 backfill됨
+- **배당이 적용 안 됨**: `dividend_events` 테이블 확인. yfinance가 ex_date를 못 가져오는 KR 종목 다수 (yfinance 한계 — v1.5에서 FDR 보완)
+- **분할 후 보유 수량 0**: `floor(qty × ratio) = 0`이면 holdings row 삭제됨 (CHECK constraint). leftover_cash로 잔고에 환원됨
+- **펜딩 주문이 분할 후 자동 취소**: floor(qty × ratio) = 0인 케이스. BUY 주문이면 reserved_amount가 잔고에 환원됨
+- **`already_applied`**: PG 함수가 중복 호출 방지. 이미 처리된 이벤트라 정상
 
 ## 라이선스
 
