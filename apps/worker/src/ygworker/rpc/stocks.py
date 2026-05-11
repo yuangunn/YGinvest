@@ -4,6 +4,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel
 
+from ygworker.data_sources.naver_news import fetch_kr_news
 from ygworker.data_sources.yahoo import fetch_history, fetch_quote
 from ygworker.data_sources.yahoo_news import fetch_key_metrics, fetch_news
 
@@ -86,7 +87,16 @@ def make_router(supabase: Any, secret: str) -> APIRouter:
 
     @router.post("/rpc/stocks/news")
     def news(req: NewsRequest, _: None = Depends(_check_secret)) -> dict:
-        items = fetch_news(req.symbol, limit=req.limit)
+        # KR 종목(.KS/.KQ) → Naver Finance 한국어 뉴스 스크래핑
+        # US 종목 → yfinance Ticker.news (영어)
+        if req.symbol.endswith((".KS", ".KQ")):
+            try:
+                items = fetch_kr_news(req.symbol, limit=req.limit)
+            except Exception:
+                # Naver 차단/타임아웃 시 yfinance fallback (영어라도 보여주자)
+                items = fetch_news(req.symbol, limit=req.limit)
+        else:
+            items = fetch_news(req.symbol, limit=req.limit)
         return {"symbol": req.symbol, "news": items}
 
     class FinancialsRequest(BaseModel):

@@ -16,6 +16,7 @@ dependencies = [
   "pandas-market-calendars>=4.4.0",
   "finance-datareader>=0.9.110",
   "pywebpush>=2.0.0",
+  "scrapling[fetchers]>=0.3.0",
 ]
 
 [dependency-groups]

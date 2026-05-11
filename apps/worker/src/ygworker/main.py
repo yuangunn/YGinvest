@@ -180,10 +180,29 @@ async def main_async() -> None:
     #       워커 부팅이 죽지 않음. 다음 30분 사이클에 자동 재시도.
     await asyncio.to_thread(run_fetch_fx, supabase, logger)
 
-    # stock_bars가 비어있으면 부팅 시 1회 일봉 backfill
-    bars_check = supabase.table("stock_bars").select("symbol").limit(1).execute()
-    if not bars_check.data:
-        logger.info("worker.bootstrap_daily_bars")
+    # 부팅 시 일봉 backfill — US가 있어도 KR이 없으면 fetch 실행.
+    # Plan #4.5 FDR `.KS`/`.KQ` suffix 버그로 prod에 KR bars가 누락된 환경 보호.
+    us_bars = (
+        supabase.table("stock_bars")
+        .select("symbol")
+        .not_.like("symbol", "%.KS")
+        .not_.like("symbol", "%.KQ")
+        .limit(1)
+        .execute()
+    )
+    kr_bars = (
+        supabase.table("stock_bars")
+        .select("symbol")
+        .like("symbol", "%.KS")
+        .limit(1)
+        .execute()
+    )
+    if not us_bars.data or not kr_bars.data:
+        logger.info(
+            "worker.bootstrap_daily_bars",
+            us_missing=not us_bars.data,
+            kr_missing=not kr_bars.data,
+        )
         await asyncio.to_thread(run_fetch_daily_bars, supabase, logger)
 
     # FastAPI 시작
