@@ -1,14 +1,13 @@
-import type {
-  PrecacheEntry,
-  RuntimeCaching,
-  SerwistGlobalConfig,
-} from "@serwist/sw";
+/// <reference lib="webworker" />
 import {
   CacheFirst,
   ExpirationPlugin,
   NetworkFirst,
   NetworkOnly,
+  type PrecacheEntry,
+  type RuntimeCaching,
   Serwist,
+  type SerwistGlobalConfig,
   StaleWhileRevalidate,
 } from "serwist";
 
