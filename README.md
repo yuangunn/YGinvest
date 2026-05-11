@@ -243,12 +243,40 @@ NOTE: `start_url=/app/dashboard`라 로그아웃 상태에서 첫 실행 시 자
 - [x] `Logo` SVG (Y 글리프 + brand text) 앱 헤더에 적용
 - [x] E2E 갱신: 빈 상태 정규식을 새 카피에 맞춤 (9 pass / 2 SKIP)
 
-### 다음 plans (Plan #10 이후)
+### Plan #11 — 오프라인 모드 (Serwist) ✅ 완료
 
-- Plan #11: 오프라인 모드 / 캐시 전략 (Serwist)
+- [x] `@serwist/next` 9.5.11 + `serwist` 9.5.11 — Next.js 16 webpack build에서 SW 컴파일
+- [x] 서비스 워커 소스 `app/sw.ts`로 이전 — Plan #7 Web Push 핸들러(push, notificationclick) 100% 보존
+- [x] 명시적 `runtimeCaching` 6개 전략 (코드 ↔ README 1:1 매칭):
+
+| 패턴 | Handler | Cache 이름 | TTL / Entries |
+|------|---------|------------|---------------|
+| `/_next/static/*` | CacheFirst | `next-static` | 30d / 200 |
+| `request.destination === "image"` | CacheFirst | `images` | 30d / 100 |
+| `request.destination === "font"` | CacheFirst | `fonts` | 1y / 30 |
+| `GET /api/recommendations`, `GET /api/stocks/*` | StaleWhileRevalidate | `read-api` | 5m / 60 |
+| 변경 API (POST/PATCH/DELETE) | NetworkOnly | — | — |
+| HTML 네비게이션 | NetworkFirst (3s timeout) | `pages` | 1d / 50 |
+
+- [x] HTML 네비게이션 실패 시 `/offline` static fallback 페이지로 전환
+- [x] 로그아웃 시 `pages` + `read-api` 캐시 자동 삭제 (`lib/sw-cache.ts` → `LogoutButton`) — 다른 사용자에게 개인 데이터 누출 방지
+- [x] Dev 모드는 SW 비활성화 (`disable: NODE_ENV === 'development'`) — Turbopack 비호환 회피
+- [x] `npm run build`/`dev` → `next ... --webpack` 강제 (Serwist는 아직 Turbopack 미지원)
+- [x] `/sw.js` 응답에 `Cache-Control: no-cache, no-store, must-revalidate` — 항상 최신 SW 받음
+- [x] E2E: `npm run test:e2e` (dev — `/offline` 직접 접근 PASS) / `npm run test:e2e:prod` (prod — SW 등록 + 오프라인 fallback)
+
+오프라인 동작 수동 검증 (Chrome):
+1. https://yginvest.vercel.app 한 번 방문 → 대시보드 로드
+2. DevTools → Application → Service Workers → `sw.js` `activated and is running`
+3. DevTools → Network → "Offline" 체크 → 새 URL 이동 → `/offline` 페이지 표시
+4. DevTools → Application → Cache Storage → `pages`, `read-api`, `next-static`, `images`, `fonts` 확인
+
+### 다음 plans (Plan #11 이후)
+
 - Plan #12: NXT Phase B (가격 spread + 미드포인트 호가)
 - 사용자별 개인화 추천
 - 차트 색 팔레트 커스텀 / 페이지 전환 애니메이션
+- Background Sync — 오프라인 중 주문 큐잉
 
 ## 디버깅 팁
 
