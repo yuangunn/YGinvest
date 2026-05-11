@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent } from "@/components/ui/card";
+import { getSelectedPortfolioId } from "@/lib/portfolio-context";
 
 const KRW = new Intl.NumberFormat("ko-KR", { style: "currency", currency: "KRW", maximumFractionDigits: 0 });
 const USD = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
@@ -11,10 +12,14 @@ export default async function WatchlistPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
-  const { data: items } = await supabase
-    .from("watchlists")
-    .select("symbol, added_at, stocks(name, name_ko, currency, market, last_price)")
-    .order("added_at", { ascending: false });
+  const portfolioId = await getSelectedPortfolioId(supabase, user.id);
+  const { data: items } = portfolioId
+    ? await supabase
+        .from("watchlists")
+        .select("symbol, added_at, stocks(name, name_ko, currency, market, last_price)")
+        .eq("portfolio_id", portfolioId)
+        .order("added_at", { ascending: false })
+    : { data: null };
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-4">

@@ -14,6 +14,8 @@ from ygworker.jobs.fetch_fx import run_fetch_fx
 from ygworker.jobs.fetch_prices import run_fetch_prices
 from ygworker.jobs.heartbeat import run_heartbeat
 from ygworker.jobs.matching_engine import run_matching_engine
+from ygworker.jobs.portfolio_snapshot import run_portfolio_snapshot
+from ygworker.jobs.room_lifecycle import run_room_lifecycle
 from ygworker.market_hours import is_any_market_open
 from ygworker.rpc.app import build_app
 from ygworker.supabase_client import make_client
@@ -99,6 +101,22 @@ async def main_async() -> None:
         hour=7,
         minute=0,
         id="fetch_daily_bars_us",
+        replace_existing=True,
+    )
+    # 5분 주기: 모든 active 포트폴리오 가치 스냅샷 (리더보드/차트용)
+    scheduler.add_job(
+        _wrap_in_thread(run_portfolio_snapshot, supabase, logger),
+        trigger="interval",
+        minutes=5,
+        id="portfolio_snapshot",
+        replace_existing=True,
+    )
+    # 1분 주기: 방 status 전이 (open→active, active→ended + 펜딩 환원/취소)
+    scheduler.add_job(
+        _wrap_in_thread(run_room_lifecycle, supabase, logger),
+        trigger="interval",
+        minutes=1,
+        id="room_lifecycle",
         replace_existing=True,
     )
     scheduler.start()

@@ -1,6 +1,11 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { LogoutButton } from "@/components/logout-button";
+import { PortfolioSwitcher } from "@/components/portfolio-switcher";
+import {
+  getSelectedPortfolioId,
+  listUserPortfolios,
+} from "@/lib/portfolio-context";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -9,17 +14,22 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("display_name")
-    .eq("id", user.id)
-    .single();
+  const [{ data: profile }, portfolios, selectedId] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("id", user.id)
+      .single(),
+    listUserPortfolios(supabase, user.id),
+    getSelectedPortfolioId(supabase, user.id),
+  ]);
 
   return (
     <div className="min-h-dvh flex flex-col">
       <header className="border-b px-4 py-3 flex items-center justify-between">
         <div className="font-semibold">YGinvest</div>
         <div className="flex items-center gap-3 text-sm">
+          <PortfolioSwitcher portfolios={portfolios} selectedId={selectedId} />
           <span className="text-muted-foreground">{profile?.display_name ?? user.email}</span>
           <LogoutButton />
         </div>

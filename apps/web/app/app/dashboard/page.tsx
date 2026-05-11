@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getSelectedPortfolioId } from "@/lib/portfolio-context";
 
 const KRW = new Intl.NumberFormat("ko-KR", { style: "currency", currency: "KRW" });
 const USD = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
@@ -13,12 +14,14 @@ export default async function DashboardPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
-  const { data: portfolio } = await supabase
-    .from("portfolios")
-    .select("krw_balance, usd_balance, starting_krw, starting_usd")
-    .eq("user_id", user.id)
-    .is("room_id", null)
-    .maybeSingle();
+  const portfolioId = await getSelectedPortfolioId(supabase, user.id);
+  const { data: portfolio } = portfolioId
+    ? await supabase
+        .from("portfolios")
+        .select("krw_balance, usd_balance, starting_krw, starting_usd, room_id, status")
+        .eq("id", portfolioId)
+        .maybeSingle()
+    : { data: null };
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
@@ -91,7 +94,17 @@ export default async function DashboardPage() {
               → 관심 종목
             </Link>
           </div>
-          <div className="pt-2 border-t">· 친구방 + 리더보드 (Plan #5)</div>
+          <div>
+            <Link href="/app/rooms" className="text-foreground underline">
+              → 친구방
+            </Link>
+          </div>
+          <div>
+            <Link href="/app/leaderboard" className="text-foreground underline">
+              → 글로벌 리더보드
+            </Link>
+          </div>
+          <div className="pt-2 border-t">· 배당/분할/Push/추천 (Plan #6)</div>
         </CardContent>
       </Card>
     </div>

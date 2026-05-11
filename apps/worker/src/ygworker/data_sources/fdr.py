@@ -96,9 +96,14 @@ def fetch_daily_history(symbol: str, days: int = 365) -> list[dict]:
 
     Returns: list of dicts with keys (ts, open, high, low, close, volume).
     NaN이 있는 행은 제외.
+
+    NOTE: FDR은 KR 심볼을 bare code(`005930`)로 받음. DB에는 `.KS`/`.KQ`
+    suffix가 붙어 저장돼 있으므로 호출 직전에 떼어준다. US 심볼(`AAPL`)은
+    suffix가 없으므로 그대로.
     """
+    fdr_symbol = symbol.removesuffix(".KS").removesuffix(".KQ")
     start = (date.today() - timedelta(days=days)).strftime("%Y-%m-%d")
-    df = fdr.DataReader(symbol, start)
+    df = fdr.DataReader(fdr_symbol, start)
     if df is None or df.empty:
         return []
 

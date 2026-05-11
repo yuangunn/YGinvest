@@ -116,6 +116,34 @@ def test_fetch_daily_history_returns_empty_on_no_data(mock_reader):
 
 
 @patch("ygworker.data_sources.fdr.fdr.DataReader")
+def test_fetch_daily_history_strips_kr_suffix_before_fdr_call(mock_reader):
+    """FDR은 KR 심볼을 bare code(005930)로 받음 — `.KS`/`.KQ`는 떼어 호출.
+
+    Regression: 종전엔 `.KS`까지 그대로 넘겨 FDR이 'invalid symbol or has no data'
+    반환 → KR 일봉이 한 종목도 채워지지 않음.
+    """
+    df = pd.DataFrame(
+        {
+            "Open": [268000.0],
+            "High": [270000.0],
+            "Low": [266000.0],
+            "Close": [268500.0],
+            "Volume": [12_000_000],
+        },
+        index=pd.to_datetime(["2026-05-08"]),
+    )
+    mock_reader.return_value = df
+
+    bars_ks = fetch_daily_history("005930.KS", days=10)
+    bars_kq = fetch_daily_history("247540.KQ", days=10)
+    bars_us = fetch_daily_history("AAPL", days=10)
+
+    called_symbols = [c.args[0] for c in mock_reader.call_args_list]
+    assert called_symbols == ["005930", "247540", "AAPL"]
+    assert len(bars_ks) == 1 and len(bars_kq) == 1 and len(bars_us) == 1
+
+
+@patch("ygworker.data_sources.fdr.fdr.DataReader")
 def test_fetch_daily_history_skips_nan_rows(mock_reader):
     df = pd.DataFrame(
         {
