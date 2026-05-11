@@ -30,6 +30,6 @@ test.describe("Watchlist", () => {
 
     // /app/watchlist에서 사라짐
     await page.goto("/app/watchlist");
-    await expect(page.getByText(/관심 종목 없음/)).toBeVisible();
+    await expect(page.getByText(/관심 종목이 없어요/)).toBeVisible();
   });
 });

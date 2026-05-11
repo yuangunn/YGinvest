@@ -32,7 +32,18 @@ export default async function RoomsPage() {
       <Card>
         <CardContent className="pt-6">
           {!rooms || rooms.length === 0 ? (
-            <div className="text-sm text-muted-foreground">참여 중인 방 없음</div>
+            <div className="text-center py-12 space-y-3">
+              <div className="text-4xl" aria-hidden>👥</div>
+              <div className="text-sm text-muted-foreground">아직 참여 중인 방이 없어요</div>
+              <div className="flex gap-2 justify-center">
+                <Link href="/app/rooms/join">
+                  <Button variant="outline" size="sm">초대 코드 입력</Button>
+                </Link>
+                <Link href="/app/rooms/new">
+                  <Button size="sm">새 방 만들기</Button>
+                </Link>
+              </div>
+            </div>
           ) : (
             <ul className="space-y-2">
               {rooms.map((r) => (

@@ -26,7 +26,16 @@ export default async function HoldingsPage() {
       <Card>
         <CardContent className="pt-6">
           {!holdings || holdings.length === 0 ? (
-            <div className="text-sm text-muted-foreground">보유 없음</div>
+            <div className="text-center py-12 space-y-3">
+              <div className="text-4xl" aria-hidden>📈</div>
+              <div className="text-sm text-muted-foreground">아직 보유 종목이 없어요</div>
+              <Link
+                href="/app/trade/search"
+                className="inline-block text-sm text-primary hover:underline"
+              >
+                → 종목 검색해서 매수하기
+              </Link>
+            </div>
           ) : (
             <ul className="space-y-3">
               {holdings.map((h) => {

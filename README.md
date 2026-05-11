@@ -232,11 +232,23 @@ NOTE: 실제 NXT 가격 spread는 시뮬 안 함 (yfinance/FDR 한계). KRX 종�
 
 NOTE: `start_url=/app/dashboard`라 로그아웃 상태에서 첫 실행 시 자동으로 `/auth/login`으로 redirect됨 (정상).
 
-### 다음 plans (Plan #9 이후)
+### Plan #10 — Design Polish ✅ 완료
 
-- Plan #10 (v1.5): NXT Phase B (가격 spread + 미드포인트 호가) + Design Polish (shadcn 기본 → 커스텀 디자인 시스템)
-- 오프라인 모드 / 캐시 전략 (Workbox/Serwist)
+- [x] sonner Toaster (top-center, richColors, closeButton) 앱 루트 마운트
+- [x] 브랜드 primary blue-600 토큰 (`oklch(0.546 0.227 264)` 라이트 / `0.65 0.20 264` 다크). accent/ring/sidebar 모두 파랑 톤
+- [x] Pretendard Variable 한국어 글꼴 (jsdelivr CDN dynamic subset)
+- [x] `Skeleton` 컴포넌트 + 대시보드 추천 5섹션 각각 `<Suspense fallback>` 래핑
+- [x] alert() 제거 + sonner toast: `WatchlistButton`(추가/해제/실패), `CancelOrderButton`(취소/실패). OrderForm 인라인 Alert는 E2E 의존이라 유지
+- [x] 빈 상태 카피 친절화 — holdings/watchlist/rooms에 이모지 + 안내 + CTA 버튼
+- [x] `Logo` SVG (Y 글리프 + brand text) 앱 헤더에 적용
+- [x] E2E 갱신: 빈 상태 정규식을 새 카피에 맞춤 (9 pass / 2 SKIP)
+
+### 다음 plans (Plan #10 이후)
+
+- Plan #11: 오프라인 모드 / 캐시 전략 (Serwist)
+- Plan #12: NXT Phase B (가격 spread + 미드포인트 호가)
 - 사용자별 개인화 추천
+- 차트 색 팔레트 커스텀 / 페이지 전환 애니메이션
 
 ## 디버깅 팁
 
@@ -272,6 +284,10 @@ NOTE: `start_url=/app/dashboard`라 로그아웃 상태에서 첫 실행 시 자
 - **BottomNav가 데스크톱에서도 보임**: `md:hidden` 누락 또는 Tailwind breakpoint(md=768px) 미만 viewport
 - **iOS 홈 화면 추가 후 푸시 안 옴**: Safari 16.4+ + PWA 모드(아이콘 탭) 필수. 일반 Safari 탭은 X
 - **Theme이 잘못 적용됨**: localStorage `theme` 키 확인 (next-themes 저장 위치). 클리어 후 재시도
+- **글꼴이 Pretendard 아님**: CDN 미접속(네트워크) 또는 cache 누락 — system-ui로 폴백. DevTools → Network → CSS 200 확인
+- **Toast 안 보임**: `apps/web/app/layout.tsx`에 `<Toaster />` 마운트 여부 확인 (ThemeProvider 안)
+- **primary 색이 그대로 회색**: 브라우저 캐시. `Ctrl+Shift+R` 하드리프레시 or dev server 재시작
+- **Logo SVG 색이 흰색만**: `<svg className="text-primary">`로 className이 svg 자체에 있는지 확인 (children에 두면 currentColor 상속 X)
 - **분할 후 보유 수량 0**: `floor(qty × ratio) = 0`이면 holdings row 삭제됨 (CHECK constraint). leftover_cash로 잔고에 환원됨
 - **펜딩 주문이 분할 후 자동 취소**: floor(qty × ratio) = 0인 케이스. BUY 주문이면 reserved_amount가 잔고에 환원됨
 - **`already_applied`**: PG 함수가 중복 호출 방지. 이미 처리된 이벤트라 정상

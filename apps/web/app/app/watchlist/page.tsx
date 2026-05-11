@@ -27,8 +27,15 @@ export default async function WatchlistPage() {
       <Card>
         <CardContent className="pt-6">
           {!items || items.length === 0 ? (
-            <div className="text-sm text-muted-foreground">
-              관심 종목 없음. 종목 상세 페이지에서 ☆ 버튼으로 추가하세요.
+            <div className="text-center py-12 space-y-3">
+              <div className="text-4xl" aria-hidden>⭐</div>
+              <div className="text-sm text-muted-foreground">관심 종목이 없어요</div>
+              <Link
+                href="/app/trade/search"
+                className="inline-block text-sm text-primary hover:underline"
+              >
+                → 종목 검색 후 ☆로 추가
+              </Link>
             </div>
           ) : (
             <ul className="space-y-2">
