@@ -190,11 +190,33 @@ NXT(Nextrade) 한국 대체거래소 거래시간 모방 — KR 종목 거래 �
 
 NOTE: 실제 NXT 가격 spread는 시뮬 안 함 (yfinance/FDR 한계). KRX 종가를 그대로 사용. 미드포인트 호가/스톱지정가/메이커-테이커 수수료/SOR은 v1.5 이후 Phase B로 deferred.
 
-### 다음 plans (Plan #7.5 이후)
+### Plan #7.6 — Korean News (Naver scrape) + Smarter Boot Backfill ✅ 완료 (hotfix)
 
-- Plan #8: 룰 기반 종목 추천
-- Plan #9: PWA & Polish
-- Plan #10 (v1.5): NXT Phase B (가격 spread + 미드포인트) + Design Polish
+- [x] `naver_news.py` 신규: Scrapling Fetcher (pure HTTP)로 Naver Finance 종목 뉴스 페이지 (`finance.naver.com/item/news_news.naver?code=`) 스크랩. CSS 셀렉터 `table.type5 tbody tr` (relation_tit 제외) → 제목/링크/언론사/published_at(ISO 8601 KST)
+- [x] `/rpc/stocks/news`가 KR(.KS/.KQ)는 Naver, US는 yfinance로 라우팅. Naver 실패 시 yfinance fallback
+- [x] 부팅 시 일봉 backfill 로직 강화: US/KR 별도 체크 — Plan #4.5 FDR `.KS` suffix 버그로 prod에 KR bars 누락되는 사이드이펙트 방지
+- [x] 테스트: 워커 +5 (Naver 셀렉터 mocked) = **누적 145+ PASS**
+
+### Plan #8 — Rule-Based Recommendations ✅ 완료
+
+5개 룰 기반 카테고리로 대시보드에 추천 종목 노출:
+
+- **top_gainers / top_losers** — 어제→오늘 종가 변동률 ±상위 10 (KR/US 각각)
+- **volume_surge** — 오늘 거래량 / 5일 평균 ≥ 3.0인 종목, ratio 상위 10 (KR/US)
+- **near_52w_high** — 52주 최고가 대비 ≥ 95%인 종목, market_cap 상위 10 (KR/US)
+- **low_per_value** — KR 시총 top 200 중 PER > 0, PER 최저 10 (KR only)
+
+- [x] DB: `recommendations` 캐시 테이블 + RLS (`SELECT` public, write service_role)
+- [x] 워커 잡: `compute_recommendations` (1시간 주기 + 부팅 시 즉시 1회). Python in-memory groupby로 14일 stock_bars 집계
+- [x] Atomic 갱신: DELETE all → INSERT (단일 워커 가정)
+- [x] Web: `RecommendationsSection` server component (가로 스크롤 카드 5개씩, 카테고리별 reason 색상 코딩)
+- [x] 대시보드 5섹션: KR top_gainers / volume_surge / low_per_value + US top_gainers / near_52w_high
+- [x] 테스트: 워커 단위 +7 (helper 5 + e2e 2) + 통합 +1 = **누적 153 unit/integration + 9 E2E 통과**
+
+### 다음 plans (Plan #8 이후)
+
+- Plan #9: PWA & Polish (manifest, 다크/라이트, 모바일 UX)
+- Plan #10 (v1.5): NXT Phase B (가격 spread + 미드포인트 호가) + Design Polish
 
 ## 디버깅 팁
 
@@ -222,6 +244,9 @@ NOTE: 실제 NXT 가격 spread는 시뮬 안 함 (yfinance/FDR 한계). KRX 종�
 - **알림 큐 `no_subscription`**: 알림은 큐에 들어왔지만 사용자가 푸시 미구독. `/app/settings`에서 켜야
 - **NXT 시간인데 시장가 거부**: 1) 휴장 10분(08:50-09:00, 15:20-15:30 KST) 회피 2) `price_stale` — 워커가 fetch_prices를 못 돌리면 가격이 30분 stale. 워커 health 확인. 한국 공휴일 평일은 web에서 허용하지만 워커 캘린더가 막아 → 결국 stale 가격 거부
 - **KrSessionBadge가 한국시간과 안 맞음**: 클라 `Date()` 기준 (사용자 디바이스 시간). 디바이스 시간 설정 확인
+- **추천 섹션이 비어있음**: 1) `select count(*) from recommendations` 0이면 워커가 아직 안 돌았거나 stock_bars가 부족 (각 종목당 ≥2일치 필요) 2) 부팅 시 자동 1회 실행됨 — 부팅 후 1분 내 채워짐 3) `compute_recommendations.skip / no_stocks` 로그면 stocks 테이블 비어있음
+- **추천 갱신 안 됨**: cron 1시간 주기. 강제 즉시 갱신은 워커 재배포 (`railway up`)
+- **추천 카테고리 빈 카드 없음**: 영역이 통째로 안 보이면 정상 — `RecommendationsSection` 빈 결과 시 `null` 반환
 - **분할 후 보유 수량 0**: `floor(qty × ratio) = 0`이면 holdings row 삭제됨 (CHECK constraint). leftover_cash로 잔고에 환원됨
 - **펜딩 주문이 분할 후 자동 취소**: floor(qty × ratio) = 0인 케이스. BUY 주문이면 reserved_amount가 잔고에 환원됨
 - **`already_applied`**: PG 함수가 중복 호출 방지. 이미 처리된 이벤트라 정상
