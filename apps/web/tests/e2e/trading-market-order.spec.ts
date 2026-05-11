@@ -68,6 +68,6 @@ test.describe("Trading — market order", () => {
     await expect(page.getByText(/체결됨/)).toBeVisible({ timeout: 10_000 });
 
     await page.goto("/app/portfolio/holdings");
-    await expect(page.getByText(/보유 없음/)).toBeVisible();
+    await expect(page.getByText(/아직 보유 종목이 없어요/)).toBeVisible();
   });
 });

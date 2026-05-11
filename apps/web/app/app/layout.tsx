@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { BottomNav } from "@/components/bottom-nav";
+import { Logo } from "@/components/logo";
 import { LogoutButton } from "@/components/logout-button";
 import { PortfolioSwitcher } from "@/components/portfolio-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -29,7 +30,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-dvh flex flex-col">
       <header className="border-b px-4 py-3 flex items-center justify-between">
-        <div className="font-semibold">YGinvest</div>
+        <Logo />
         <div className="flex items-center gap-3 text-sm">
           <PortfolioSwitcher portfolios={portfolios} selectedId={selectedId} />
           <ThemeToggle />
