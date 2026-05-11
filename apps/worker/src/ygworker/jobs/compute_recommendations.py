@@ -65,7 +65,7 @@ def run_compute_recommendations(supabase: Any, logger: Any) -> None:
     by_symbol: dict[str, list[dict]] = defaultdict(list)
     for b in bars:
         by_symbol[b["symbol"]].append(b)
-    for sym, lst in by_symbol.items():
+    for lst in by_symbol.values():
         lst.sort(key=lambda x: x["ts"], reverse=True)
 
     # 종목별 메트릭 계산

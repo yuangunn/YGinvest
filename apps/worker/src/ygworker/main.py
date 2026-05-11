@@ -10,6 +10,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from ygworker.config import load_settings
 from ygworker.jobs.apply_corporate_events import run_apply_corporate_events
 from ygworker.jobs.bootstrap_stocks import run_bootstrap_stocks
+from ygworker.jobs.compute_recommendations import run_compute_recommendations
 from ygworker.jobs.fetch_corporate_data import run_fetch_corporate_data
 from ygworker.jobs.fetch_daily_bars import run_fetch_daily_bars
 from ygworker.jobs.fetch_fx import run_fetch_fx
@@ -172,6 +173,14 @@ async def main_async() -> None:
         id="notify_room_lifecycle",
         replace_existing=True,
     )
+    # 1시간 주기: 룰 기반 종목 추천 재계산
+    scheduler.add_job(
+        _wrap_in_thread(run_compute_recommendations, supabase, logger),
+        trigger="interval",
+        hours=1,
+        id="compute_recommendations",
+        replace_existing=True,
+    )
     scheduler.start()
     logger.info("worker.scheduler_started")
 
@@ -204,6 +213,10 @@ async def main_async() -> None:
             kr_missing=not kr_bars.data,
         )
         await asyncio.to_thread(run_fetch_daily_bars, supabase, logger)
+
+    # 부팅 시 1회: 추천 즉시 계산 (UI에 빈 추천 섹션 방지)
+    # stocks/stock_bars가 비어있으면 잡 내부에서 자체 skip
+    await asyncio.to_thread(run_compute_recommendations, supabase, logger)
 
     # FastAPI 시작
     app = build_app(supabase=supabase, secret=settings.rpc_secret)

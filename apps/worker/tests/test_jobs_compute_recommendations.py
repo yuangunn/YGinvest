@@ -42,7 +42,7 @@ def _bars(symbol, today_close, prev_closes, today_vol, prev_vols):
             "volume": today_vol,
         }
     ]
-    for i, (c, v) in enumerate(zip(prev_closes, prev_vols)):
+    for i, (c, v) in enumerate(zip(prev_closes, prev_vols, strict=False)):
         d = today - timedelta(days=i + 1)
         out.append(
             {"symbol": symbol, "ts": d.isoformat(), "close": c, "volume": v}
@@ -80,9 +80,10 @@ def test_run_compute_writes_recommendations_after_delete():
             50_000_000, [20_000_000] * 5,  # 2.5x — below 3.0 threshold
         )
     )
-    fake.table.return_value.select.return_value.gte.return_value.in_.return_value.execute.return_value.data = (
-        bars_data
+    bars_chain = (
+        fake.table.return_value.select.return_value.gte.return_value.in_.return_value.execute
     )
+    bars_chain.return_value.data = bars_data
 
     logger = MagicMock()
     run_compute_recommendations(fake, logger)
