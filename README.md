@@ -178,18 +178,30 @@ railway variables set VAPID_PRIVATE_KEY=... VAPID_SUBJECT=mailto:rms6654@gmail.c
 
 iOS Safari는 16.4+ + 홈 화면 추가 후에만 푸시 동작. 데스크톱 Chrome/Firefox/Edge는 즉시 동작.
 
-### 다음 plans (Plan #7 이후)
+### Plan #7.5 — NXT Extended Trading Hours ✅ 완료
+
+NXT(Nextrade) 한국 대체거래소 거래시간 모방 — KR 종목 거래 시간을 KRX-only 09:00–15:30 KST에서 **08:00–20:00 KST**로 확장 (휴장 10분 × 2 제외). 평일 저녁에도 KR 종목 시장가 주문 가능.
+
+- [x] 워커 `market_hours.py`: `kr_session_label` (pre 08:00–08:50 / regular 09:00–15:20 / after 15:30–20:00 / closed) + `is_kr_open_extended`. `is_any_market_open`이 NXT 시간 사용 → `fetch_prices`가 평일 08:00–20:00 KST에 갱신
+- [x] Web `lib/market-hours.ts`: `isKrOpenAt`을 NXT 시간으로 확장 + `getKrSession` 헬퍼 (1분마다 boundary 재평가)
+- [x] `KrSessionBadge` 종목 상세 헤더에 색상 pill (amber/green/blue/muted)
+- [x] E2E trading test의 KR 시간 skip 로직 NXT 기준으로 업데이트
+- [x] 테스트: 워커 +23 case (parametrized: extended 16 + label 7) = **누적 140 unit/integration + 9 E2E 통과**
+
+NOTE: 실제 NXT 가격 spread는 시뮬 안 함 (yfinance/FDR 한계). KRX 종가를 그대로 사용. 미드포인트 호가/스톱지정가/메이커-테이커 수수료/SOR은 v1.5 이후 Phase B로 deferred.
+
+### 다음 plans (Plan #7.5 이후)
 
 - Plan #8: 룰 기반 종목 추천
 - Plan #9: PWA & Polish
-- Plan #10 (v1.5): Design Polish
+- Plan #10 (v1.5): NXT Phase B (가격 spread + 미드포인트) + Design Polish
 
 ## 디버깅 팁
 
 - **워커 RPC가 안 잡힘**: 워커가 떠있는지 (`curl http://localhost:8080/health`), 그리고 `apps/web/.env.local`의 `WORKER_RPC_URL`/`WORKER_RPC_SECRET`이 워커 `.env`와 일치하는지 확인
 - **stocks 테이블이 비어있음**: 워커 부팅 시 bootstrap_stocks가 한 번 돌아야 함. yfinance rate limit 시 가격은 NULL로 들어가지만 종목은 들어감
 - **포트 8080 충돌**: 이전 워커 인스턴스가 살아있을 수 있음. `netstat -ano | grep 8080`으로 확인 후 kill
-- **시장가 주문 거부 (`market_closed`)**: 한국 장(평일 09:00–15:30 KST) 또는 미국 장(평일 22:30–05:00 KST 서머타임) 시간대인지 확인. 지정가는 24/7 가능
+- **시장가 주문 거부 (`market_closed`)**: KR/NXT 거래시간(평일 08:00–08:50, 09:00–15:20, 15:30–20:00 KST — 휴장 10분 × 2 제외) 또는 미국 장(평일 22:30–05:00 KST 서머타임) 시간대인지 확인. 지정가는 24/7 가능
 - **지정가 매칭 안 됨**: 워커 로그에서 `matching_engine` 출력 확인. 가격이 limit 도달 안 했으면 정상. 30분 stale 가격은 매칭 스킵
 - **환전 `fx_rate_unavailable`**: 워커가 `fetch_fx`를 한 번 이상 실행해야 fx_rates에 행이 들어감. 워커 부팅 시 즉시 실행됨
 - **트리거가 안 도는 것 같으면**: `supabase db reset`. 마이그레이션 순서대로 적용됨
@@ -208,6 +220,8 @@ iOS Safari는 16.4+ + 홈 화면 추가 후에만 푸시 동작. 데스크톱 Ch
 - **VAPID 키 mismatch**: applicationServerKey 잘못된 형식이면 `InvalidStateError`. raw uncompressed point base64url 필요 — `npx web-push generate-vapid-keys` 사용
 - **iOS Safari 푸시 안 됨**: 16.4+ + 홈 화면 추가 필수. 일반 Safari 탭에선 동작 안 함
 - **알림 큐 `no_subscription`**: 알림은 큐에 들어왔지만 사용자가 푸시 미구독. `/app/settings`에서 켜야
+- **NXT 시간인데 시장가 거부**: 1) 휴장 10분(08:50-09:00, 15:20-15:30 KST) 회피 2) `price_stale` — 워커가 fetch_prices를 못 돌리면 가격이 30분 stale. 워커 health 확인. 한국 공휴일 평일은 web에서 허용하지만 워커 캘린더가 막아 → 결국 stale 가격 거부
+- **KrSessionBadge가 한국시간과 안 맞음**: 클라 `Date()` 기준 (사용자 디바이스 시간). 디바이스 시간 설정 확인
 - **분할 후 보유 수량 0**: `floor(qty × ratio) = 0`이면 holdings row 삭제됨 (CHECK constraint). leftover_cash로 잔고에 환원됨
 - **펜딩 주문이 분할 후 자동 취소**: floor(qty × ratio) = 0인 케이스. BUY 주문이면 reserved_amount가 잔고에 환원됨
 - **`already_applied`**: PG 함수가 중복 호출 방지. 이미 처리된 이벤트라 정상
