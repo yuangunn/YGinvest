@@ -1,9 +1,33 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getSelectedPortfolioId } from "@/lib/portfolio-context";
 import { RecommendationsSection } from "@/components/recommendations-section";
+
+function RecommendationsSkeleton() {
+  return (
+    <Card>
+      <CardHeader>
+        <Skeleton className="h-5 w-32" />
+      </CardHeader>
+      <CardContent>
+        <div className="flex gap-2 overflow-x-auto pb-2">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex-shrink-0 w-40 border rounded-lg p-3 space-y-2">
+              <Skeleton className="h-3 w-8" />
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="h-4 w-20" />
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 const KRW = new Intl.NumberFormat("ko-KR", { style: "currency", currency: "KRW" });
 const USD = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
@@ -56,11 +80,21 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      <RecommendationsSection category="top_gainers" scope="KR" />
-      <RecommendationsSection category="volume_surge" scope="KR" />
-      <RecommendationsSection category="low_per_value" scope="KR" />
-      <RecommendationsSection category="top_gainers" scope="US" />
-      <RecommendationsSection category="near_52w_high" scope="US" />
+      <Suspense fallback={<RecommendationsSkeleton />}>
+        <RecommendationsSection category="top_gainers" scope="KR" />
+      </Suspense>
+      <Suspense fallback={<RecommendationsSkeleton />}>
+        <RecommendationsSection category="volume_surge" scope="KR" />
+      </Suspense>
+      <Suspense fallback={<RecommendationsSkeleton />}>
+        <RecommendationsSection category="low_per_value" scope="KR" />
+      </Suspense>
+      <Suspense fallback={<RecommendationsSkeleton />}>
+        <RecommendationsSection category="top_gainers" scope="US" />
+      </Suspense>
+      <Suspense fallback={<RecommendationsSkeleton />}>
+        <RecommendationsSection category="near_52w_high" scope="US" />
+      </Suspense>
 
       <Card>
         <CardHeader>
