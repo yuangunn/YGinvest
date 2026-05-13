@@ -16,6 +16,7 @@ type Props = {
   symbol: string;
   symbolName: string;
   currency: string;
+  market: string;
   lastPrice: number | null;
 };
 
@@ -24,6 +25,7 @@ export function BuySellSheet({
   symbol,
   symbolName,
   currency,
+  market,
   lastPrice,
 }: Props) {
   const [openSide, setOpenSide] = useState<"buy" | "sell" | null>(null);
@@ -46,6 +48,7 @@ export function BuySellSheet({
               portfolioId={portfolioId}
               symbol={symbol}
               currency={currency}
+              market={market}
               lastPrice={lastPrice}
               forceSide="buy"
             />
@@ -69,6 +72,7 @@ export function BuySellSheet({
               portfolioId={portfolioId}
               symbol={symbol}
               currency={currency}
+              market={market}
               lastPrice={lastPrice}
               forceSide="sell"
             />
