@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { offlineFetch } from "@/lib/offline-fetch";
 
 type Props = {
   portfolioId: string;
@@ -34,23 +36,32 @@ export function OrderForm({ portfolioId, symbol, currency, lastPrice, forceSide 
       quantity: Number(quantity),
     };
     if (type === "limit") body.limit_price = Number(limitPrice);
-    const res = await fetch("/api/orders", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    const result = await offlineFetch<{ filled_avg_price?: number }>(
+      "/api/orders",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      },
+    );
     setSubmitting(false);
-    if (res.ok) {
-      const data = await res.json();
+    if (result.status === "ok") {
       setMessage({
         kind: "ok",
-        text: type === "market"
-          ? `체결됨: ${data.filled_avg_price}`
-          : "주문 접수됨 (대기)",
+        text:
+          type === "market"
+            ? `체결됨: ${result.data.filled_avg_price}`
+            : "주문 접수됨 (대기)",
       });
+    } else if (result.status === "queued") {
+      const note =
+        type === "market"
+          ? "오프라인 — 연결 시 자동 전송됩니다 (시장가는 그때 가격으로 체결)"
+          : "오프라인 — 연결 시 자동 전송됩니다";
+      toast.info(note);
+      setMessage({ kind: "ok", text: "동기화 예약됨" });
     } else {
-      const err = await res.json().catch(() => ({}));
-      setMessage({ kind: "err", text: err.error ?? "오류 발생" });
+      setMessage({ kind: "err", text: result.error });
     }
   }
 
