@@ -13,6 +13,9 @@ import { KrSessionBadge } from "@/components/kr-session-badge";
 import { NxtSpreadBadge } from "@/components/nxt-spread-badge";
 import { StockThemes } from "@/components/stock-themes";
 import { StockRatingBadge } from "@/components/stock-rating-badge";
+import { Term } from "@/components/term";
+import { OrderBook } from "@/components/order-book";
+import { PriceAlertForm } from "@/components/price-alert-form";
 import { getSelectedPortfolioId } from "@/lib/portfolio-context";
 
 const KRW = new Intl.NumberFormat("ko-KR", { style: "currency", currency: "KRW", maximumFractionDigits: 0 });
@@ -33,30 +36,40 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
   if (!stock) notFound();
 
   const portfolioId = await getSelectedPortfolioId(supabase, user.id);
-  const [{ data: portfolio }, { data: bars }, { data: watch }] = await Promise.all([
-    portfolioId
-      ? supabase
-          .from("portfolios")
-          .select("id, krw_balance, usd_balance, status")
-          .eq("id", portfolioId)
-          .single()
-      : Promise.resolve({ data: null }),
-    supabase
-      .from("stock_bars")
-      .select("ts, open, high, low, close, volume")
-      .eq("symbol", decodedSymbol)
-      .eq("interval", "1d")
-      .order("ts", { ascending: true })
-      .limit(365),
-    portfolioId
-      ? supabase
-          .from("watchlists")
-          .select("symbol")
-          .eq("portfolio_id", portfolioId)
-          .eq("symbol", decodedSymbol)
-          .maybeSingle()
-      : Promise.resolve({ data: null }),
-  ]);
+  const [{ data: portfolio }, { data: bars }, { data: watch }, { data: alerts }] =
+    await Promise.all([
+      portfolioId
+        ? supabase
+            .from("portfolios")
+            .select("id, krw_balance, usd_balance, status")
+            .eq("id", portfolioId)
+            .single()
+        : Promise.resolve({ data: null }),
+      supabase
+        .from("stock_bars")
+        .select("ts, open, high, low, close, volume")
+        .eq("symbol", decodedSymbol)
+        .eq("interval", "1d")
+        .order("ts", { ascending: true })
+        .limit(365),
+      portfolioId
+        ? supabase
+            .from("watchlists")
+            .select("symbol")
+            .eq("portfolio_id", portfolioId)
+            .eq("symbol", decodedSymbol)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+      supabase
+        .from("price_alerts")
+        .select(
+          "id, symbol, condition, trigger_price, status, created_at, triggered_at, triggered_price",
+        )
+        .eq("user_id", user.id)
+        .eq("symbol", decodedSymbol)
+        .neq("status", "cancelled")
+        .order("created_at", { ascending: false }),
+    ]);
 
   const fmt = stock.currency === "KRW" ? KRW : USD;
   const symbolName = stock.name_ko ?? stock.name;
@@ -154,15 +167,47 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
         </CardContent>
       </Card>
 
+      {stock.market.startsWith("KRX_") && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">호가창</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <OrderBook
+              market={stock.market}
+              lastPrice={stock.last_price ? Number(stock.last_price) : null}
+              marketCap={stock.market_cap ? Number(stock.market_cap) : null}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">가격 알림</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <PriceAlertForm
+            symbol={stock.symbol}
+            currentPrice={stock.last_price ? Number(stock.last_price) : null}
+            currency={stock.currency}
+            initialAlerts={alerts ?? []}
+          />
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">기본 정보</CardTitle>
         </CardHeader>
         <CardContent className="text-sm">
           <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-            <InfoRow label="섹터" value={stock.sector} />
             <InfoRow
-              label="시가총액"
+              labelNode={<Term k="sector">섹터</Term>}
+              value={stock.sector}
+            />
+            <InfoRow
+              labelNode={<Term k="market-cap">시가총액</Term>}
               value={
                 stock.market_cap
                   ? formatMarketCap(Number(stock.market_cap), stock.currency)
@@ -170,7 +215,11 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
               }
             />
             <InfoRow
-              label="PER (주가수익비율)"
+              labelNode={
+                <>
+                  <Term k="per">PER</Term> (주가수익비율)
+                </>
+              }
               value={stock.per ? Number(stock.per).toFixed(2) : null}
               hint={
                 stock.per && stock.last_price
@@ -179,7 +228,7 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
               }
             />
             <InfoRow
-              label="52주 최고"
+              labelNode={<Term k="52w-high">52주 최고</Term>}
               value={
                 stock.fifty_two_week_high
                   ? fmt.format(Number(stock.fifty_two_week_high))
@@ -196,7 +245,7 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
               }
             />
             <InfoRow
-              label="52주 최저"
+              labelNode={<Term k="52w-low">52주 최저</Term>}
               value={
                 stock.fifty_two_week_low
                   ? fmt.format(Number(stock.fifty_two_week_low))
@@ -275,17 +324,21 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
 
 function InfoRow({
   label,
+  labelNode,
   value,
   hint,
 }: {
-  label: string;
+  label?: string;
+  labelNode?: React.ReactNode;
   value: string | null | undefined;
   hint?: string;
 }) {
   return (
     <div>
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className={`font-medium ${value ? "" : "text-muted-foreground"}`}>
+      <div className="text-xs text-muted-foreground">{labelNode ?? label}</div>
+      <div
+        className={`font-medium tabular-nums ${value ? "" : "text-muted-foreground"}`}
+      >
         {value ?? "—"}
       </div>
       {hint && value && (

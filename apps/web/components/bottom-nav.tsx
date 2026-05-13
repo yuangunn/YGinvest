@@ -7,7 +7,7 @@ const TABS: { href: string; label: string; icon: string }[] = [
   { href: "/app/dashboard", label: "홈", icon: "🏠" },
   { href: "/app/trade/search", label: "거래", icon: "💱" },
   { href: "/app/portfolio/overview", label: "자산", icon: "📊" },
-  { href: "/app/rooms", label: "방", icon: "👥" },
+  { href: "/app/learn", label: "학습", icon: "📚" },
   { href: "/app/settings", label: "설정", icon: "⚙️" },
 ];
 
@@ -19,8 +19,8 @@ function isActive(pathname: string, href: string): boolean {
   if (href === "/app/trade/search") {
     return pathname.startsWith("/app/trade");
   }
-  if (href === "/app/rooms") {
-    return pathname.startsWith("/app/rooms");
+  if (href === "/app/learn") {
+    return pathname.startsWith("/app/learn");
   }
   return pathname.startsWith(href);
 }

@@ -10,6 +10,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from ygworker.config import load_settings
 from ygworker.jobs.apply_corporate_events import run_apply_corporate_events
 from ygworker.jobs.bootstrap_stocks import run_bootstrap_stocks
+from ygworker.jobs.check_price_alerts import run_check_price_alerts
 from ygworker.jobs.compute_recommendations import run_compute_recommendations
 from ygworker.jobs.enrich_stock_info import run_enrich_stock_info
 from ygworker.jobs.fetch_corporate_data import run_fetch_corporate_data
@@ -71,10 +72,12 @@ async def main_async() -> None:
         id="heartbeat",
         replace_existing=True,
     )
+    # Plan #23: fetch_prices를 1분 → 5분으로 늘림 (Railway 비용/리소스 절감).
+    # 가격이 분 단위로 결정적이지 않은 시뮬이라 5분 갱신으로 충분.
     scheduler.add_job(
         _gated_fetch_prices(supabase, logger),
         trigger="interval",
-        seconds=60,
+        minutes=5,
         id="fetch_prices",
         replace_existing=True,
     )
@@ -142,6 +145,14 @@ async def main_async() -> None:
         hour=5,
         minute=30,
         id="enrich_stock_info",
+        replace_existing=True,
+    )
+    # Plan #23: 가격 알림 체크 — 1분 주기 (장중에만)
+    scheduler.add_job(
+        _wrap_in_thread(run_check_price_alerts, supabase, logger),
+        trigger="interval",
+        minutes=1,
+        id="check_price_alerts",
         replace_existing=True,
     )
     # 매일 09:00 KST: ex_date 도달한 dividend/action 적용

@@ -16,6 +16,8 @@ import { Sparkles } from "lucide-react";
 type Bar = { ts: string; close: number };
 type Loaded = { symbol: string; name: string; bars: Bar[] };
 
+const COLORS = ["#2563eb", "#f59e0b", "#10b981", "#ef4444"]; // A: blue, B: orange, C: green, D: red
+
 function tsToTime(ts: string): Time {
   if (ts.includes("T") && ts.length > 10) {
     return Math.floor(new Date(ts).getTime() / 1000) as Time;
@@ -26,10 +28,13 @@ function tsToTime(ts: string): Time {
 type Props = { initialA: string; initialB: string };
 
 export function CompareChartClient({ initialA, initialB }: Props) {
-  const [symA, setSymA] = useState(initialA);
-  const [symB, setSymB] = useState(initialB);
-  const [loadedA, setLoadedA] = useState<Loaded | null>(null);
-  const [loadedB, setLoadedB] = useState<Loaded | null>(null);
+  const [symbols, setSymbols] = useState<string[]>([
+    initialA,
+    initialB,
+    "",
+    "",
+  ]);
+  const [loaded, setLoaded] = useState<(Loaded | null)[]>([null, null, null, null]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -44,7 +49,10 @@ export function CompareChartClient({ initialA, initialB }: Props) {
     if (!barsRes.ok) throw new Error(`${symbol} 데이터 없음`);
     const barsJson = await barsRes.json();
     const bars: Bar[] = (barsJson.bars ?? []).map(
-      (b: { ts: string; close: number }) => ({ ts: String(b.ts), close: b.close }),
+      (b: { ts: string; close: number }) => ({
+        ts: String(b.ts),
+        close: b.close,
+      }),
     );
     let name = symbol;
     if (stockRes.ok) {
@@ -59,9 +67,10 @@ export function CompareChartClient({ initialA, initialB }: Props) {
     setError(null);
     setLoading(true);
     try {
-      const [a, b] = await Promise.all([loadSymbol(symA), loadSymbol(symB)]);
-      setLoadedA(a);
-      setLoadedB(b);
+      const results = await Promise.all(
+        symbols.map((s) => (s.trim() ? loadSymbol(s) : Promise.resolve(null))),
+      );
+      setLoaded(results);
     } catch (err) {
       setError(err instanceof Error ? err.message : "로드 실패");
     } finally {
@@ -69,21 +78,19 @@ export function CompareChartClient({ initialA, initialB }: Props) {
     }
   }
 
-  // initial load if both initialA + initialB present.
-  // useEffect with state set in async callback (post-mount, intentional)
+  // initial load (initialA + initialB)
   useEffect(() => {
     if (!initialA || !initialB) return;
-    if (loadedA || loadedB) return;
+    if (loaded[0] || loaded[1]) return;
     let cancelled = false;
     (async () => {
       try {
-        const [a, b] = await Promise.all([
+        const results = await Promise.all([
           loadSymbol(initialA),
           loadSymbol(initialB),
         ]);
         if (!cancelled) {
-          setLoadedA(a);
-          setLoadedB(b);
+          setLoaded([results[0], results[1], null, null]);
         }
       } catch (err) {
         if (!cancelled) {
@@ -94,13 +101,13 @@ export function CompareChartClient({ initialA, initialB }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [initialA, initialB, loadedA, loadedB]);
+  }, [initialA, initialB, loaded]);
 
-  // Render chart whenever both loaded
+  // Render chart
   useEffect(() => {
     if (!containerRef.current) return;
-    if (!loadedA || !loadedB) return;
-    if (loadedA.bars.length === 0 || loadedB.bars.length === 0) return;
+    const valid = loaded.filter((l): l is Loaded => l !== null && l.bars.length > 0);
+    if (valid.length < 2) return;
 
     const chart = createChart(containerRef.current, {
       height: 360,
@@ -117,33 +124,21 @@ export function CompareChartClient({ initialA, initialB }: Props) {
     });
     chartRef.current = chart;
 
-    // Normalize both to 100 at the first common bar
-    const baseA = loadedA.bars[0].close;
-    const baseB = loadedB.bars[0].close;
-
-    const seriesA = chart.addSeries(LineSeries, {
-      color: "#2563eb",
-      lineWidth: 2,
-      title: loadedA.name,
+    loaded.forEach((l, i) => {
+      if (!l || l.bars.length === 0) return;
+      const base = l.bars[0].close;
+      const series = chart.addSeries(LineSeries, {
+        color: COLORS[i],
+        lineWidth: 2,
+        title: l.name,
+      });
+      series.setData(
+        l.bars.map((b) => ({
+          time: tsToTime(b.ts),
+          value: (b.close / base) * 100,
+        })),
+      );
     });
-    seriesA.setData(
-      loadedA.bars.map((b) => ({
-        time: tsToTime(b.ts),
-        value: (b.close / baseA) * 100,
-      })),
-    );
-
-    const seriesB = chart.addSeries(LineSeries, {
-      color: "#f59e0b",
-      lineWidth: 2,
-      title: loadedB.name,
-    });
-    seriesB.setData(
-      loadedB.bars.map((b) => ({
-        time: tsToTime(b.ts),
-        value: (b.close / baseB) * 100,
-      })),
-    );
 
     chart.timeScale().fitContent();
 
@@ -160,7 +155,9 @@ export function CompareChartClient({ initialA, initialB }: Props) {
       chart.remove();
       chartRef.current = null;
     };
-  }, [loadedA, loadedB]);
+  }, [loaded]);
+
+  const validLoaded = loaded.filter((l): l is Loaded => l !== null && l.bars.length > 0);
 
   return (
     <>
@@ -168,62 +165,64 @@ export function CompareChartClient({ initialA, initialB }: Props) {
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
-            종목 선택
+            종목 선택 (최대 4개)
           </CardTitle>
         </CardHeader>
         <CardContent>
           <form
             onSubmit={handleCompare}
-            className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end"
+            className="grid grid-cols-2 sm:grid-cols-4 gap-2 items-end"
           >
-            <div className="space-y-1">
-              <Label htmlFor="cmp-a">종목 A (예: AAPL 또는 005930.KS)</Label>
-              <Input
-                id="cmp-a"
-                value={symA}
-                onChange={(e) => setSymA(e.target.value)}
-                placeholder="AAPL"
-                required
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="cmp-b">종목 B</Label>
-              <Input
-                id="cmp-b"
-                value={symB}
-                onChange={(e) => setSymB(e.target.value)}
-                placeholder="MSFT"
-                required
-              />
-            </div>
-            <Button type="submit" disabled={loading} className="h-10">
+            {symbols.map((s, i) => (
+              <div key={i} className="space-y-1">
+                <Label htmlFor={`cmp-${i}`} className="text-xs flex items-center gap-1">
+                  <span
+                    className="inline-block w-3 h-1"
+                    style={{ backgroundColor: COLORS[i] }}
+                  />
+                  종목 {String.fromCharCode(65 + i)}
+                  {i >= 2 && <span className="text-muted-foreground">(선택)</span>}
+                </Label>
+                <Input
+                  id={`cmp-${i}`}
+                  value={s}
+                  onChange={(e) => {
+                    const next = [...symbols];
+                    next[i] = e.target.value;
+                    setSymbols(next);
+                  }}
+                  placeholder={
+                    i === 0 ? "AAPL" : i === 1 ? "MSFT" : "심볼 (선택)"
+                  }
+                  required={i < 2}
+                />
+              </div>
+            ))}
+            <Button
+              type="submit"
+              disabled={loading}
+              className="h-10 sm:col-span-4"
+            >
               {loading ? "로딩..." : "비교"}
             </Button>
           </form>
-          {error && (
-            <p className="text-sm text-destructive mt-2">{error}</p>
-          )}
+          {error && <p className="text-sm text-destructive mt-2">{error}</p>}
         </CardContent>
       </Card>
 
-      {loadedA && loadedB && loadedA.bars.length > 0 && loadedB.bars.length > 0 && (
+      {validLoaded.length >= 2 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex flex-wrap gap-3 items-center">
-              <span className="inline-flex items-center gap-1">
-                <span
-                  className="inline-block w-3 h-1"
-                  style={{ backgroundColor: "#2563eb" }}
-                />
-                {loadedA.name} ({loadedA.symbol})
-              </span>
-              <span className="inline-flex items-center gap-1">
-                <span
-                  className="inline-block w-3 h-1"
-                  style={{ backgroundColor: "#f59e0b" }}
-                />
-                {loadedB.name} ({loadedB.symbol})
-              </span>
+              {validLoaded.map((l) => (
+                <span key={l.symbol} className="inline-flex items-center gap-1">
+                  <span
+                    className="inline-block w-3 h-1"
+                    style={{ backgroundColor: COLORS[loaded.indexOf(l)] }}
+                  />
+                  {l.name} ({l.symbol})
+                </span>
+              ))}
             </CardTitle>
           </CardHeader>
           <CardContent>

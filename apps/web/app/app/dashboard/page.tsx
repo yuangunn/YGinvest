@@ -5,6 +5,7 @@ import {
   ArrowLeftRight,
   ArrowRight,
   Bell,
+  BookOpen,
   Search,
   Sparkles,
   Tags,
@@ -16,6 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getSelectedPortfolioId } from "@/lib/portfolio-context";
 import { RecommendationsSection } from "@/components/recommendations-section";
 import { PersonalizedRecommendations } from "@/components/personalized-recommendations";
+import { VolumeLeaders } from "@/components/volume-leaders";
 
 function RecommendationsSkeleton() {
   return (
@@ -50,9 +52,10 @@ const QUICK_ACTIONS = [
   { href: "/app/trade/search", label: "종목 검색", Icon: Search },
   { href: "/app/curation", label: "큐레이션", Icon: Sparkles },
   { href: "/app/themes", label: "테마주", Icon: Tags },
+  { href: "/app/learn", label: "학습", Icon: BookOpen },
   { href: "/app/fx", label: "환전", Icon: ArrowLeftRight },
   { href: "/app/rooms", label: "친구방", Icon: Users },
-  { href: "/app/settings", label: "알림 설정", Icon: Bell },
+  { href: "/app/settings", label: "알림", Icon: Bell },
 ] as const;
 
 export default async function DashboardPage() {
@@ -153,6 +156,10 @@ export default async function DashboardPage() {
           <PersonalizedRecommendations portfolioId={portfolioId} />
         </Suspense>
       )}
+
+      <Suspense fallback={<RecommendationsSkeleton />}>
+        <VolumeLeaders scope="KR" limit={5} />
+      </Suspense>
 
       <Suspense fallback={<RecommendationsSkeleton />}>
         <RecommendationsSection category="top_gainers" scope="KR" />
