@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   createChart,
+  createSeriesMarkers,
   CandlestickSeries,
   HistogramSeries,
   LineSeries,
@@ -10,11 +11,14 @@ import {
   type IChartApi,
   type ISeriesApi,
   type MouseEventParams,
+  type SeriesMarker,
   type SeriesType,
   type Time,
 } from "lightweight-charts";
 import { ma, rsi, bollinger, macd, stochastic, vwap } from "@/lib/indicators";
 import { PALETTES, type PaletteId } from "@/lib/chart-palettes";
+import type { ChartSignal } from "@/lib/chart-signals";
+import type { AutoTrendlineSet } from "@/lib/auto-trendline";
 
 type Bar = {
   ts: string;
@@ -46,6 +50,10 @@ type Props = {
   fibLines?: TrendlinePoints[];
   onTrendlineComplete?: (line: TrendlinePoints) => void;
   onFibComplete?: (line: TrendlinePoints) => void;
+  /** 매수/매도 시그널 markers (현재 indicator 기준으로 외부에서 계산) */
+  signals?: ChartSignal[];
+  /** 자동 추세선 (저항/지지). 마지막 봉까지 연장됨 */
+  autoTrendlines?: AutoTrendlineSet | null;
 };
 
 export type TrendlinePoints = {
@@ -106,6 +114,8 @@ export function StockChart({
   fibLines = [],
   onTrendlineComplete,
   onFibComplete,
+  signals = [],
+  autoTrendlines = null,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -473,6 +483,70 @@ export function StockChart({
       }
     }
 
+    // ─── Auto-detected trendlines (support / resistance) ─────────────────
+    if (autoTrendlines?.support) {
+      const sup = autoTrendlines.support;
+      const supportSeries = chart.addSeries(
+        LineSeries,
+        {
+          color: palette.up,
+          lineWidth: 2,
+          lineStyle: LineStyle.Dashed,
+          lastValueVisible: false,
+          priceLineVisible: false,
+          title: "지지",
+        },
+        0,
+      );
+      supportSeries.setData([
+        { time: tsToTime(sup.t1), value: sup.p1 },
+        { time: tsToTime(sup.t2), value: sup.p2 },
+      ]);
+    }
+    if (autoTrendlines?.resistance) {
+      const res = autoTrendlines.resistance;
+      const resistanceSeries = chart.addSeries(
+        LineSeries,
+        {
+          color: palette.down,
+          lineWidth: 2,
+          lineStyle: LineStyle.Dashed,
+          lastValueVisible: false,
+          priceLineVisible: false,
+          title: "저항",
+        },
+        0,
+      );
+      resistanceSeries.setData([
+        { time: tsToTime(res.t1), value: res.p1 },
+        { time: tsToTime(res.t2), value: res.p2 },
+      ]);
+    }
+
+    // ─── Buy/Sell signal markers on candlestick series ───────────────────
+    if (signals.length > 0) {
+      const markers: SeriesMarker<Time>[] = signals.map((s) => ({
+        time: tsToTime(s.ts),
+        position: s.side === "buy" ? "belowBar" : "aboveBar",
+        color: s.side === "buy" ? palette.up : palette.down,
+        shape: s.side === "buy" ? "arrowUp" : "arrowDown",
+        text: s.side === "buy" ? "B" : "S",
+      }));
+      // lightweight-charts는 markers의 time이 단조 증가여야 함
+      markers.sort((a, b) => {
+        const ta =
+          typeof a.time === "number"
+            ? a.time
+            : new Date(String(a.time)).getTime() / 1000;
+        const tb =
+          typeof b.time === "number"
+            ? b.time
+            : new Date(String(b.time)).getTime() / 1000;
+        return ta - tb;
+      });
+      createSeriesMarkers(candleSeries, markers);
+    }
+
     // ─── Click capture for drawing trendlines / fib ──────────────────────
     const clickHandler = (param: MouseEventParams) => {
       if (drawingMode === "none") return;
@@ -566,6 +640,8 @@ export function StockChart({
     fibLines,
     onTrendlineComplete,
     onFibComplete,
+    signals,
+    autoTrendlines,
   ]);
 
   if (bars.length === 0) {

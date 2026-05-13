@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Pencil, Spline, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Pencil, Spline, Trash2, TrendingUp, Zap } from "lucide-react";
 import {
   StockChart,
   type DrawingMode,
@@ -16,6 +16,8 @@ import {
   savePaletteId,
   type PaletteId,
 } from "@/lib/chart-palettes";
+import { computeSignals } from "@/lib/chart-signals";
+import { computeAutoTrendlines } from "@/lib/auto-trendline";
 
 type Bar = {
   ts: string;
@@ -45,6 +47,8 @@ export function ChartArea({ symbol, initialBars }: Props) {
   const [drawingMode, setDrawingMode] = useState<DrawingMode>("none");
   const [trendlines, setTrendlines] = useState<TrendlinePoints[]>([]);
   const [fibLines, setFibLines] = useState<TrendlinePoints[]>([]);
+  const [showSignals, setShowSignals] = useState(true);
+  const [showAutoTrend, setShowAutoTrend] = useState(false);
 
   useEffect(() => {
     const stored = loadPaletteId();
@@ -105,14 +109,30 @@ export function ChartArea({ symbol, initialBars }: Props) {
   const isFetchedForCurrent =
     loaded !== null && loaded.symbol === symbol && loaded.interval === chartInterval;
   const loading = chartInterval !== "1d" && !isFetchedForCurrent;
-  const bars =
-    chartInterval === "1d"
-      ? initialBars
-      : isFetchedForCurrent
-      ? loaded.bars
-      : [];
+  const bars = useMemo(
+    () =>
+      chartInterval === "1d"
+        ? initialBars
+        : isFetchedForCurrent
+          ? loaded.bars
+          : [],
+    [chartInterval, initialBars, isFetchedForCurrent, loaded],
+  );
 
   const totalDrawings = trendlines.length + fibLines.length;
+
+  // 시그널 & 자동 추세선 — interval/indicator/bars가 바뀔 때마다 재계산
+  const signals = useMemo(
+    () => (showSignals && bars.length > 0 ? computeSignals(bars, indicator) : []),
+    [showSignals, bars, indicator],
+  );
+  const autoTrendlines = useMemo(
+    () => (showAutoTrend && bars.length > 0 ? computeAutoTrendlines(bars) : null),
+    [showAutoTrend, bars],
+  );
+
+  const buyCount = signals.filter((s) => s.side === "buy").length;
+  const sellCount = signals.filter((s) => s.side === "sell").length;
 
   return (
     <div>
@@ -125,6 +145,33 @@ export function ChartArea({ symbol, initialBars }: Props) {
         onPaletteChange={handlePaletteChange}
       />
       <div className="flex flex-wrap gap-2 items-center mb-2">
+        <Button
+          type="button"
+          size="sm"
+          variant={showSignals ? "default" : "outline"}
+          onClick={() => setShowSignals((v) => !v)}
+          title={`매매 시그널 (현재 ${
+            indicator === "none" ? "MA" : indicator.toUpperCase()
+          } 기준)`}
+        >
+          <Zap className="h-3 w-3 mr-1" />
+          시그널
+          {showSignals && signals.length > 0 && (
+            <span className="ml-1 text-[10px] opacity-80">
+              B{buyCount}·S{sellCount}
+            </span>
+          )}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant={showAutoTrend ? "default" : "outline"}
+          onClick={() => setShowAutoTrend((v) => !v)}
+          title="자동 추세선 — 최근 swing high/low로 지지/저항 자동 계산"
+        >
+          <TrendingUp className="h-3 w-3 mr-1" />
+          자동 추세선
+        </Button>
         <Button
           type="button"
           size="sm"
@@ -174,6 +221,8 @@ export function ChartArea({ symbol, initialBars }: Props) {
           fibLines={fibLines}
           onTrendlineComplete={handleTrendlineComplete}
           onFibComplete={handleFibComplete}
+          signals={signals}
+          autoTrendlines={autoTrendlines}
         />
       )}
     </div>
