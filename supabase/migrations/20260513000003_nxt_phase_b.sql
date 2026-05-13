@@ -31,21 +31,27 @@ comment on function _kr_nxt_session(timestamptz) is
   'KR/NXT session (pre/regular/after/closed). Plan #12.';
 
 -- =========================================================================
--- 2) orders.order_type — allow 'midpoint' (dynamic constraint name lookup)
+-- 2) orders.order_type — allow 'midpoint'.
+-- Drop the existing column-level CHECK by name first (PG auto-named it
+-- `orders_order_type_check`), then fall back to dynamic lookup for any other
+-- CHECK that mentions `order_type` (e.g., constraint renamed in future).
 -- =========================================================================
+alter table public.orders drop constraint if exists orders_order_type_check;
+
 do $$
 declare
   v_constraint_name text;
 begin
-  select conname into v_constraint_name
-  from pg_constraint
-  where conrelid = 'public.orders'::regclass
-    and contype = 'c'
-    and pg_get_constraintdef(oid) ilike '%order_type%';
-
-  if v_constraint_name is not null then
+  for v_constraint_name in
+    select conname
+    from pg_constraint
+    where conrelid = 'public.orders'::regclass
+      and contype = 'c'
+      and pg_get_constraintdef(oid) ilike '%order_type%'
+      and conname <> 'orders_order_type_check'
+  loop
     execute format('alter table public.orders drop constraint %I', v_constraint_name);
-  end if;
+  end loop;
 end $$;
 
 alter table public.orders add constraint orders_order_type_check
