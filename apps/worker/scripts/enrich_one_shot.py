@@ -29,14 +29,20 @@ if not CLOUD_URL or not CLOUD_KEY:
 supabase = create_client(CLOUD_URL, CLOUD_KEY)
 
 
-def fetch_all_symbols() -> list[str]:
+def fetch_symbols_to_enrich(limit: int | None = None) -> list[str]:
+    """sector가 비어있는 종목을 market_cap DESC로 우선 처리.
+
+    이미 enrichment된 종목은 skip (idempotent). limit 지정 시 상위 N개만.
+    """
     all_rows: list[dict] = []
     offset = 0
     while True:
         rows = (
             supabase.table("stocks")
-            .select("symbol")
+            .select("symbol, market_cap, sector")
             .eq("is_active", True)
+            .is_("sector", "null")
+            .order("market_cap", desc=True, nullsfirst=False)
             .range(offset, offset + 999)
             .execute()
             .data
@@ -48,7 +54,17 @@ def fetch_all_symbols() -> list[str]:
         if len(rows) < 1000:
             break
         offset += 1000
-    return [r["symbol"] for r in all_rows]
+        if limit and len(all_rows) >= limit:
+            break
+    out = [r["symbol"] for r in all_rows]
+    if limit:
+        out = out[:limit]
+    return out
+
+
+# Backward compatibility alias
+def fetch_all_symbols() -> list[str]:
+    return fetch_symbols_to_enrich()
 
 
 def enrich(symbol: str) -> dict | None:
@@ -83,8 +99,10 @@ def enrich(symbol: str) -> dict | None:
 
 
 def main():
-    symbols = fetch_all_symbols()
-    print(f"Total symbols: {len(symbols)}")
+    limit_str = os.environ.get("LIMIT")
+    limit = int(limit_str) if limit_str else None
+    symbols = fetch_symbols_to_enrich(limit=limit)
+    print(f"Symbols to enrich (sector NULL): {len(symbols)} (limit={limit})")
     updated = 0
     failed = 0
     start = time.time()

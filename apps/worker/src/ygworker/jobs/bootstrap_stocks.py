@@ -6,7 +6,7 @@ from ygworker.data_sources.us_top import US_TOP_100
 
 
 def run_bootstrap_stocks(
-    supabase: Any, logger: Any, kr_limit: int = 100, us_limit: int = 100
+    supabase: Any, logger: Any, kr_limit: int = 2000, us_limit: int = 500
 ) -> None:
     """stocks 테이블이 비어있으면 KR 상위 + US 상위를 prefetch한다.
 
