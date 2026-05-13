@@ -3,7 +3,6 @@ import {
   BackgroundSyncPlugin,
   CacheFirst,
   ExpirationPlugin,
-  NetworkFirst,
   NetworkOnly,
   type PrecacheEntry,
   type RuntimeCaching,
@@ -114,16 +113,14 @@ const runtimeCaching: RuntimeCaching[] = [
     matcher: ({ request }) => request.method !== "GET",
     handler: new NetworkOnly(),
   },
-  // 6. HTML 네비게이션 — NetworkFirst + fallback
+  // 6. HTML 네비게이션 — NetworkOnly (Plan #11.7 hotfix)
+  //    이전엔 NetworkFirst로 캐싱했지만 시세/잔고 같은 시간 민감 데이터가 stale로
+  //    표시되는 회귀 (e.g. 8:34 KST 가격이 18:00에도 그대로). 오프라인 시
+  //    Serwist `fallbacks`가 /offline으로 자동 fallback해주므로 NetworkOnly가
+  //    더 안전. 정적 셸 (auth/login, /offline)은 precache되어 있어 영향 없음.
   {
     matcher: ({ request }) => request.mode === "navigate",
-    handler: new NetworkFirst({
-      cacheName: "pages",
-      networkTimeoutSeconds: 3,
-      plugins: [
-        new ExpirationPlugin({ maxEntries: 50, maxAgeSeconds: 24 * 60 * 60 }),
-      ],
-    }),
+    handler: new NetworkOnly(),
   },
 ];
 
@@ -149,6 +146,19 @@ const serwist = new Serwist({
 });
 
 serwist.addEventListeners();
+
+// =========================================================================
+// Plan #11.7 — Legacy `pages` 캐시 정리.
+// 이전 SW가 NetworkFirst로 trade/dashboard/portfolio HTML을 24h 캐싱해서
+// 시세가 오래된 값으로 보이는 회귀. 활성화 시 한 번만 wipe.
+// =========================================================================
+self.addEventListener("activate", (event: ExtendableEvent) => {
+  event.waitUntil(
+    caches.delete("pages").catch(() => {
+      // 이미 없거나 권한 문제 — 무시
+    }),
+  );
+});
 
 // =========================================================================
 // Plan #7 — Web Push handlers (preserved as-is from public/sw.js)
