@@ -12,12 +12,23 @@ def run_bootstrap_stocks(
 
     KR: FinanceDataReader StockListing — KOSPI + KOSDAQ 시가총액 상위 N개. 1번 호출로 가격까지.
     US: us_top.US_TOP_100 (하드코딩 큐레이션) + FDR DataReader로 종가 fetch.
+
+    NOTE: 부팅 시 1회만 실행. 이후 universe 확장은 fill_universe.py 스크립트나
+    fill_missing_stocks job (TODO)으로 처리.
     """
-    existing = (
-        supabase.table("stocks").select("symbol").limit(1).execute().data
+    existing_count = (
+        supabase.table("stocks")
+        .select("symbol", count="exact")
+        .limit(1)
+        .execute()
+        .count
     )
-    if existing:
-        logger.info("bootstrap_stocks.skip", reason="already_populated")
+    if existing_count and existing_count >= 100:
+        logger.info(
+            "bootstrap_stocks.skip",
+            reason="already_populated",
+            existing=existing_count,
+        )
         return
 
     logger.info("bootstrap_stocks.start", kr_limit=kr_limit, us_limit=us_limit)
