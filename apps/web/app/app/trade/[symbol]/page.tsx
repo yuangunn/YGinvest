@@ -84,6 +84,7 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
             <NxtSpreadBadge
               market={stock.market}
               lastPrice={stock.last_price ? Number(stock.last_price) : null}
+              marketCap={stock.market_cap ? Number(stock.market_cap) : null}
             />
           </div>
         </CardContent>
