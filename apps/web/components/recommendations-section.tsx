@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { RecommendationCardLink } from "@/components/recommendation-card-link";
 
 const CATEGORY_LABEL: Record<string, string> = {
   top_gainers: "급등 종목",
@@ -98,9 +98,13 @@ export async function RecommendationsSection({
               ? fmt.format(Number(stock.last_price))
               : "—";
             return (
-              <Link
+              <RecommendationCardLink
                 key={`${category}-${scope}-${r.symbol}`}
                 href={`/app/trade/${encodeURIComponent(r.symbol)}`}
+                category={category}
+                marketScope={scope}
+                symbol={r.symbol}
+                rank={r.rank}
                 className="flex-shrink-0 w-40 border rounded-lg p-3 hover:bg-muted/30 transition-colors"
               >
                 <div className="text-xs text-muted-foreground">#{r.rank}</div>
@@ -112,7 +116,7 @@ export async function RecommendationsSection({
                     {r.reason}
                   </div>
                 )}
-              </Link>
+              </RecommendationCardLink>
             );
           })}
         </div>

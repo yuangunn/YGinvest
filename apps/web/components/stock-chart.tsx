@@ -13,7 +13,7 @@ import {
   type SeriesType,
   type Time,
 } from "lightweight-charts";
-import { ma, rsi, bollinger } from "@/lib/indicators";
+import { ma, rsi, bollinger, macd, stochastic } from "@/lib/indicators";
 import { PALETTES, type PaletteId } from "@/lib/chart-palettes";
 
 type Bar = {
@@ -25,13 +25,23 @@ type Bar = {
   volume: number;
 };
 
-export type IndicatorType = "none" | "ma" | "rsi" | "bollinger";
+export type IndicatorType = "none" | "ma" | "rsi" | "bollinger" | "macd" | "stoch";
 
 type Props = {
   bars: Bar[];
   height?: number;
   indicator?: IndicatorType;
   paletteId?: PaletteId;
+  drawingMode?: boolean;
+  trendlines?: TrendlinePoints[];
+  onTrendlineComplete?: (line: TrendlinePoints) => void;
+};
+
+export type TrendlinePoints = {
+  t1: Time;
+  p1: number;
+  t2: Time;
+  p2: number;
 };
 
 type HoverData = {
@@ -42,6 +52,11 @@ type HoverData = {
   rsi?: number;
   bbUpper?: number;
   bbLower?: number;
+  macd?: number;
+  macdSignal?: number;
+  macdHist?: number;
+  stochK?: number;
+  stochD?: number;
 };
 
 function tsToTime(ts: string): Time {
@@ -64,13 +79,22 @@ export function StockChart({
   height = 320,
   indicator = "ma",
   paletteId = "classic",
+  drawingMode = false,
+  trendlines = [],
+  onTrendlineComplete,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
+  const candleSeriesRef = useRef<ISeriesApi<SeriesType> | null>(null);
   const [hover, setHover] = useState<HoverData | null>(null);
+  const drawingStateRef = useRef<{ point1: { t: Time; p: number } | null }>({
+    point1: null,
+  });
 
-  // total chart height — price + volume (+ rsi if active)
-  const totalHeight = indicator === "rsi" ? height + 80 + 100 : height + 80;
+  // total chart height — price + volume (+ indicator sub-panel if active)
+  const hasIndicatorPane =
+    indicator === "rsi" || indicator === "macd" || indicator === "stoch";
+  const totalHeight = hasIndicatorPane ? height + 80 + 110 : height + 80;
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -98,6 +122,7 @@ export function StockChart({
       wickUpColor: palette.up,
       wickDownColor: palette.down,
     });
+    candleSeriesRef.current = candleSeries;
 
     const candleData = bars.map((b) => ({
       time: tsToTime(b.ts),
@@ -188,15 +213,12 @@ export function StockChart({
       }),
     );
 
-    // ─── Pane 2: RSI (only when active) ──────────────────────────────────
+    // ─── Pane 2: Indicator sub-panel (RSI / MACD / Stochastic) ───────────
     if (indicator === "rsi") {
       const rsiValues = rsi(closes, 14);
       rsiSeries = chart.addSeries(
         LineSeries,
-        {
-          color: palette.ma60, // RSI line color from palette
-          lineWidth: 1,
-        },
+        { color: palette.ma60, lineWidth: 1 },
         2,
       );
       rsiSeries.setData(
@@ -204,7 +226,6 @@ export function StockChart({
           .map((b, i) => ({ time: tsToTime(b.ts), value: rsiValues[i] }))
           .filter((d): d is { time: Time; value: number } => d.value !== undefined),
       );
-      // 70 (overbought) / 50 (mid) / 30 (oversold) reference lines
       rsiSeries.createPriceLine({
         price: 70,
         color: palette.down,
@@ -229,6 +250,93 @@ export function StockChart({
         axisLabelVisible: true,
         title: "30",
       });
+    } else if (indicator === "macd") {
+      const SLOW = 26;
+      const macdData = macd(closes, 12, SLOW, 9);
+      // macdData arrays start from bars[SLOW-1] (length closes.length-SLOW+1)
+      const macdLine = chart.addSeries(
+        LineSeries,
+        { color: palette.ma60, lineWidth: 1 },
+        2,
+      );
+      macdLine.setData(
+        macdData.macd.map((v, i) => ({
+          time: tsToTime(bars[i + SLOW - 1].ts),
+          value: v,
+        })),
+      );
+      const signalLine = chart.addSeries(
+        LineSeries,
+        { color: palette.ma20, lineWidth: 1 },
+        2,
+      );
+      signalLine.setData(
+        macdData.signal.map((v, i) => ({
+          time: tsToTime(bars[i + SLOW - 1].ts),
+          value: v,
+        })),
+      );
+      const histSeries = chart.addSeries(
+        HistogramSeries,
+        { priceFormat: { type: "price", precision: 2, minMove: 0.01 } },
+        2,
+      );
+      histSeries.setData(
+        macdData.histogram.map((v, i) => ({
+          time: tsToTime(bars[i + SLOW - 1].ts),
+          value: v,
+          color: v >= 0 ? palette.up : palette.down,
+        })),
+      );
+      // zero line
+      macdLine.createPriceLine({
+        price: 0,
+        color: "#666",
+        lineStyle: LineStyle.Solid,
+        lineWidth: 1,
+        axisLabelVisible: false,
+        title: "",
+      });
+    } else if (indicator === "stoch") {
+      const highs = bars.map((b) => b.high);
+      const lows = bars.map((b) => b.low);
+      const { k, d } = stochastic(highs, lows, closes, 14, 3);
+      const kSeries = chart.addSeries(
+        LineSeries,
+        { color: palette.ma60, lineWidth: 1 },
+        2,
+      );
+      kSeries.setData(
+        bars
+          .map((b, i) => ({ time: tsToTime(b.ts), value: k[i] }))
+          .filter((d): d is { time: Time; value: number } => d.value !== undefined),
+      );
+      const dSeries = chart.addSeries(
+        LineSeries,
+        { color: palette.ma20, lineWidth: 1 },
+        2,
+      );
+      dSeries.setData(
+        bars
+          .map((b, i) => ({ time: tsToTime(b.ts), value: d[i] }))
+          .filter((d): d is { time: Time; value: number } => d.value !== undefined),
+      );
+      kSeries.createPriceLine({
+        price: 80,
+        color: palette.down,
+        lineStyle: LineStyle.Dashed,
+        lineWidth: 1,
+        axisLabelVisible: true,
+        title: "80",
+      });
+      kSeries.createPriceLine({
+        price: 20,
+        color: palette.up,
+        lineStyle: LineStyle.Dashed,
+        lineWidth: 1,
+        axisLabelVisible: true,
+        title: "20",
+      });
     }
 
     // ─── Resize pane heights ──────────────────────────────────────────────
@@ -238,8 +346,8 @@ export function StockChart({
       if (panes.length >= 2) {
         panes[0].setHeight(height);
         panes[1].setHeight(80);
-        if (indicator === "rsi" && panes.length >= 3) {
-          panes[2].setHeight(100);
+        if (hasIndicatorPane && panes.length >= 3) {
+          panes[2].setHeight(110);
         }
       }
     } catch {
@@ -253,12 +361,56 @@ export function StockChart({
     const ma60Vals = indicator === "ma" ? ma(closes, 60) : [];
     const rsiVals = indicator === "rsi" ? rsi(closes, 14) : [];
     const bbBands = indicator === "bollinger" ? bollinger(closes, 20, 2) : null;
+    const macdData =
+      indicator === "macd" ? macd(closes, 12, 26, 9) : null;
+    const stochData =
+      indicator === "stoch"
+        ? stochastic(bars.map((b) => b.high), bars.map((b) => b.low), closes, 14, 3)
+        : null;
+    const MACD_SLOW = 26;
 
     const timeToIndex = new Map<string, number>();
     bars.forEach((b, i) => {
       const t = tsToTime(b.ts);
       timeToIndex.set(String(t), i);
     });
+
+    // ─── Render existing trendlines on price pane ────────────────────────
+    for (const tl of trendlines) {
+      const trendSeries = chart.addSeries(
+        LineSeries,
+        { color: "#9333ea", lineWidth: 2, lastValueVisible: false, priceLineVisible: false },
+        0,
+      );
+      trendSeries.setData([
+        { time: tl.t1, value: tl.p1 },
+        { time: tl.t2, value: tl.p2 },
+      ]);
+    }
+
+    // ─── Click capture for drawing trendlines ────────────────────────────
+    const clickHandler = (param: MouseEventParams) => {
+      if (!drawingMode || !onTrendlineComplete) return;
+      if (!param.time || !param.point) return;
+      const series = candleSeriesRef.current;
+      if (!series) return;
+      const price = series.coordinateToPrice(param.point.y);
+      if (price == null) return;
+
+      if (!drawingStateRef.current.point1) {
+        drawingStateRef.current.point1 = { t: param.time, p: price };
+      } else {
+        const p1 = drawingStateRef.current.point1;
+        drawingStateRef.current.point1 = null;
+        onTrendlineComplete({
+          t1: p1.t,
+          p1: p1.p,
+          t2: param.time,
+          p2: price,
+        });
+      }
+    };
+    chart.subscribeClick(clickHandler);
 
     chart.subscribeCrosshairMove((param: MouseEventParams) => {
       if (!param.time || !param.point) {
@@ -271,6 +423,7 @@ export function StockChart({
         return;
       }
       const bar = bars[idx];
+      const macdIdx = idx - (MACD_SLOW - 1);
       setHover({
         index: idx,
         bar,
@@ -279,6 +432,20 @@ export function StockChart({
         rsi: rsiVals[idx],
         bbUpper: bbBands?.upper[idx],
         bbLower: bbBands?.lower[idx],
+        macd:
+          macdData && macdIdx >= 0 && macdIdx < macdData.macd.length
+            ? macdData.macd[macdIdx]
+            : undefined,
+        macdSignal:
+          macdData && macdIdx >= 0 && macdIdx < macdData.signal.length
+            ? macdData.signal[macdIdx]
+            : undefined,
+        macdHist:
+          macdData && macdIdx >= 0 && macdIdx < macdData.histogram.length
+            ? macdData.histogram[macdIdx]
+            : undefined,
+        stochK: stochData?.k[idx],
+        stochD: stochData?.d[idx],
       });
     });
 
@@ -294,8 +461,19 @@ export function StockChart({
       window.removeEventListener("resize", onResize);
       chart.remove();
       chartRef.current = null;
+      candleSeriesRef.current = null;
     };
-  }, [bars, height, totalHeight, indicator, paletteId]);
+  }, [
+    bars,
+    height,
+    totalHeight,
+    hasIndicatorPane,
+    indicator,
+    paletteId,
+    drawingMode,
+    trendlines,
+    onTrendlineComplete,
+  ]);
 
   if (bars.length === 0) {
     return (
@@ -400,6 +578,51 @@ function ChartTooltip({
               <span>
                 L <span className="font-semibold">{data.bbLower.toFixed(2)}</span>
               </span>
+            )}
+          </div>
+        )}
+      {indicator === "macd" && data.macd !== undefined && (
+        <div className="text-muted-foreground mt-0.5">
+          MACD <span className="font-semibold">{data.macd.toFixed(2)}</span>
+          {data.macdSignal !== undefined && (
+            <>
+              {" · Sig "}
+              <span className="font-semibold">{data.macdSignal.toFixed(2)}</span>
+            </>
+          )}
+          {data.macdHist !== undefined && (
+            <>
+              {" · Hist "}
+              <span
+                className={
+                  data.macdHist >= 0 ? "text-green-500" : "text-red-500"
+                }
+              >
+                {data.macdHist.toFixed(2)}
+              </span>
+            </>
+          )}
+        </div>
+      )}
+      {indicator === "stoch" &&
+        (data.stochK !== undefined || data.stochD !== undefined) && (
+          <div className="text-muted-foreground mt-0.5">
+            {data.stochK !== undefined && (
+              <span>
+                %K <span className="font-semibold">{data.stochK.toFixed(1)}</span>
+              </span>
+            )}
+            {data.stochK !== undefined && data.stochD !== undefined && " · "}
+            {data.stochD !== undefined && (
+              <span>
+                %D <span className="font-semibold">{data.stochD.toFixed(1)}</span>
+              </span>
+            )}
+            {data.stochK !== undefined && data.stochK >= 80 && (
+              <span className="ml-1 text-red-500">과매수</span>
+            )}
+            {data.stochK !== undefined && data.stochK <= 20 && (
+              <span className="ml-1 text-green-500">과매도</span>
             )}
           </div>
         )}

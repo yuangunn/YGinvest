@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { RecommendationCardLink } from "@/components/recommendation-card-link";
 
 type SymbolRow = { symbol: string };
 type StockMeta = {
@@ -103,14 +103,17 @@ export async function PersonalizedRecommendations({
       </CardHeader>
       <CardContent>
         <div className="flex gap-2 overflow-x-auto pb-2">
-          {recs.map((s) => {
+          {recs.map((s, idx) => {
             const fmt = s.currency === "KRW" ? KRW : USD;
             const name = s.name_ko ?? s.name;
             const price = s.last_price ? fmt.format(Number(s.last_price)) : "—";
             return (
-              <Link
+              <RecommendationCardLink
                 key={s.symbol}
                 href={`/app/trade/${encodeURIComponent(s.symbol)}`}
+                category="personalized"
+                symbol={s.symbol}
+                rank={idx + 1}
                 className="flex-shrink-0 w-40 border rounded-lg p-3 hover:bg-muted/30 hover:border-primary/40 transition-colors"
               >
                 <div className="text-xs text-muted-foreground truncate">
@@ -119,7 +122,7 @@ export async function PersonalizedRecommendations({
                 <div className="font-medium text-sm truncate">{name}</div>
                 <div className="text-xs text-muted-foreground">{s.symbol}</div>
                 <div className="text-sm font-mono mt-1">{price}</div>
-              </Link>
+              </RecommendationCardLink>
             );
           })}
         </div>

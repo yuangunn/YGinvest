@@ -79,6 +79,54 @@ export function macd(
   return { macd: macdResult, signal: signalLine, histogram };
 }
 
+// Stochastic Oscillator — %K, %D
+// %K = 100 × (close - low(n)) / (high(n) - low(n)), n=14 default
+// %D = SMA of %K, period=3 default
+export function stochastic(
+  highs: number[],
+  lows: number[],
+  closes: number[],
+  kPeriod: number = 14,
+  dPeriod: number = 3,
+): { k: (number | undefined)[]; d: (number | undefined)[] } {
+  const k: (number | undefined)[] = [];
+  for (let i = 0; i < closes.length; i++) {
+    if (i < kPeriod - 1) {
+      k.push(undefined);
+      continue;
+    }
+    const windowHighs = highs.slice(i - kPeriod + 1, i + 1);
+    const windowLows = lows.slice(i - kPeriod + 1, i + 1);
+    const highMax = Math.max(...windowHighs);
+    const lowMin = Math.min(...windowLows);
+    const range = highMax - lowMin;
+    if (range === 0) {
+      k.push(50);
+    } else {
+      k.push(((closes[i] - lowMin) / range) * 100);
+    }
+  }
+  // %D = SMA(k, dPeriod)
+  const d: (number | undefined)[] = [];
+  for (let i = 0; i < k.length; i++) {
+    if (i < kPeriod - 1 + dPeriod - 1) {
+      d.push(undefined);
+      continue;
+    }
+    let sum = 0;
+    let count = 0;
+    for (let j = i - dPeriod + 1; j <= i; j++) {
+      const v = k[j];
+      if (v !== undefined) {
+        sum += v;
+        count++;
+      }
+    }
+    d.push(count === dPeriod ? sum / dPeriod : undefined);
+  }
+  return { k, d };
+}
+
 // Bollinger Bands — returns {upper, middle, lower}
 export function bollinger(
   closes: number[],

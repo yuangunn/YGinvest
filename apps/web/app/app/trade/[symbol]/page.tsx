@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartArea } from "@/components/chart-area";
 import { StockNews } from "@/components/stock-news";
 import { StockFinancials } from "@/components/stock-financials";
+import Link from "next/link";
+import { GitCompare } from "lucide-react";
 import { BuySellSheet } from "@/components/buy-sell-sheet";
 import { WatchlistButton } from "@/components/watchlist-button";
 import { KrSessionBadge } from "@/components/kr-session-badge";
@@ -66,7 +68,17 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
           </div>
           <h1 className="text-2xl font-bold">{symbolName}</h1>
         </div>
-        <WatchlistButton symbol={stock.symbol} initialWatched={!!watch} />
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/app/compare?a=${encodeURIComponent(stock.symbol)}`}
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary border rounded-md px-2 py-1"
+            title="다른 종목과 비교"
+          >
+            <GitCompare className="h-3 w-3" />
+            비교
+          </Link>
+          <WatchlistButton symbol={stock.symbol} initialWatched={!!watch} />
+        </div>
       </div>
 
       <Card>
@@ -84,6 +96,7 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
             <NxtSpreadBadge
               market={stock.market}
               lastPrice={stock.last_price ? Number(stock.last_price) : null}
+              marketCap={stock.market_cap ? Number(stock.market_cap) : null}
             />
           </div>
         </CardContent>

@@ -1,8 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { StockChart, type IndicatorType } from "@/components/stock-chart";
+import { Pencil, Trash2 } from "lucide-react";
+import {
+  StockChart,
+  type IndicatorType,
+  type TrendlinePoints,
+} from "@/components/stock-chart";
 import { ChartControls, type Interval } from "@/components/chart-controls";
+import { Button } from "@/components/ui/button";
 import {
   DEFAULT_PALETTE_ID,
   loadPaletteId,
@@ -34,9 +40,9 @@ export function ChartArea({ symbol, initialBars }: Props) {
   const [chartInterval, setChartInterval] = useState<Interval>("1d");
   const [indicator, setIndicator] = useState<IndicatorType>("ma");
   const [loaded, setLoaded] = useState<LoadedState | null>(null);
-  // SSR/hydration 호환을 위해 초기는 DEFAULT, mount 후 localStorage에서 읽음.
-  // React 19 strict effect 규칙 우회 — localStorage sync는 정당한 사용처.
   const [paletteId, setPaletteId] = useState<PaletteId>(DEFAULT_PALETTE_ID);
+  const [drawingMode, setDrawingMode] = useState(false);
+  const [trendlines, setTrendlines] = useState<TrendlinePoints[]>([]);
 
   useEffect(() => {
     const stored = loadPaletteId();
@@ -46,14 +52,26 @@ export function ChartArea({ symbol, initialBars }: Props) {
     }
   }, []);
 
+  // Clear trendlines on symbol/interval change (서로 다른 데이터셋에 트렌드 의미 없음)
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    setTrendlines([]);
+    setDrawingMode(false);
+  }, [symbol, chartInterval]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
   function handlePaletteChange(p: PaletteId) {
     setPaletteId(p);
     savePaletteId(p);
   }
 
+  function handleTrendlineComplete(line: TrendlinePoints) {
+    setTrendlines((prev) => [...prev, line]);
+    setDrawingMode(false); // 한 번 그리면 mode off
+  }
+
   useEffect(() => {
     if (chartInterval === "1d") {
-      // SSR-provided initialBars is the source of truth for daily.
       return;
     }
     let cancelled = false;
@@ -94,10 +112,41 @@ export function ChartArea({ symbol, initialBars }: Props) {
         paletteId={paletteId}
         onPaletteChange={handlePaletteChange}
       />
+      <div className="flex gap-2 items-center mb-2">
+        <Button
+          type="button"
+          size="sm"
+          variant={drawingMode ? "default" : "outline"}
+          onClick={() => setDrawingMode((v) => !v)}
+          title="추세선 그리기 — 차트에 두 점 클릭"
+        >
+          <Pencil className="h-3 w-3 mr-1" />
+          {drawingMode ? "추세선 그리는 중 (두 점 클릭)" : "추세선"}
+        </Button>
+        {trendlines.length > 0 && (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={() => setTrendlines([])}
+            title="그린 추세선 모두 삭제"
+          >
+            <Trash2 className="h-3 w-3 mr-1" />
+            지우기 ({trendlines.length})
+          </Button>
+        )}
+      </div>
       {loading ? (
         <div className="text-sm text-muted-foreground py-8 text-center">차트 로딩 중...</div>
       ) : (
-        <StockChart bars={bars} indicator={indicator} paletteId={paletteId} />
+        <StockChart
+          bars={bars}
+          indicator={indicator}
+          paletteId={paletteId}
+          drawingMode={drawingMode}
+          trendlines={trendlines}
+          onTrendlineComplete={handleTrendlineComplete}
+        />
       )}
     </div>
   );

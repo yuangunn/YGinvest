@@ -106,22 +106,75 @@ export function QueueIndicator() {
 
   if (counts.total === 0 && online) return null;
 
-  function showBreakdown() {
+  async function flush() {
+    if (typeof navigator === "undefined" || !navigator.serviceWorker.controller) {
+      toast.error("SW 미활성 — 새로고침 후 다시 시도");
+      return;
+    }
+    if (counts.total === 0) {
+      toast.info("큐 비어있음");
+      return;
+    }
+    if (!online) {
+      toast.error("오프라인 — 연결 후 다시 시도");
+      return;
+    }
+    const channel = new MessageChannel();
+    const done = new Promise<{
+      results: { name: string; sent: number; failed: number }[];
+    }>((resolve) => {
+      channel.port1.onmessage = (event) => {
+        if (event.data?.type === "FLUSH_DONE") resolve(event.data);
+      };
+      // 안전 타임아웃
+      setTimeout(() => resolve({ results: [] }), 15_000);
+    });
+    navigator.serviceWorker.controller.postMessage(
+      { type: "FLUSH_QUEUES" },
+      [channel.port2],
+    );
+    toast.loading("큐 동기화 시도 중...", { id: "flush" });
+    const data = await done;
+    const sent = data.results.reduce((s, r) => s + r.sent, 0);
+    const failed = data.results.reduce((s, r) => s + r.failed, 0);
+    toast.dismiss("flush");
+    if (sent > 0 && failed === 0) {
+      toast.success(`${sent}개 동기화 완료`);
+    } else if (sent > 0) {
+      toast.warning(`${sent}개 전송 / ${failed}개 실패 (다시 큐에 보관됨)`);
+    } else if (failed > 0) {
+      toast.error("전송 실패 — 네트워크 확인 후 재시도");
+    } else {
+      toast.info("처리할 큐 없음");
+    }
+    // 카운트는 다음 poll에서 자동 갱신
+  }
+
+  function handleClick() {
+    if (counts.total === 0) {
+      toast.info("오프라인 (큐 비어있음)");
+      return;
+    }
     toast.info(
-      counts.total === 0
-        ? "오프라인 (큐 비어있음)"
-        : `대기 중: 주문 ${counts.orders} · 환전 ${counts.fx} · 관심종목 ${counts.watchlist}`,
+      `대기 중: 주문 ${counts.orders} · 환전 ${counts.fx} · 관심종목 ${counts.watchlist}`,
+      {
+        action: online
+          ? { label: "지금 동기화", onClick: () => void flush() }
+          : undefined,
+      },
     );
   }
 
   return (
     <button
       type="button"
-      onClick={showBreakdown}
+      onClick={handleClick}
       className="inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/5 px-2 py-1 text-xs hover:bg-primary/10"
       title={
         online
-          ? "동기화 대기 중인 요청이 있어요"
+          ? counts.total > 0
+            ? "동기화 대기 — 클릭하여 강제 전송"
+            : "동기화 대기 중인 요청이 있어요"
           : "오프라인 — 연결 시 자동 동기화"
       }
     >
