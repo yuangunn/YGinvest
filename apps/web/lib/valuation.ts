@@ -73,6 +73,7 @@ export type Valuation = {
   growthPremium?: number;
   targetPrice?: number;
   upsidePct?: number;
+  upsidePctRaw?: number; // before sanity cap — sorting용
   rating: Rating;
   factors: string[]; // human-readable reason chips
 };
@@ -106,6 +107,13 @@ export function computeValuation(
   const currentPrice = Number(stock.last_price);
   const currentPer = Number(stock.per);
   const sectorMedianPer = sectorStats.medianPer;
+
+  // Sanity: extreme PER (< 3 or > 200) → unreliable. 적자 회복기/거대 outlier 등.
+  if (currentPer < 3 || currentPer > 200) {
+    result.reason = `PER ${currentPer.toFixed(1)} 비정상 범위 (3~200 권장)`;
+    return result;
+  }
+
   const eps = currentPrice / currentPer;
   const fairValuePe = sectorMedianPer * eps;
 
@@ -125,15 +133,26 @@ export function computeValuation(
     else if (position < 0.3) factors.push("52주 하단권 (저점 매수 후보)");
   }
 
-  const targetPrice = fairValuePe * growthPremium;
-  const upsidePct = targetPrice / currentPrice - 1;
+  // Raw target & upside (rating은 raw 기준이라 정렬 의미 살림)
+  const targetPriceRaw = fairValuePe * growthPremium;
+  const upsidePctRaw = targetPriceRaw / currentPrice - 1;
 
-  // Rating band
+  // Display값은 sanity cap (±50%) 적용 — 현실적 단기 목표가 범위
+  const targetPrice = Math.max(
+    currentPrice * 0.5,
+    Math.min(currentPrice * 1.5, targetPriceRaw),
+  );
+  const upsidePct = targetPrice / currentPrice - 1;
+  if (Math.abs(targetPriceRaw - targetPrice) > currentPrice * 0.01) {
+    factors.push("⚠️ 모델 추정치 캡 적용 (raw upside 비현실)");
+  }
+
+  // Rating band — RAW upside 기준 (정렬 의미 유지)
   let rating: Rating;
-  if (upsidePct >= 0.2) rating = "strong_buy";
-  else if (upsidePct >= 0.05) rating = "buy";
-  else if (upsidePct >= -0.05) rating = "hold";
-  else if (upsidePct >= -0.2) rating = "sell";
+  if (upsidePctRaw >= 0.2) rating = "strong_buy";
+  else if (upsidePctRaw >= 0.05) rating = "buy";
+  else if (upsidePctRaw >= -0.05) rating = "hold";
+  else if (upsidePctRaw >= -0.2) rating = "sell";
   else rating = "strong_sell";
 
   // Factor chips
@@ -161,6 +180,7 @@ export function computeValuation(
     growthPremium,
     targetPrice,
     upsidePct,
+    upsidePctRaw,
     rating,
     factors,
   };

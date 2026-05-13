@@ -94,10 +94,10 @@ export default async function CurationPage() {
     })
     .filter((x): x is NonNullable<typeof x> => x !== null);
 
-  // Strong Buy / Buy (upside 5%+)
+  // Strong Buy / Buy (upside 5%+) — raw upside로 정렬 (capped는 동일값 많음)
   const strongBuys = valued
     .filter((x) => x.v.rating === "strong_buy")
-    .sort((a, b) => (b.v.upsidePct ?? 0) - (a.v.upsidePct ?? 0))
+    .sort((a, b) => (b.v.upsidePctRaw ?? 0) - (a.v.upsidePctRaw ?? 0))
     .slice(0, 10);
 
   // 저평가 가치주 — PER < sector median × 0.7
@@ -120,7 +120,7 @@ export default async function CurationPage() {
       const pos = (cur - low) / (high - low);
       return pos > 0.7;
     })
-    .sort((a, b) => (b.v.upsidePct ?? 0) - (a.v.upsidePct ?? 0))
+    .sort((a, b) => (b.v.upsidePctRaw ?? 0) - (a.v.upsidePctRaw ?? 0))
     .slice(0, 10);
 
   // Sector list (top 8 by stock count)
