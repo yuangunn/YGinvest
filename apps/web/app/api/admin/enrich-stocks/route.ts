@@ -11,7 +11,7 @@ import { createClient } from "@/lib/supabase/server";
  */
 export const maxDuration = 300; // 5 min — yfinance fetching 200+ symbols is slow
 
-export async function POST(_request: Request) {
+export async function POST() {
   // 인증 없음 — idempotent enrichment trigger. 결과는 모두 공개 데이터(sector/PER/52w).
   // 호출 자체는 무겁지만 worker 내부에 retry 가드 있음.
   const workerUrl = process.env.WORKER_RPC_URL;

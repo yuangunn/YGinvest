@@ -158,12 +158,97 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
         <CardHeader>
           <CardTitle className="text-base">기본 정보</CardTitle>
         </CardHeader>
-        <CardContent className="text-sm space-y-1">
-          <div>섹터: {stock.sector ?? "—"}</div>
-          <div>시가총액: {stock.market_cap ? fmt.format(Number(stock.market_cap)) : "—"}</div>
-          <div>PER: {stock.per ?? "—"}</div>
-          <div>52주 최고: {stock.fifty_two_week_high ? fmt.format(Number(stock.fifty_two_week_high)) : "—"}</div>
-          <div>52주 최저: {stock.fifty_two_week_low ? fmt.format(Number(stock.fifty_two_week_low)) : "—"}</div>
+        <CardContent className="text-sm">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+            <InfoRow label="섹터" value={stock.sector} />
+            <InfoRow
+              label="시가총액"
+              value={
+                stock.market_cap
+                  ? formatMarketCap(Number(stock.market_cap), stock.currency)
+                  : null
+              }
+            />
+            <InfoRow
+              label="PER (주가수익비율)"
+              value={stock.per ? Number(stock.per).toFixed(2) : null}
+              hint={
+                stock.per && stock.last_price
+                  ? `EPS ≈ ${fmt.format(Number(stock.last_price) / Number(stock.per))}`
+                  : undefined
+              }
+            />
+            <InfoRow
+              label="52주 최고"
+              value={
+                stock.fifty_two_week_high
+                  ? fmt.format(Number(stock.fifty_two_week_high))
+                  : null
+              }
+              hint={
+                stock.fifty_two_week_high && stock.last_price
+                  ? `현재 대비 ${(
+                      ((Number(stock.last_price) - Number(stock.fifty_two_week_high)) /
+                        Number(stock.fifty_two_week_high)) *
+                      100
+                    ).toFixed(1)}%`
+                  : undefined
+              }
+            />
+            <InfoRow
+              label="52주 최저"
+              value={
+                stock.fifty_two_week_low
+                  ? fmt.format(Number(stock.fifty_two_week_low))
+                  : null
+              }
+              hint={
+                stock.fifty_two_week_low && stock.last_price
+                  ? `현재 대비 +${(
+                      ((Number(stock.last_price) - Number(stock.fifty_two_week_low)) /
+                        Number(stock.fifty_two_week_low)) *
+                      100
+                    ).toFixed(1)}%`
+                  : undefined
+              }
+            />
+            <InfoRow
+              label="52주 범위 내 위치"
+              value={
+                stock.fifty_two_week_high &&
+                stock.fifty_two_week_low &&
+                stock.last_price &&
+                Number(stock.fifty_two_week_high) > Number(stock.fifty_two_week_low)
+                  ? `${(
+                      ((Number(stock.last_price) - Number(stock.fifty_two_week_low)) /
+                        (Number(stock.fifty_two_week_high) -
+                          Number(stock.fifty_two_week_low))) *
+                      100
+                    ).toFixed(0)}%`
+                  : null
+              }
+              hint="0% = 52w 저점, 100% = 52w 고점"
+            />
+            <InfoRow
+              label="시장"
+              value={
+                stock.market === "KRX_KS"
+                  ? "KOSPI"
+                  : stock.market === "KRX_KQ"
+                    ? "KOSDAQ"
+                    : stock.market
+              }
+            />
+            <InfoRow
+              label="통화"
+              value={stock.currency}
+            />
+          </div>
+          {(!stock.sector || !stock.per || !stock.fifty_two_week_high) && (
+            <div className="text-[10px] text-muted-foreground mt-3 pt-2 border-t">
+              ⚠️ 일부 데이터 미수집 — 매일 05:30 KST에 yfinance에서 갱신 (관리자 트리거 가능: POST `/api/admin/enrich-stocks`)
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -186,4 +271,38 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
       </Card>
     </div>
   );
+}
+
+function InfoRow({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string | null | undefined;
+  hint?: string;
+}) {
+  return (
+    <div>
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className={`font-medium ${value ? "" : "text-muted-foreground"}`}>
+        {value ?? "—"}
+      </div>
+      {hint && value && (
+        <div className="text-[10px] text-muted-foreground mt-0.5">{hint}</div>
+      )}
+    </div>
+  );
+}
+
+function formatMarketCap(cap: number, currency: string): string {
+  if (currency === "KRW") {
+    if (cap >= 1e12) return `${(cap / 1e12).toFixed(1)}조원`;
+    if (cap >= 1e8) return `${(cap / 1e8).toFixed(0)}억원`;
+    return KRW.format(cap);
+  }
+  if (cap >= 1e12) return `$${(cap / 1e12).toFixed(2)}T`;
+  if (cap >= 1e9) return `$${(cap / 1e9).toFixed(2)}B`;
+  if (cap >= 1e6) return `$${(cap / 1e6).toFixed(1)}M`;
+  return USD.format(cap);
 }
