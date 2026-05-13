@@ -312,12 +312,20 @@ NXT 시간 매트릭스 (Plan #7.5 + #12):
 | after | 15:30–20:00 | ✅ (spread) | ✅ | ✅ | 10 bps |
 | closed | 20:00–08:00 + 주말 | ❌ | ✅ (펜딩) | ❌ | — |
 
-### 다음 plans (Plan #12 이후)
+### Plan #11.6 — 큐 상태 UI 시각화 ✅ 완료
+
+- [x] `components/queue-indicator.tsx` — 5초마다 IndexedDB `serwist-background-sync` 폴링하여 `orders-sync`/`fx-sync`/`watchlist-sync` queue length 합산
+- [x] 헤더에 마운트 (ThemeToggle 옆) — 큐 비어있고 online이면 hidden
+- [x] online/offline 이벤트 리스너 — offline 상태에선 큐 비어도 WifiOff 아이콘 표시
+- [x] 클릭 시 sonner toast로 카테고리별 breakdown ("주문 1 · 환전 0 · 관심종목 0")
+- [x] navigator.onLine 사용 — lazy useState init으로 SSR safe (React 19 strict)
+
+### 다음 plans (Plan #11.6 이후)
 
 - 사용자별 개인화 추천
 - 차트 색 팔레트 커스텀 / 페이지 전환 애니메이션
-- 큐 상태 UI — pending sync 개수 시각화
 - Dynamic NXT spread — 유동성 티어별 differential
+- 큐 강제 flush 버튼
 
 ## 디버깅 팁
 

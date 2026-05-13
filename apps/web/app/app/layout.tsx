@@ -4,6 +4,7 @@ import { BottomNav } from "@/components/bottom-nav";
 import { Logo } from "@/components/logo";
 import { LogoutButton } from "@/components/logout-button";
 import { PortfolioSwitcher } from "@/components/portfolio-switcher";
+import { QueueIndicator } from "@/components/queue-indicator";
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
   getSelectedPortfolioId,
@@ -33,6 +34,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <Logo />
         <div className="flex items-center gap-3 text-sm">
           <PortfolioSwitcher portfolios={portfolios} selectedId={selectedId} />
+          <QueueIndicator />
           <ThemeToggle />
           <span className="text-muted-foreground hidden sm:inline">
             {profile?.display_name ?? user.email}
