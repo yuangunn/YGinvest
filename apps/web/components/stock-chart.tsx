@@ -13,7 +13,7 @@ import {
   type SeriesType,
   type Time,
 } from "lightweight-charts";
-import { ma, rsi, bollinger, macd, stochastic } from "@/lib/indicators";
+import { ma, rsi, bollinger, macd, stochastic, vwap } from "@/lib/indicators";
 import { PALETTES, type PaletteId } from "@/lib/chart-palettes";
 
 type Bar = {
@@ -25,16 +25,27 @@ type Bar = {
   volume: number;
 };
 
-export type IndicatorType = "none" | "ma" | "rsi" | "bollinger" | "macd" | "stoch";
+export type IndicatorType =
+  | "none"
+  | "ma"
+  | "rsi"
+  | "bollinger"
+  | "macd"
+  | "stoch"
+  | "vwap";
+
+export type DrawingMode = "none" | "trendline" | "fib";
 
 type Props = {
   bars: Bar[];
   height?: number;
   indicator?: IndicatorType;
   paletteId?: PaletteId;
-  drawingMode?: boolean;
+  drawingMode?: DrawingMode;
   trendlines?: TrendlinePoints[];
+  fibLines?: TrendlinePoints[];
   onTrendlineComplete?: (line: TrendlinePoints) => void;
+  onFibComplete?: (line: TrendlinePoints) => void;
 };
 
 export type TrendlinePoints = {
@@ -43,6 +54,16 @@ export type TrendlinePoints = {
   t2: Time;
   p2: number;
 };
+
+const FIB_LEVELS = [
+  { level: 0, label: "0%", color: "#10b981" },
+  { level: 0.236, label: "23.6%", color: "#3b82f6" },
+  { level: 0.382, label: "38.2%", color: "#8b5cf6" },
+  { level: 0.5, label: "50%", color: "#a855f7" },
+  { level: 0.618, label: "61.8%", color: "#ec4899" },
+  { level: 0.786, label: "78.6%", color: "#f59e0b" },
+  { level: 1, label: "100%", color: "#ef4444" },
+];
 
 type HoverData = {
   index: number;
@@ -57,6 +78,7 @@ type HoverData = {
   macdHist?: number;
   stochK?: number;
   stochD?: number;
+  vwap?: number;
 };
 
 function tsToTime(ts: string): Time {
@@ -79,9 +101,11 @@ export function StockChart({
   height = 320,
   indicator = "ma",
   paletteId = "classic",
-  drawingMode = false,
+  drawingMode = "none",
   trendlines = [],
+  fibLines = [],
   onTrendlineComplete,
+  onFibComplete,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -159,6 +183,24 @@ export function StockChart({
       ma60Series.setData(
         bars
           .map((b, i) => ({ time: tsToTime(b.ts), value: ma60[i] }))
+          .filter((d): d is { time: Time; value: number } => d.value !== undefined),
+      );
+    } else if (indicator === "vwap") {
+      const vwapValues = vwap(
+        bars.map((b) => ({
+          high: b.high,
+          low: b.low,
+          close: b.close,
+          volume: b.volume,
+        })),
+      );
+      const vwapSeries = chart.addSeries(LineSeries, {
+        color: palette.ma60,
+        lineWidth: 2,
+      });
+      vwapSeries.setData(
+        bars
+          .map((b, i) => ({ time: tsToTime(b.ts), value: vwapValues[i] }))
           .filter((d): d is { time: Time; value: number } => d.value !== undefined),
       );
     } else if (indicator === "bollinger") {
@@ -367,6 +409,17 @@ export function StockChart({
       indicator === "stoch"
         ? stochastic(bars.map((b) => b.high), bars.map((b) => b.low), closes, 14, 3)
         : null;
+    const vwapVals =
+      indicator === "vwap"
+        ? vwap(
+            bars.map((b) => ({
+              high: b.high,
+              low: b.low,
+              close: b.close,
+              volume: b.volume,
+            })),
+          )
+        : [];
     const MACD_SLOW = 26;
 
     const timeToIndex = new Map<string, number>();
@@ -379,7 +432,12 @@ export function StockChart({
     for (const tl of trendlines) {
       const trendSeries = chart.addSeries(
         LineSeries,
-        { color: "#9333ea", lineWidth: 2, lastValueVisible: false, priceLineVisible: false },
+        {
+          color: "#9333ea",
+          lineWidth: 2,
+          lastValueVisible: false,
+          priceLineVisible: false,
+        },
         0,
       );
       trendSeries.setData([
@@ -388,9 +446,36 @@ export function StockChart({
       ]);
     }
 
-    // ─── Click capture for drawing trendlines ────────────────────────────
+    // ─── Render Fibonacci retracement lines on price pane ────────────────
+    for (const fib of fibLines) {
+      // fib.p1 = swing high (or low), fib.p2 = swing low (or high)
+      const high = Math.max(fib.p1, fib.p2);
+      const low = Math.min(fib.p1, fib.p2);
+      const range = high - low;
+      for (const lv of FIB_LEVELS) {
+        const price = high - range * lv.level;
+        const fibSeries = chart.addSeries(
+          LineSeries,
+          {
+            color: lv.color,
+            lineWidth: 1,
+            lineStyle: LineStyle.Dotted,
+            lastValueVisible: false,
+            priceLineVisible: false,
+            title: lv.label,
+          },
+          0,
+        );
+        fibSeries.setData([
+          { time: fib.t1, value: price },
+          { time: fib.t2, value: price },
+        ]);
+      }
+    }
+
+    // ─── Click capture for drawing trendlines / fib ──────────────────────
     const clickHandler = (param: MouseEventParams) => {
-      if (!drawingMode || !onTrendlineComplete) return;
+      if (drawingMode === "none") return;
       if (!param.time || !param.point) return;
       const series = candleSeriesRef.current;
       if (!series) return;
@@ -399,15 +484,20 @@ export function StockChart({
 
       if (!drawingStateRef.current.point1) {
         drawingStateRef.current.point1 = { t: param.time, p: price };
-      } else {
-        const p1 = drawingStateRef.current.point1;
-        drawingStateRef.current.point1 = null;
-        onTrendlineComplete({
-          t1: p1.t,
-          p1: p1.p,
-          t2: param.time,
-          p2: price,
-        });
+        return;
+      }
+      const p1 = drawingStateRef.current.point1;
+      drawingStateRef.current.point1 = null;
+      const line: TrendlinePoints = {
+        t1: p1.t,
+        p1: p1.p,
+        t2: param.time,
+        p2: price,
+      };
+      if (drawingMode === "trendline" && onTrendlineComplete) {
+        onTrendlineComplete(line);
+      } else if (drawingMode === "fib" && onFibComplete) {
+        onFibComplete(line);
       }
     };
     chart.subscribeClick(clickHandler);
@@ -446,6 +536,7 @@ export function StockChart({
             : undefined,
         stochK: stochData?.k[idx],
         stochD: stochData?.d[idx],
+        vwap: vwapVals[idx],
       });
     });
 
@@ -472,7 +563,9 @@ export function StockChart({
     paletteId,
     drawingMode,
     trendlines,
+    fibLines,
     onTrendlineComplete,
+    onFibComplete,
   ]);
 
   if (bars.length === 0) {
@@ -604,6 +697,17 @@ function ChartTooltip({
           )}
         </div>
       )}
+      {indicator === "vwap" && data.vwap !== undefined && (
+        <div className="text-muted-foreground mt-0.5">
+          VWAP <span className="font-semibold">{data.vwap.toFixed(2)}</span>
+          {data.vwap < b.close && (
+            <span className="ml-1 text-green-500">above</span>
+          )}
+          {data.vwap > b.close && (
+            <span className="ml-1 text-red-500">below</span>
+          )}
+        </div>
+      )}
       {indicator === "stoch" &&
         (data.stochK !== undefined || data.stochD !== undefined) && (
           <div className="text-muted-foreground mt-0.5">
@@ -655,6 +759,19 @@ function ChartLegend({
             style={{ backgroundColor: palette.ma60 }}
           />
           MA60
+        </span>
+      </div>
+    );
+  }
+  if (indicator === "vwap") {
+    return (
+      <div className="text-xs text-muted-foreground mt-2 flex gap-3 justify-center">
+        <span>
+          <span
+            className="inline-block w-3 h-1 align-middle mr-1"
+            style={{ backgroundColor: palette.ma60 }}
+          />
+          VWAP — Volume-Weighted Avg Price
         </span>
       </div>
     );
