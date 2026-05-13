@@ -271,12 +271,32 @@ NOTE: `start_url=/app/dashboard`라 로그아웃 상태에서 첫 실행 시 자
 3. DevTools → Network → "Offline" 체크 → 새 URL 이동 → `/offline` 페이지 표시
 4. DevTools → Application → Cache Storage → `pages`, `read-api`, `next-static`, `images`, `fonts` 확인
 
-### 다음 plans (Plan #11 이후)
+### Plan #11.5 — Background Sync (오프라인 중 주문 큐잉) ✅ 완료
+
+- [x] Workbox `BackgroundSyncPlugin` — orders/fx/watchlist 변경 API를 IndexedDB 큐에 저장 후 'sync' 이벤트로 자동 재전송
+- [x] 큐 카테고리 분리: `orders-sync` / `fx-sync` / `watchlist-sync` (디버깅 용이성)
+- [x] 최대 보존 시간 `maxRetentionTime: 60` — 1시간 넘은 큐는 자동 폐기
+- [x] 클라이언트 helper `lib/offline-fetch.ts` — `navigator.onLine === false` 감지 → `{ status: "queued" }` 반환
+- [x] 4개 폼 적용: `OrderForm`, `FxExchangeForm`, `WatchlistButton`, `CancelOrderButton`
+- [x] 시장가 주문 토스트에 가격 risk 명시: "시장가는 그때 가격으로 체결"
+- [x] 환전 토스트에 환율 risk 명시: "그때 환율 적용"
+- [x] WatchlistButton optimistic toggle — queued 시에도 UI 즉시 반영, sync 실패 시 재토글 가능
+- [x] iOS Safari는 Background Sync API 미지원 — graceful degradation (그냥 fetch 실패 → toast.error)
+- [x] BackgroundSyncPlugin은 Request object 전체를 IDB에 직렬화 — cookies(`credentials: "same-origin"` default)가 replay 시 자동 포함
+
+큐 동작 검증 (Chrome):
+1. https://yginvest.vercel.app 한 번 방문 → SW 활성화
+2. DevTools → Network → "Offline"
+3. 관심종목 토글 / 주문 / 환전 → 토스트 "오프라인 — 연결 시 자동..."
+4. DevTools → Application → IndexedDB → `serwist-background-sync` 또는 `workbox-background-sync` queue에 entry 확인
+5. Network "Offline" 해제 → 자동 재전송 → 큐 비워짐 (DB 새로고침)
+
+### 다음 plans (Plan #11.5 이후)
 
 - Plan #12: NXT Phase B (가격 spread + 미드포인트 호가)
 - 사용자별 개인화 추천
 - 차트 색 팔레트 커스텀 / 페이지 전환 애니메이션
-- Background Sync — 오프라인 중 주문 큐잉
+- 큐 상태 UI — pending sync 개수 시각화
 
 ## 디버깅 팁
 

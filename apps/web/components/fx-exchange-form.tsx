@@ -1,9 +1,11 @@
 "use client";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { offlineFetch } from "@/lib/offline-fetch";
 
 export function FxExchangeForm({
   portfolioId,
@@ -25,25 +27,33 @@ export function FxExchangeForm({
     e.preventDefault();
     setMessage(null);
     setSubmitting(true);
-    const [from_currency, to_currency] = direction === "KRW_TO_USD" ? ["KRW", "USD"] : ["USD", "KRW"];
-    const res = await fetch("/api/fx/exchange", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        portfolio_id: portfolioId,
-        from_currency,
-        to_currency,
-        from_amount: Number(amount),
-      }),
-    });
+    const [from_currency, to_currency] =
+      direction === "KRW_TO_USD" ? ["KRW", "USD"] : ["USD", "KRW"];
+    const result = await offlineFetch<{ to_amount: number; rate: number }>(
+      "/api/fx/exchange",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          portfolio_id: portfolioId,
+          from_currency,
+          to_currency,
+          from_amount: Number(amount),
+        }),
+      },
+    );
     setSubmitting(false);
-    if (res.ok) {
-      const data = await res.json();
-      setMessage({ kind: "ok", text: `완료: ${data.to_amount} ${to_currency} (rate ${data.rate})` });
+    if (result.status === "ok") {
+      setMessage({
+        kind: "ok",
+        text: `완료: ${result.data.to_amount} ${to_currency} (rate ${result.data.rate})`,
+      });
       setTimeout(() => location.reload(), 1500);
+    } else if (result.status === "queued") {
+      toast.info("오프라인 — 연결 시 환전 요청 전송됩니다 (그때 환율 적용)");
+      setMessage({ kind: "ok", text: "동기화 예약됨" });
     } else {
-      const err = await res.json().catch(() => ({}));
-      setMessage({ kind: "err", text: err.error ?? "오류" });
+      setMessage({ kind: "err", text: result.error });
     }
   }
 
