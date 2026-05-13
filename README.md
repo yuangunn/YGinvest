@@ -354,12 +354,24 @@ NXT 시간 매트릭스 (Plan #7.5 + #12):
 - [x] `motion-reduce:animate-none` — 접근성 (prefers-reduced-motion 존중)
 - [x] 200ms 짧은 transition으로 답답함 회피
 
-### 다음 plans (Plan #14 이후)
+### Plan #15 — 차트 보강 ✅ 완료
+
+lightweight-charts v5 multi-pane을 활용해 차트 시각화를 강화:
+
+- [x] **거래량 바** — 캔들 아래 sub-pane (`paneIndex: 1`, height 80px)에 `HistogramSeries`. 봉 색은 전일 종가 대비 up/down으로 결정, `chart-palettes.ts`의 팔레트 색 적용 (Korean이면 빨강/파랑)
+- [x] **RSI sub-panel** — indicator===rsi 선택 시 pane 2(height 100px)에 RSI(14) LineSeries + 70/50/30 reference price lines (`createPriceLine`)
+- [x] **Crosshair tooltip** — `subscribeCrosshairMove` 구독으로 hover된 봉의 OHLC + Volume + 활성 indicator값을 좌상단 floating div에 실시간 표시 (mono font, blur background). hover가 없으면 마지막 봉 데이터를 "(최근)" 레이블과 함께
+- [x] `chart.crosshair: { mode: 1 }` — magnet 모드 (cursor가 가까운 봉에 스냅)
+- [x] RSI legend 제거 — panel 시각화 자체가 self-documenting
+
+### 다음 plans (Plan #15 이후)
 
 - Dynamic NXT spread — 유동성 티어별 differential
 - 큐 강제 flush 버튼
 - 추천 클릭 추적 (analytics)
-- 차트에 거래량 바 + 보조 panel
+- MACD 지표 + Stochastic
+- 차트 비교 (compare overlay — 두 종목 동시 표시)
+- Drawing tools (trendline, fib retracement)
 
 ## 디버깅 팁
 
