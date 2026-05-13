@@ -1,5 +1,6 @@
 /// <reference lib="webworker" />
 import {
+  BackgroundSyncPlugin,
   CacheFirst,
   ExpirationPlugin,
   NetworkFirst,
@@ -18,6 +19,20 @@ declare global {
 }
 
 declare const self: ServiceWorkerGlobalScope;
+
+// =========================================================================
+// Background Sync queues (Plan #11.5) — categorical for debuggability
+// 60min retention; older queue entries are auto-dropped.
+// =========================================================================
+const ordersSyncPlugin = new BackgroundSyncPlugin("orders-sync", {
+  maxRetentionTime: 60,
+});
+const fxSyncPlugin = new BackgroundSyncPlugin("fx-sync", {
+  maxRetentionTime: 60,
+});
+const watchlistSyncPlugin = new BackgroundSyncPlugin("watchlist-sync", {
+  maxRetentionTime: 60,
+});
 
 // =========================================================================
 // Explicit runtime caching — README와 1:1 매칭
@@ -75,7 +90,26 @@ const runtimeCaching: RuntimeCaching[] = [
       ],
     }),
   },
-  // 5. 변경 API — 절대 캐시 안 함 (POST/PATCH/DELETE)
+  // 5a. Orders mutation — Background Sync queueing (Plan #11.5)
+  {
+    matcher: ({ url, request }) =>
+      request.method !== "GET" && url.pathname.startsWith("/api/orders"),
+    handler: new NetworkOnly({ plugins: [ordersSyncPlugin] }),
+  },
+  // 5b. FX mutation — Background Sync queueing
+  {
+    matcher: ({ url, request }) =>
+      request.method !== "GET" && url.pathname.startsWith("/api/fx"),
+    handler: new NetworkOnly({ plugins: [fxSyncPlugin] }),
+  },
+  // 5c. Watchlist mutation — Background Sync queueing
+  {
+    matcher: ({ url, request }) =>
+      request.method !== "GET" && url.pathname.startsWith("/api/watchlist"),
+    handler: new NetworkOnly({ plugins: [watchlistSyncPlugin] }),
+  },
+  // 5d. 나머지 변경 API (push, rooms, portfolio/select, notification-settings)
+  //     — NetworkOnly without queueing (이 endpoints는 offline 큐잉 가치 낮음)
   {
     matcher: ({ request }) => request.method !== "GET",
     handler: new NetworkOnly(),
