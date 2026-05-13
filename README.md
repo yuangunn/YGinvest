@@ -329,12 +329,37 @@ NXT 시간 매트릭스 (Plan #7.5 + #12):
 - [x] 대시보드 최상단에 `Sparkles` 아이콘 + sector chip badges 와 함께 노출
 - [x] KR/US 혼합 (글로벌 trending과 차별 — 사용자가 보유한 sector에 따라)
 
-### 다음 plans (Plan #8.5 이후)
+### Plan #11.7 — SW 페이지 캐시 핫픽스 ✅ 완료
 
-- 차트 색 팔레트 커스텀 / 페이지 전환 애니메이션
+- [x] 증상: 사용자가 "주가가 오전 8시 34분 이후 안 갱신됨"이라고 보고. 워커는 정상이었고 Supabase DB는 실시간 갱신 중. 원인은 Plan #11에서 도입한 `NetworkFirst` + `maxAgeSeconds: 24h` 페이지 캐시가 stale HTML 서빙.
+- [x] 수정: `app/sw.ts`의 navigation matcher를 `NetworkFirst` → `NetworkOnly`로 변경. 오프라인 fallback은 Serwist `fallbacks.entries`가 `/offline`으로 자동 처리.
+- [x] activate handler 추가 — 기존 `pages` 캐시 wipe. 기존 영향 사용자가 SW 활성화 시 자동 복구.
+
+### Plan #13 — 차트 색 팔레트 커스텀 ✅ 완료
+
+- [x] `lib/chart-palettes.ts` — 4가지 프리셋:
+  - **Classic** (글로벌): green up / red down
+  - **Korean** (한국): red up / blue down — KOSPI/KOSDAQ 관행
+  - **Mono** (미니멀): gray scale, 강조 없음
+  - **Colorblind** (색약): blue up / orange down — deuteranopia/protanopia safe
+- [x] `ChartControls`에 `<select>` 팔레트 picker + 현재 up/down 색 인디케이터 (Palette icon)
+- [x] `StockChart` — candlestick, MA20/MA60, Bollinger 모두 팔레트 적용
+- [x] localStorage `yginvest:chart-palette` 저장 (테마 토글과 분리)
+- [x] SSR-safe: 초기 DEFAULT → mount 후 localStorage 읽음 (hydration mismatch 없음)
+
+### Plan #14 — 페이지 전환 애니메이션 ✅ 완료
+
+- [x] `app/app/template.tsx` + `app/auth/template.tsx` — Next.js App Router `template.tsx`로 매 네비게이션마다 fresh mount
+- [x] tw-animate-css 유틸리티: `animate-in fade-in slide-in-from-bottom-1 duration-200`
+- [x] `motion-reduce:animate-none` — 접근성 (prefers-reduced-motion 존중)
+- [x] 200ms 짧은 transition으로 답답함 회피
+
+### 다음 plans (Plan #14 이후)
+
 - Dynamic NXT spread — 유동성 티어별 differential
 - 큐 강제 flush 버튼
 - 추천 클릭 추적 (analytics)
+- 차트에 거래량 바 + 보조 panel
 
 ## 디버깅 팁
 
