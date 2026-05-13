@@ -14,6 +14,8 @@ import {
   RATING_LABEL,
   type Rating,
 } from "@/lib/valuation";
+import { AiAnalysisButton } from "@/components/ai-analysis-button";
+import type { Provider } from "@/lib/ai-providers";
 
 const KRW = new Intl.NumberFormat("ko-KR", {
   style: "currency",
@@ -95,6 +97,15 @@ export default async function StockAnalysisPage({
       .limit(5);
     peers = peerData ?? [];
   }
+
+  // 사용자가 등록한 AI provider 목록
+  const { data: aiKeys } = await supabase
+    .from("user_ai_keys")
+    .select("provider")
+    .eq("user_id", user.id);
+  const registeredProviders = ((aiKeys as { provider: string }[] | null) ?? []).map(
+    (k) => k.provider as Provider,
+  );
 
   return (
     <div className="max-w-3xl mx-auto p-4 space-y-4">
@@ -228,6 +239,12 @@ export default async function StockAnalysisPage({
           </div>
         </CardContent>
       </Card>
+
+      {/* AI 분석 (BYOK) */}
+      <AiAnalysisButton
+        symbol={stock.symbol}
+        registeredProviders={registeredProviders}
+      />
 
       {/* 재무제표 (worker RPC 활용) */}
       <Suspense
