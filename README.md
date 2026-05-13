@@ -320,12 +320,21 @@ NXT 시간 매트릭스 (Plan #7.5 + #12):
 - [x] 클릭 시 sonner toast로 카테고리별 breakdown ("주문 1 · 환전 0 · 관심종목 0")
 - [x] navigator.onLine 사용 — lazy useState init으로 SSR safe (React 19 strict)
 
-### 다음 plans (Plan #11.6 이후)
+### Plan #8.5 — 사용자별 개인화 추천 ✅ 완료
 
-- 사용자별 개인화 추천
+- [x] `components/personalized-recommendations.tsx` — server component, 요청 시점에 계산
+- [x] 시그널: 사용자 portfolio의 `holdings` ∪ `watchlists` 심볼
+- [x] 알고리즘: 사용자 심볼 → sector 빈도 → top 2 sector → 그 sector 안의 안 가진 stocks market_cap top 5
+- [x] 빈 시그널 (홀딩 0 + 관심 0)이면 `null` 반환 (새 사용자는 기존 글로벌 추천만)
+- [x] 대시보드 최상단에 `Sparkles` 아이콘 + sector chip badges 와 함께 노출
+- [x] KR/US 혼합 (글로벌 trending과 차별 — 사용자가 보유한 sector에 따라)
+
+### 다음 plans (Plan #8.5 이후)
+
 - 차트 색 팔레트 커스텀 / 페이지 전환 애니메이션
 - Dynamic NXT spread — 유동성 티어별 differential
 - 큐 강제 flush 버튼
+- 추천 클릭 추적 (analytics)
 
 ## 디버깅 팁
 

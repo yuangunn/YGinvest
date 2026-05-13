@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getSelectedPortfolioId } from "@/lib/portfolio-context";
 import { RecommendationsSection } from "@/components/recommendations-section";
+import { PersonalizedRecommendations } from "@/components/personalized-recommendations";
 
 function RecommendationsSkeleton() {
   return (
@@ -136,6 +137,12 @@ export default async function DashboardPage() {
           </div>
         </CardContent>
       </Card>
+
+      {portfolioId && (
+        <Suspense fallback={<RecommendationsSkeleton />}>
+          <PersonalizedRecommendations portfolioId={portfolioId} />
+        </Suspense>
+      )}
 
       <Suspense fallback={<RecommendationsSkeleton />}>
         <RecommendationsSection category="top_gainers" scope="KR" />
