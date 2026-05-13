@@ -6,7 +6,6 @@ import { LogoutButton } from "@/components/logout-button";
 import { PortfolioSwitcher } from "@/components/portfolio-switcher";
 import { PullToRefresh } from "@/components/pull-to-refresh";
 import { QueueIndicator } from "@/components/queue-indicator";
-import { SwipeNav } from "@/components/swipe-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
   getSelectedPortfolioId,
@@ -33,7 +32,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-dvh flex flex-col">
       <PullToRefresh />
-      <SwipeNav />
       <header className="border-b px-4 py-3 flex items-center justify-between">
         <Logo />
         <div className="flex items-center gap-3 text-sm">
