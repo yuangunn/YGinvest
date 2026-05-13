@@ -364,14 +364,66 @@ lightweight-charts v5 multi-pane을 활용해 차트 시각화를 강화:
 - [x] `chart.crosshair: { mode: 1 }` — magnet 모드 (cursor가 가까운 봉에 스냅)
 - [x] RSI legend 제거 — panel 시각화 자체가 self-documenting
 
-### 다음 plans (Plan #15 이후)
+### Plan #11.8 — 큐 강제 flush 버튼 ✅ 완료
 
-- Dynamic NXT spread — 유동성 티어별 differential
-- 큐 강제 flush 버튼
-- 추천 클릭 추적 (analytics)
-- MACD 지표 + Stochastic
-- 차트 비교 (compare overlay — 두 종목 동시 표시)
-- Drawing tools (trendline, fib retracement)
+- [x] `QueueIndicator` 클릭 → toast 액션 "지금 동기화" 버튼 노출
+- [x] 클라이언트가 `navigator.serviceWorker.controller.postMessage({type: "FLUSH_QUEUES"})` + MessageChannel로 SW에 응답 요청
+- [x] SW의 `message` 핸들러가 각 큐(orders/fx/watchlist)의 `shiftRequest()` 루프로 강제 재전송. 실패 시 큐 앞쪽으로 `unshiftRequest`
+- [x] 결과 응답 (`{sent, failed}`) → 토스트로 결과 표시
+
+### Plan #12.5 — Dynamic NXT spread ✅ 완료
+
+유동성 티어별 spread (시가총액 KRW 기준):
+
+| 티어 | 시총 | spread |
+|------|------|--------|
+| 대형주 | ≥ 10조원 | **5 bps** |
+| 중형주 | 1~10조원 | **10 bps** |
+| 소형주 | < 1조원 | **20 bps** |
+| 미상 | NULL | **15 bps** |
+
+- [x] DB: `_kr_spread_bps(market_cap)` immutable helper + `place_market_order` 동적 spread 적용
+- [x] Web: `lib/nxt-spread.ts` (PG 함수 미러), `NxtSpreadBadge`에 spread + 티어 라벨 표시
+- [x] 대형주 = tighter spread = 더 좋은 시장가 체결 (현실감 ↑)
+
+### Plan #16 — 추천 클릭 추적 ✅ 완료
+
+- [x] DB: `recommendation_clicks` 테이블 + RLS (본인만 insert/select), category/symbol/user 인덱스
+- [x] API: `POST /api/analytics/recommendation-click` — fire-and-forget 인덱싱
+- [x] 클라이언트: `lib/analytics.ts::trackRecommendationClick()` — `navigator.sendBeacon` 우선, fallback fetch keepalive
+- [x] 컴포넌트: `RecommendationCardLink` (client) — 모든 추천 카드(`RecommendationsSection` + `PersonalizedRecommendations`)에 적용
+- [x] 향후 ML 기반 추천에 사용자 행동 시그널로 활용 가능
+
+### Plan #17 — MACD + Stochastic 지표 ✅ 완료
+
+- [x] `lib/indicators.ts`에 `stochastic(highs, lows, closes, kPeriod, dPeriod)` 추가 (기존 `macd()`는 재사용)
+- [x] `ChartControls`에 "MACD" + "Stoch" 버튼 추가 (6개 indicator total)
+- [x] `StockChart` pane 2에:
+  - MACD: macd line(ma60 색) + signal line(ma20 색) + histogram (양/음 색) + 0 reference
+  - Stochastic: %K line + %D line + 80/20 reference lines
+- [x] Crosshair tooltip에 MACD/Sig/Hist + %K/%D 표시
+
+### Plan #18 — 차트 비교 overlay ✅ 완료
+
+- [x] `/app/compare?a=&b=` 페이지 — 두 종목 입력 폼
+- [x] `CompareChartClient` (client) — 일봉 데이터 fetch + 시작가 100 normalize + LineSeries 2개 overlay
+- [x] 트레이드 detail 헤더에 "비교" 버튼 (해당 종목 prefilled)
+- [x] 색: A=blue, B=orange (구분 잘 됨)
+
+### Plan #19 — Drawing tools (trendline) ✅ 완료
+
+- [x] `StockChart`에 `drawingMode` / `trendlines` / `onTrendlineComplete` props
+- [x] `subscribeClick` + `coordinateToPrice`로 두 점 캡처 → time/price 쌍을 trendline으로 저장
+- [x] LineSeries (보라색, lastValueVisible: false) 로 차트에 렌더 — chart zoom/pan에 자동 따라옴
+- [x] `ChartArea`에 "추세선" 토글 + "지우기 (N)" 버튼
+- [x] 종목/인터벌 변경 시 자동 초기화 (서로 다른 데이터셋에 옛 트렌드 무의미)
+
+### 다음 plans (Plan #19 이후)
+
+- VWAP / Volume Profile
+- 추천 클릭 history 페이지 (분석 대시보드)
+- Fib retracement / horizontal lines
+- 백테스팅 (간이) — trendline 기반 신호 generate
 
 ## 디버깅 팁
 

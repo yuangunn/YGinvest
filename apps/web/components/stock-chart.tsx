@@ -32,6 +32,16 @@ type Props = {
   height?: number;
   indicator?: IndicatorType;
   paletteId?: PaletteId;
+  drawingMode?: boolean;
+  trendlines?: TrendlinePoints[];
+  onTrendlineComplete?: (line: TrendlinePoints) => void;
+};
+
+export type TrendlinePoints = {
+  t1: Time;
+  p1: number;
+  t2: Time;
+  p2: number;
 };
 
 type HoverData = {
@@ -69,10 +79,17 @@ export function StockChart({
   height = 320,
   indicator = "ma",
   paletteId = "classic",
+  drawingMode = false,
+  trendlines = [],
+  onTrendlineComplete,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
+  const candleSeriesRef = useRef<ISeriesApi<SeriesType> | null>(null);
   const [hover, setHover] = useState<HoverData | null>(null);
+  const drawingStateRef = useRef<{ point1: { t: Time; p: number } | null }>({
+    point1: null,
+  });
 
   // total chart height — price + volume (+ indicator sub-panel if active)
   const hasIndicatorPane =
@@ -105,6 +122,7 @@ export function StockChart({
       wickUpColor: palette.up,
       wickDownColor: palette.down,
     });
+    candleSeriesRef.current = candleSeries;
 
     const candleData = bars.map((b) => ({
       time: tsToTime(b.ts),
@@ -357,6 +375,43 @@ export function StockChart({
       timeToIndex.set(String(t), i);
     });
 
+    // ─── Render existing trendlines on price pane ────────────────────────
+    for (const tl of trendlines) {
+      const trendSeries = chart.addSeries(
+        LineSeries,
+        { color: "#9333ea", lineWidth: 2, lastValueVisible: false, priceLineVisible: false },
+        0,
+      );
+      trendSeries.setData([
+        { time: tl.t1, value: tl.p1 },
+        { time: tl.t2, value: tl.p2 },
+      ]);
+    }
+
+    // ─── Click capture for drawing trendlines ────────────────────────────
+    const clickHandler = (param: MouseEventParams) => {
+      if (!drawingMode || !onTrendlineComplete) return;
+      if (!param.time || !param.point) return;
+      const series = candleSeriesRef.current;
+      if (!series) return;
+      const price = series.coordinateToPrice(param.point.y);
+      if (price == null) return;
+
+      if (!drawingStateRef.current.point1) {
+        drawingStateRef.current.point1 = { t: param.time, p: price };
+      } else {
+        const p1 = drawingStateRef.current.point1;
+        drawingStateRef.current.point1 = null;
+        onTrendlineComplete({
+          t1: p1.t,
+          p1: p1.p,
+          t2: param.time,
+          p2: price,
+        });
+      }
+    };
+    chart.subscribeClick(clickHandler);
+
     chart.subscribeCrosshairMove((param: MouseEventParams) => {
       if (!param.time || !param.point) {
         setHover(null);
@@ -406,8 +461,19 @@ export function StockChart({
       window.removeEventListener("resize", onResize);
       chart.remove();
       chartRef.current = null;
+      candleSeriesRef.current = null;
     };
-  }, [bars, height, totalHeight, hasIndicatorPane, indicator, paletteId]);
+  }, [
+    bars,
+    height,
+    totalHeight,
+    hasIndicatorPane,
+    indicator,
+    paletteId,
+    drawingMode,
+    trendlines,
+    onTrendlineComplete,
+  ]);
 
   if (bars.length === 0) {
     return (
