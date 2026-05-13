@@ -13,6 +13,7 @@ import { KrSessionBadge } from "@/components/kr-session-badge";
 import { NxtSpreadBadge } from "@/components/nxt-spread-badge";
 import { StockThemes } from "@/components/stock-themes";
 import { StockRatingBadge } from "@/components/stock-rating-badge";
+import { Term } from "@/components/term";
 import { getSelectedPortfolioId } from "@/lib/portfolio-context";
 
 const KRW = new Intl.NumberFormat("ko-KR", { style: "currency", currency: "KRW", maximumFractionDigits: 0 });
@@ -160,9 +161,12 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
         </CardHeader>
         <CardContent className="text-sm">
           <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-            <InfoRow label="섹터" value={stock.sector} />
             <InfoRow
-              label="시가총액"
+              labelNode={<Term k="sector">섹터</Term>}
+              value={stock.sector}
+            />
+            <InfoRow
+              labelNode={<Term k="market-cap">시가총액</Term>}
               value={
                 stock.market_cap
                   ? formatMarketCap(Number(stock.market_cap), stock.currency)
@@ -170,7 +174,11 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
               }
             />
             <InfoRow
-              label="PER (주가수익비율)"
+              labelNode={
+                <>
+                  <Term k="per">PER</Term> (주가수익비율)
+                </>
+              }
               value={stock.per ? Number(stock.per).toFixed(2) : null}
               hint={
                 stock.per && stock.last_price
@@ -179,7 +187,7 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
               }
             />
             <InfoRow
-              label="52주 최고"
+              labelNode={<Term k="52w-high">52주 최고</Term>}
               value={
                 stock.fifty_two_week_high
                   ? fmt.format(Number(stock.fifty_two_week_high))
@@ -196,7 +204,7 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
               }
             />
             <InfoRow
-              label="52주 최저"
+              labelNode={<Term k="52w-low">52주 최저</Term>}
               value={
                 stock.fifty_two_week_low
                   ? fmt.format(Number(stock.fifty_two_week_low))
@@ -275,17 +283,21 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
 
 function InfoRow({
   label,
+  labelNode,
   value,
   hint,
 }: {
-  label: string;
+  label?: string;
+  labelNode?: React.ReactNode;
   value: string | null | undefined;
   hint?: string;
 }) {
   return (
     <div>
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className={`font-medium ${value ? "" : "text-muted-foreground"}`}>
+      <div className="text-xs text-muted-foreground">{labelNode ?? label}</div>
+      <div
+        className={`font-medium tabular-nums ${value ? "" : "text-muted-foreground"}`}
+      >
         {value ?? "—"}
       </div>
       {hint && value && (

@@ -5,6 +5,7 @@ import {
   ArrowLeftRight,
   ArrowRight,
   Bell,
+  BookOpen,
   Search,
   Sparkles,
   Tags,
@@ -50,9 +51,10 @@ const QUICK_ACTIONS = [
   { href: "/app/trade/search", label: "종목 검색", Icon: Search },
   { href: "/app/curation", label: "큐레이션", Icon: Sparkles },
   { href: "/app/themes", label: "테마주", Icon: Tags },
+  { href: "/app/learn", label: "학습", Icon: BookOpen },
   { href: "/app/fx", label: "환전", Icon: ArrowLeftRight },
   { href: "/app/rooms", label: "친구방", Icon: Users },
-  { href: "/app/settings", label: "알림 설정", Icon: Bell },
+  { href: "/app/settings", label: "알림", Icon: Bell },
 ] as const;
 
 export default async function DashboardPage() {
