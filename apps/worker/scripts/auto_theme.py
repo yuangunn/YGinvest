@@ -11,7 +11,6 @@ idempotent: on_conflict do_nothing.
 import io
 import os
 import sys
-from datetime import datetime, timezone
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
@@ -322,7 +321,7 @@ def main():
     print(f"  by name: {by_source['name']}")
     print(f"  by sector fallback: {by_source['sector']}")
     print(f"  no match: {no_match}")
-    print(f"\nTop themes by hit count:")
+    print("\nTop themes by hit count:")
     for k, v in sorted(by_theme.items(), key=lambda x: -x[1])[:15]:
         print(f"  {k}: {v}")
 

@@ -4,7 +4,6 @@ from typing import Any
 from ygworker.data_sources.fdr import _fetch_listing
 from ygworker.data_sources.yahoo import fetch_closes_batch
 
-
 # US batch chunk size — yfinance.download은 500+개 한번에 가능하지만
 # HTTP 메모리 안정성을 위해 200개씩 끊는다.
 US_BATCH_SIZE = 200

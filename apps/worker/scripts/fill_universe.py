@@ -12,7 +12,7 @@ import io
 import os
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
@@ -58,7 +58,7 @@ def fetch_kr_market(market_name: str, suffix: str, market_enum: str) -> list[dic
     print(f"Fetching {market_name}...")
     df = fdr.StockListing(market_name)
     if df is None or df.empty:
-        print(f"  empty result")
+        print("  empty result")
         return []
     df = df.sort_values("Marcap", ascending=False)
     out: list[dict] = []
@@ -125,7 +125,7 @@ def fetch_sp500() -> list[dict]:
 
 
 def main():
-    now_iso = datetime.now(timezone.utc).isoformat()
+    now_iso = datetime.now(UTC).isoformat()
     existing = existing_symbols()
     print(f"\nExisting in DB: {len(existing)} stocks\n")
 

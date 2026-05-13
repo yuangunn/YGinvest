@@ -12,7 +12,7 @@ import io
 import os
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 # Force UTF-8 stdout on Windows
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
@@ -75,7 +75,7 @@ def enrich(symbol: str) -> dict | None:
         return None
     if not info:
         return None
-    update: dict = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    update: dict = {"updated_at": datetime.now(UTC).isoformat()}
     sector = info.get("sector")
     if sector:
         update["sector"] = sector

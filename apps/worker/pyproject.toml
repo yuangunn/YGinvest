@@ -31,6 +31,8 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+# scripts/는 일회성 admin 스크립트 (sys.stdout 재설정 등으로 import 순서 다름)
+extend-exclude = ["scripts/"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "N"]
