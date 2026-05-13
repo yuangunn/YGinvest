@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
 import {
   BackgroundSyncPlugin,
+  type BackgroundSyncQueue,
   CacheFirst,
   ExpirationPlugin,
   NetworkOnly,
@@ -157,6 +158,58 @@ self.addEventListener("activate", (event: ExtendableEvent) => {
     caches.delete("pages").catch(() => {
       // 이미 없거나 권한 문제 — 무시
     }),
+  );
+});
+
+// =========================================================================
+// Plan #11.8 — 큐 강제 flush 메시지 핸들러.
+// 클라이언트가 `postMessage({type: "FLUSH_QUEUES"})` 보내면 모든 BackgroundSync
+// 큐의 pending requests를 즉시 재전송 시도. 완료 후 `FLUSH_DONE` 응답.
+// =========================================================================
+async function drainQueue(
+  queue: BackgroundSyncQueue,
+): Promise<{ name: string; sent: number; failed: number }> {
+  let sent = 0;
+  let failed = 0;
+  let entry = await queue.shiftRequest();
+  while (entry) {
+    try {
+      await fetch(entry.request.clone());
+      sent++;
+    } catch {
+      // 네트워크 다시 실패 — 큐 앞쪽에 되돌리고 중단
+      await queue.unshiftRequest(entry);
+      failed++;
+      break;
+    }
+    entry = await queue.shiftRequest();
+  }
+  return { name: queue.name, sent, failed };
+}
+
+self.addEventListener("message", (event: ExtendableMessageEvent) => {
+  if (!event.data || event.data.type !== "FLUSH_QUEUES") return;
+  event.waitUntil(
+    (async () => {
+      // private `_queue` 액세스 — 타입 단언으로 우회 (Serwist v9는 public 미노출)
+      const plugins = [ordersSyncPlugin, fxSyncPlugin, watchlistSyncPlugin];
+      const results = [];
+      for (const plugin of plugins) {
+        const q = (plugin as unknown as { _queue: BackgroundSyncQueue })._queue;
+        if (q) {
+          try {
+            results.push(await drainQueue(q));
+          } catch {
+            // 단일 큐 실패해도 나머지 시도
+          }
+        }
+      }
+      // 응답 — 호출자가 ports[0]를 제공했으면 거기로 회신
+      const port = event.ports[0];
+      if (port) {
+        port.postMessage({ type: "FLUSH_DONE", results });
+      }
+    })(),
   );
 });
 
