@@ -79,6 +79,57 @@ def fetch_quotes(symbols: list[str]) -> list[YahooQuote]:
     return out
 
 
+def fetch_closes_batch(symbols: list[str]) -> dict[str, float]:
+    """Batch download 최근 종가 — yfinance.download은 한 번 호출로 수백개 심볼 처리.
+
+    Plan #20.2 hotfix: per-symbol fdr.DataReader는 506 종목 × 0.25s = 125s.
+    yf.download은 같은 506개를 ~5-10s에 끝낸다.
+
+    Returns: {symbol: latest_close}. 실패한 심볼은 dict에 없음.
+    """
+    if not symbols:
+        return {}
+    try:
+        df = yf.download(
+            tickers=symbols,
+            period="5d",
+            interval="1d",
+            group_by="ticker",
+            threads=True,
+            progress=False,
+            auto_adjust=True,
+        )
+    except Exception:
+        return {}
+    if df is None or getattr(df, "empty", True):
+        return {}
+
+    out: dict[str, float] = {}
+    single = len(symbols) == 1
+
+    for symbol in symbols:
+        try:
+            if single:
+                close_series = df.get("Close")
+            else:
+                # multi-symbol: columns is MultiIndex (ticker, field)
+                if symbol not in df.columns.get_level_values(0):
+                    continue
+                close_series = df[symbol].get("Close")
+            if close_series is None:
+                continue
+            cleaned = close_series.dropna()
+            if cleaned.empty:
+                continue
+            close = cleaned.iloc[-1]
+            if close is None or (isinstance(close, float) and close != close):
+                continue
+            out[symbol] = float(close)
+        except (KeyError, IndexError, AttributeError):
+            continue
+    return out
+
+
 @retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=0.5, min=0.5, max=2))
 def fetch_history(symbol: str, period: str = "60d", interval: str = "15m") -> list[dict]:
     """yfinance Ticker.history() 래핑.
