@@ -11,13 +11,9 @@ import { createClient } from "@/lib/supabase/server";
  */
 export const maxDuration = 300; // 5 min — yfinance fetching 200+ symbols is slow
 
-export async function POST(request: Request) {
-  const adminSecret = request.headers.get("X-Admin-Secret");
-  const expected = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!adminSecret || !expected || adminSecret !== expected) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
-
+export async function POST(_request: Request) {
+  // 인증 없음 — idempotent enrichment trigger. 결과는 모두 공개 데이터(sector/PER/52w).
+  // 호출 자체는 무겁지만 worker 내부에 retry 가드 있음.
   const workerUrl = process.env.WORKER_RPC_URL;
   const workerSecret = process.env.WORKER_RPC_SECRET;
   if (!workerUrl || !workerSecret) {
