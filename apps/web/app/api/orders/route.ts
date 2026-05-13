@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { isMarketOpenForSymbol, type MarketEnum } from "@/lib/market-hours";
 
+type OrderType = "market" | "limit" | "midpoint";
+
 type OrderBody = {
   portfolio_id: string;
   symbol: string;
   side: "buy" | "sell";
-  type: "market" | "limit";
+  type: OrderType;
   quantity: number;
   limit_price?: number;
 };
@@ -21,12 +23,15 @@ export async function POST(request: Request) {
   if (!portfolio_id || !symbol || !side || !type || !quantity) {
     return NextResponse.json({ error: "invalid_input" }, { status: 400 });
   }
+  if (!["market", "limit", "midpoint"].includes(type)) {
+    return NextResponse.json({ error: "invalid_order_type" }, { status: 400 });
+  }
   if (type === "limit" && (limit_price == null || limit_price <= 0)) {
     return NextResponse.json({ error: "limit_price_required" }, { status: 400 });
   }
 
-  // 시장가는 장중에만
-  if (type === "market") {
+  // 시장가 + 미드포인트는 장중에만 (PG가 다시 확인하지만 빠른 거부)
+  if (type === "market" || type === "midpoint") {
     const { data: stock } = await supabase
       .from("stocks")
       .select("market")
@@ -38,7 +43,12 @@ export async function POST(request: Request) {
     }
   }
 
-  const fnName = type === "market" ? "place_market_order" : "place_limit_order";
+  const fnName =
+    type === "market"
+      ? "place_market_order"
+      : type === "limit"
+        ? "place_limit_order"
+        : "place_midpoint_order";
   const params: Record<string, unknown> = {
     p_portfolio_id: portfolio_id,
     p_symbol: symbol,
@@ -80,7 +90,9 @@ function mapErrorStatus(msg: string): number {
   if (
     msg.includes("insufficient") ||
     msg.includes("invalid_") ||
-    msg.includes("market_closed")
+    msg.includes("market_closed") ||
+    msg.includes("midpoint_session_only_nxt") ||
+    msg.includes("midpoint_us_not_supported")
   )
     return 422;
   return 500;

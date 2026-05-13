@@ -7,6 +7,7 @@ import { StockFinancials } from "@/components/stock-financials";
 import { BuySellSheet } from "@/components/buy-sell-sheet";
 import { WatchlistButton } from "@/components/watchlist-button";
 import { KrSessionBadge } from "@/components/kr-session-badge";
+import { NxtSpreadBadge } from "@/components/nxt-spread-badge";
 import { getSelectedPortfolioId } from "@/lib/portfolio-context";
 
 const KRW = new Intl.NumberFormat("ko-KR", { style: "currency", currency: "KRW", maximumFractionDigits: 0 });
@@ -79,6 +80,12 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
           <div className="text-xs text-muted-foreground mt-1">
             업데이트: {stock.last_price_at ? new Date(stock.last_price_at).toLocaleString("ko-KR") : "—"}
           </div>
+          <div className="mt-2">
+            <NxtSpreadBadge
+              market={stock.market}
+              lastPrice={stock.last_price ? Number(stock.last_price) : null}
+            />
+          </div>
         </CardContent>
       </Card>
 
@@ -105,6 +112,7 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
               symbol={stock.symbol}
               symbolName={symbolName}
               currency={stock.currency}
+              market={stock.market}
               lastPrice={stock.last_price ? Number(stock.last_price) : null}
             />
           ) : (
