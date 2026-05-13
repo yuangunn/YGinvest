@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Sparkles, ChevronRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PushToggle } from "@/components/push-toggle";
@@ -29,6 +31,23 @@ export default async function SettingsPage() {
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-4">
       <h1 className="text-2xl font-bold">설정</h1>
+
+      <Link href="/app/settings/ai">
+        <Card className="hover:border-primary/40 transition-colors lift">
+          <CardContent className="flex items-center justify-between py-4">
+            <div className="flex items-center gap-3">
+              <Sparkles className="h-5 w-5 text-primary" />
+              <div>
+                <div className="font-medium">AI 분석 키 (BYOK)</div>
+                <div className="text-xs text-muted-foreground">
+                  Claude / OpenAI / Gemini 본인 키 등록
+                </div>
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </CardContent>
+        </Card>
+      </Link>
 
       <Card>
         <CardHeader>

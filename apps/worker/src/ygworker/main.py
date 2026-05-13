@@ -15,6 +15,7 @@ from ygworker.jobs.compute_recommendations import run_compute_recommendations
 from ygworker.jobs.enrich_stock_info import run_enrich_stock_info
 from ygworker.jobs.fetch_corporate_data import run_fetch_corporate_data
 from ygworker.jobs.fetch_daily_bars import run_fetch_daily_bars
+from ygworker.jobs.fetch_earnings import run_fetch_earnings
 from ygworker.jobs.fetch_fx import run_fetch_fx
 from ygworker.jobs.fetch_prices import run_fetch_prices
 from ygworker.jobs.heartbeat import run_heartbeat
@@ -153,6 +154,15 @@ async def main_async() -> None:
         trigger="interval",
         minutes=1,
         id="check_price_alerts",
+        replace_existing=True,
+    )
+    # Plan #24: 실적 발표 일정 fetch — 매일 04:00 KST (top 500 stocks)
+    scheduler.add_job(
+        _wrap_in_thread(run_fetch_earnings, supabase, logger),
+        trigger="cron",
+        hour=4,
+        minute=0,
+        id="fetch_earnings",
         replace_existing=True,
     )
     # 매일 09:00 KST: ex_date 도달한 dividend/action 적용
