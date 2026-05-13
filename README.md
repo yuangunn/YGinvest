@@ -291,12 +291,33 @@ NOTE: `start_url=/app/dashboard`라 로그아웃 상태에서 첫 실행 시 자
 4. DevTools → Application → IndexedDB → `serwist-background-sync` 또는 `workbox-background-sync` queue에 entry 확인
 5. Network "Offline" 해제 → 자동 재전송 → 큐 비워짐 (DB 새로고침)
 
-### 다음 plans (Plan #11.5 이후)
+### Plan #12 — NXT Phase B (가격 spread + 미드포인트 호가) ✅ 완료
 
-- Plan #12: NXT Phase B (가격 spread + 미드포인트 호가)
+- [x] DB: `_kr_nxt_session(timestamptz)` immutable PG helper — KR/NXT 세션 판정 (pre/regular/after/closed), `lib/market-hours.ts::getKrSession()`과 KST 정규화로 매핑
+- [x] DB: `orders.order_type` CHECK 동적 lookup 후 `'midpoint'` 추가 (constraint 이름 무관 안전 교체)
+- [x] DB: `place_market_order` 재정의 — NXT pre/after 시 매수=ask, 매도=bid (`round(last_price × 1.001, 4)` / `× 0.999`)
+- [x] DB: `place_midpoint_order` 신규 — KRX + NXT pre/after 전용, midpoint(=last_price)로 즉시 체결, US 종목/closed 세션 거부
+- [x] Web: `/api/orders` route — `type === "midpoint"` 분기 RPC + `midpoint_us_not_supported`/`midpoint_session_only_nxt` 에러 매핑
+- [x] Web: `OrderForm` — 3번째 옵션 "미드포인트" (KRX + NXT pre/after에만 활성, 그 외 disabled + title tooltip)
+- [x] Web: `BuySellSheet`에 `market` prop 추가
+- [x] Web: `NxtSpreadBadge` — NXT 시간에 Bid/Ask + 10 bps spread 표시 (트레이드 페이지 가격 카드 하단)
+- [x] E2E: `midpoint-order.spec.ts` 3개 — NXT 매수 체결, 정규장 비활성, NXT 배지 표시 (시간대 게이팅으로 SKIP 분기)
+
+NXT 시간 매트릭스 (Plan #7.5 + #12):
+
+| 세션 | 시각 (KST) | 시장가 | 지정가 | 미드포인트 | spread |
+|------|-----------|--------|--------|------------|--------|
+| pre | 08:00–08:50 | ✅ (spread) | ✅ | ✅ | 10 bps |
+| regular | 09:00–15:20 | ✅ (no spread) | ✅ | ❌ | — |
+| after | 15:30–20:00 | ✅ (spread) | ✅ | ✅ | 10 bps |
+| closed | 20:00–08:00 + 주말 | ❌ | ✅ (펜딩) | ❌ | — |
+
+### 다음 plans (Plan #12 이후)
+
 - 사용자별 개인화 추천
 - 차트 색 팔레트 커스텀 / 페이지 전환 애니메이션
 - 큐 상태 UI — pending sync 개수 시각화
+- Dynamic NXT spread — 유동성 티어별 differential
 
 ## 디버깅 팁
 
