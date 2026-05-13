@@ -76,8 +76,11 @@ def run_enrich_stock_info(
         if sector:
             update["sector"] = sector
             with_sector += 1
+        # PER: trailingPE 우선, forwardPE fallback (KR 종목은 종종 trailing null)
         per = info.get("trailingPE")
-        if per is not None and isinstance(per, (int, float)) and per > 0:
+        if per is None or not isinstance(per, (int, float)) or per <= 0 or per > 1000:
+            per = info.get("forwardPE")
+        if per is not None and isinstance(per, (int, float)) and 0 < per <= 1000:
             update["per"] = float(per)
             with_per += 1
         h52 = info.get("fiftyTwoWeekHigh")

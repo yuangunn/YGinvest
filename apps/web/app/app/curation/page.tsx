@@ -138,6 +138,12 @@ export default async function CurationPage() {
     .sort(([, a], [, b]) => b.kr + b.us - (a.kr + a.us))
     .slice(0, 10);
 
+  // 진단: 왜 빈 결과가 나오는지 사용자에게 명확히 알리기
+  const totalActive = all.length;
+  const withSector = all.filter((s) => s.sector).length;
+  const withPer = all.filter((s) => s.per && Number(s.per) > 0).length;
+  const valuedCount = valued.length;
+
   return (
     <div className="max-w-3xl mx-auto p-4 space-y-4">
       <div>
@@ -150,6 +156,39 @@ export default async function CurationPage() {
           + 목표주가, 기대 수익률.
         </p>
       </div>
+
+      {valuedCount === 0 && (
+        <Card className="border-yellow-500/40 bg-yellow-500/5">
+          <CardHeader>
+            <CardTitle className="text-base text-yellow-600 dark:text-yellow-500">
+              ⚠️ 분석 가능한 종목 없음
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              현재 {totalActive}개 종목 중 분석에 필요한 데이터가 갖춰진 종목이 없습니다.
+            </p>
+            <div className="grid grid-cols-3 gap-2 mt-3 text-xs">
+              <div className="rounded bg-background p-2">
+                <div className="text-muted-foreground">전체 종목</div>
+                <div className="font-bold text-base">{totalActive}</div>
+              </div>
+              <div className="rounded bg-background p-2">
+                <div className="text-muted-foreground">섹터 있음</div>
+                <div className="font-bold text-base">{withSector}</div>
+              </div>
+              <div className="rounded bg-background p-2">
+                <div className="text-muted-foreground">PER 있음</div>
+                <div className="font-bold text-base">{withPer}</div>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-3">
+              데이터 수집은 매일 05:30 KST에 yfinance에서 자동 갱신됩니다. 즉시 갱신하려면
+              관리자가 <code className="font-mono">POST /api/admin/enrich-stocks</code> 호출 가능.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

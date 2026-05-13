@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Suspense } from "react";
 import { StockFinancials } from "@/components/stock-financials";
 import { loadSectorStats, getSectorStats } from "@/lib/sector-stats";
+import { formatMarketCap } from "@/lib/format";
 import {
   computeValuation,
   marketScope,
@@ -220,7 +221,7 @@ export default async function StockAnalysisPage({
               label="시가총액"
               value={
                 stock.market_cap
-                  ? fmt.format(Number(stock.market_cap))
+                  ? formatMarketCap(Number(stock.market_cap), stock.currency)
                   : "—"
               }
             />
