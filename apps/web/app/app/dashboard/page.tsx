@@ -17,6 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getSelectedPortfolioId } from "@/lib/portfolio-context";
 import { RecommendationsSection } from "@/components/recommendations-section";
 import { PersonalizedRecommendations } from "@/components/personalized-recommendations";
+import { VolumeLeaders } from "@/components/volume-leaders";
 
 function RecommendationsSkeleton() {
   return (
@@ -155,6 +156,10 @@ export default async function DashboardPage() {
           <PersonalizedRecommendations portfolioId={portfolioId} />
         </Suspense>
       )}
+
+      <Suspense fallback={<RecommendationsSkeleton />}>
+        <VolumeLeaders scope="KR" limit={5} />
+      </Suspense>
 
       <Suspense fallback={<RecommendationsSkeleton />}>
         <RecommendationsSection category="top_gainers" scope="KR" />
