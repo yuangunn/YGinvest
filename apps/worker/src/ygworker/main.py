@@ -11,6 +11,7 @@ from ygworker.config import load_settings
 from ygworker.jobs.apply_corporate_events import run_apply_corporate_events
 from ygworker.jobs.bootstrap_stocks import run_bootstrap_stocks
 from ygworker.jobs.compute_recommendations import run_compute_recommendations
+from ygworker.jobs.enrich_stock_info import run_enrich_stock_info
 from ygworker.jobs.fetch_corporate_data import run_fetch_corporate_data
 from ygworker.jobs.fetch_daily_bars import run_fetch_daily_bars
 from ygworker.jobs.fetch_fx import run_fetch_fx
@@ -132,6 +133,15 @@ async def main_async() -> None:
         hour=6,
         minute=0,
         id="fetch_corporate_data",
+        replace_existing=True,
+    )
+    # Plan #22 hotfix — 매일 05:30 KST: sector/PER/52w 갱신 (장 시작 전)
+    scheduler.add_job(
+        _wrap_in_thread(run_enrich_stock_info, supabase, logger),
+        trigger="cron",
+        hour=5,
+        minute=30,
+        id="enrich_stock_info",
         replace_existing=True,
     )
     # 매일 09:00 KST: ex_date 도달한 dividend/action 적용
