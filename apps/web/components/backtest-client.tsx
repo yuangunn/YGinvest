@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { Loader2, Play } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ma, rsi, macd as macdFn } from "@/lib/indicators";
+import { StockPicker, type PickedStock } from "@/components/stock-picker";
 
 type Bar = { ts: string; close: number; volume: number };
 
@@ -171,19 +171,26 @@ function runBacktest(bars: Bar[], strategy: Strategy): Result {
 }
 
 export function BacktestClient() {
-  const [symbol, setSymbol] = useState("005930.KS");
+  const [picked, setPicked] = useState<PickedStock | null>({
+    symbol: "005930.KS",
+    name: "삼성전자",
+  });
   const [strategy, setStrategy] = useState<Strategy>("ma_cross");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function run() {
+    if (!picked) {
+      setError("종목을 먼저 선택해주세요");
+      return;
+    }
     setLoading(true);
     setError(null);
     setResult(null);
     try {
       const res = await fetch(
-        `/api/stocks/${encodeURIComponent(symbol)}/bars?interval=1d`,
+        `/api/stocks/${encodeURIComponent(picked.symbol)}/bars?interval=1d`,
       );
       if (!res.ok) throw new Error("일봉 데이터 없음");
       const json = await res.json();
@@ -214,12 +221,11 @@ export function BacktestClient() {
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
             <div className="space-y-1">
-              <Label htmlFor="bt-sym">종목</Label>
-              <Input
-                id="bt-sym"
-                value={symbol}
-                onChange={(e) => setSymbol(e.target.value)}
-                placeholder="005930.KS"
+              <Label>종목</Label>
+              <StockPicker
+                value={picked}
+                onChange={setPicked}
+                placeholder="삼성전자, AAPL, 005930.KS"
               />
             </div>
             <div className="space-y-1">
@@ -235,7 +241,7 @@ export function BacktestClient() {
                 <option value="macd">MACD 히스토그램 0 돌파</option>
               </select>
             </div>
-            <Button onClick={run} disabled={loading}>
+            <Button onClick={run} disabled={loading || !picked}>
               {loading ? (
                 <>
                   <Loader2 className="h-3 w-3 mr-1 animate-spin" />
