@@ -418,12 +418,46 @@ lightweight-charts v5 multi-pane을 활용해 차트 시각화를 강화:
 - [x] `ChartArea`에 "추세선" 토글 + "지우기 (N)" 버튼
 - [x] 종목/인터벌 변경 시 자동 초기화 (서로 다른 데이터셋에 옛 트렌드 무의미)
 
-### 다음 plans (Plan #19 이후)
+### Plan #20 — 테마주 계층 시스템 ✅ 완료
+
+한국 시장 핵심 컨셉 "테마주"를 계층적으로 — 반도체 안에 메모리/파운드리/HBM 등, 한 종목이 여러 테마에 weight로 속함.
+
+**DB schema:**
+- `themes` 테이블 — adjacency list (`parent_id` self-reference)
+- `stock_themes` 테이블 — N:N junction with `weight (0-1)`
+
+**8개 root + 26개 sub-theme + 60+ stock mapping** (Korean priority):
+
+| Root | 소분류 |
+|------|--------|
+| 반도체 | 메모리 / 시스템반도체 / 파운드리 / 장비 / 소재 / HBM/AI반도체 |
+| 2차전지 | 셀 / 양극재 / 음극재 / 분리막 / 전해액 / 장비 |
+| AI/소프트웨어 | LLM/생성AI / 클라우드 / SaaS / 사이버보안 |
+| 바이오/제약 | 신약개발 / CMO/CDMO / 진단/의료기기 / 바이오시밀러 |
+| K-방위산업 | 항공/우주방산 / 지상방산 |
+| K-콘텐츠 | K-엔터 / 게임 / 미디어/드라마 |
+| 모빌리티/전기차 | 완성차 / 자동차부품 / 자율주행 |
+| 금융 | 은행 / 증권 / 보험 |
+
+**예시 multi-theme membership**:
+- 삼성전자 → 메모리(1.0) + 파운드리(0.3) + HBM(0.6) + 시스템반도체(0.4)
+- SK하이닉스 → 메모리(1.0) + HBM(0.9)
+- NVDA → 시스템반도체(1.0) + HBM(1.0) + LLM/AI(1.0) + 자율주행(0.5)
+
+**UI:**
+- [x] `/app/themes` — 8개 root theme 카드 그리드 + sub-theme chip preview + stock count
+- [x] `/app/themes/[slug]` — sub-themes 카드 + 관련 종목 리스트 (descendants 포함, market_cap DESC, weight 표시)
+- [x] 트레이드 detail 페이지에 stock-themes chip (테마 chip 클릭 → 해당 테마 페이지)
+- [x] 대시보드 quick action에 "테마주" Tags 아이콘 추가 (5개 grid)
+
+### 다음 plans (Plan #20 이후)
 
 - VWAP / Volume Profile
-- 추천 클릭 history 페이지 (분석 대시보드)
+- 추천 클릭 history 분석 페이지
 - Fib retracement / horizontal lines
-- 백테스팅 (간이) — trendline 기반 신호 generate
+- 백테스팅 (간이) — trendline 기반 신호
+- 테마 추가/제거 admin UI (현재는 SQL seed만)
+- 테마별 등락률 ranking
 
 ## 디버깅 팁
 
