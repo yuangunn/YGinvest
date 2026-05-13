@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +12,7 @@ import { WatchlistButton } from "@/components/watchlist-button";
 import { KrSessionBadge } from "@/components/kr-session-badge";
 import { NxtSpreadBadge } from "@/components/nxt-spread-badge";
 import { StockThemes } from "@/components/stock-themes";
+import { StockRatingBadge } from "@/components/stock-rating-badge";
 import { getSelectedPortfolioId } from "@/lib/portfolio-context";
 
 const KRW = new Intl.NumberFormat("ko-KR", { style: "currency", currency: "KRW", maximumFractionDigits: 0 });
@@ -102,6 +104,15 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
           </div>
           <div className="mt-2">
             <StockThemes symbol={stock.symbol} />
+          </div>
+          <div className="mt-2">
+            <Suspense
+              fallback={
+                <div className="text-xs text-muted-foreground">분석 로딩…</div>
+              }
+            >
+              <StockRatingBadge symbol={stock.symbol} />
+            </Suspense>
           </div>
         </CardContent>
       </Card>
