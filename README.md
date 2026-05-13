@@ -450,14 +450,58 @@ lightweight-charts v5 multi-pane을 활용해 차트 시각화를 강화:
 - [x] 트레이드 detail 페이지에 stock-themes chip (테마 chip 클릭 → 해당 테마 페이지)
 - [x] 대시보드 quick action에 "테마주" Tags 아이콘 추가 (5개 grid)
 
-### 다음 plans (Plan #20 이후)
+### Plan #21 — 다음 plans batch ✅ 완료
 
-- VWAP / Volume Profile
-- 추천 클릭 history 분석 페이지
-- Fib retracement / horizontal lines
+- [x] **테마별 등락률 ranking** — `/app/themes/ranking` — 최근 2 일봉으로 weighted average 계산. 대분류 + 소분류 정렬. 상위 등락 종목까지 표시
+- [x] **사용자 즐겨찾기 테마** — `theme_favorites` 테이블 + RLS + 토글 API + `/app/themes`에 즐겨찾기 섹션
+- [x] **VWAP 지표** — `lib/indicators.ts::vwap()` + 차트 컨트롤 + crosshair tooltip
+- [x] **Fibonacci retracement** — 7 levels (0/23.6/38.2/50/61.8/78.6/100%) 자동 드로잉. 추세선과 별개 토글
+- [x] **추천 클릭 history 페이지** — `/app/analytics/clicks` — 자주 본 종목 + 카테고리 + 최근 30건
+
+### Plan #22 — 큐레이션 시스템 ✅ 완료
+
+분석 알고리즘 (sector-relative PER):
+
+```
+EPS               = last_price / per
+sector_median_PE  = median(per) of same (sector × market_scope)
+fair_value_pe     = sector_median_PE × EPS
+growth_premium    = 1 + clamp((52w_position - 0.5), -0.2, 0.3)
+target_price      = fair_value_pe × growth_premium
+upside            = target / current - 1
+rating            = upside 밴드 → Strong Buy/Buy/Hold/Sell/Strong Sell
+```
+
+| Upside | Rating |
+|--------|--------|
+| ≥ +20% | Strong Buy |
+| +5% ~ +20% | Buy |
+| -5% ~ +5% | Hold |
+| -20% ~ -5% | Sell |
+| < -20% | Strong Sell |
+
+**페이지:**
+- [x] `/app/curation` — 큐레이션 허브 (Strong Buy / 저평가 가치주 / 모멘텀 / 업종 둘러보기)
+- [x] `/app/stocks/[symbol]/analysis` — 종목 상세 분석 (현재가/적정가/목표가/기대수익률 + factor chips + peer 그룹 + 재무지표 + disclaimer)
+- [x] `/app/sectors/[sector]?scope=KR|US` — 업종 상세 (섹터 통계 + 시총 상위 5 + 저PER Top 5 + 전체 종목)
+- [x] `StockRatingBadge` — 트레이드 detail에 Buy/Hold/Sell + 목표가 chip (분석 페이지 링크)
+- [x] 대시보드 quick action에 "큐레이션" Sparkles 추가 (6 grid)
+
+**한계:**
+- 현재 stocks 테이블의 `per`만 사용 (PB/ROE는 worker RPC 별도)
+- 적자 종목 (PER ≤ 0) 분석 불가
+- 같은 sector 종목 ≥ 3 이상일 때만 의미 있음
+- DCF, 멀티팩터, ESG 등 미반영
+
+### 다음 plans (Plan #22 이후)
+
+- Worker daily job: sector_stats + valuations 캐시 테이블 (요청 시 계산 → DB 캐시)
+- 워커가 PBR/ROE/Forward PE를 yfinance에서 fetch → 더 정교한 valuation
+- DCF 모델 (FCF growth + WACC)
 - 백테스팅 (간이) — trendline 기반 신호
-- 테마 추가/제거 admin UI (현재는 SQL seed만)
-- 테마별 등락률 ranking
+- 테마 추가/제거 admin UI
+- ESG / 지속가능성 점수
+- 큐레이션 알림 (Strong Buy 진입 시 push)
 
 ## 디버깅 팁
 

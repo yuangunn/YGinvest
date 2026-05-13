@@ -79,6 +79,25 @@ export function macd(
   return { macd: macdResult, signal: signalLine, histogram };
 }
 
+// VWAP — Volume-Weighted Average Price
+// (typical = (H+L+C)/3) × volume의 누적 / volume의 누적
+// 종목 차트는 보통 일봉이지만 VWAP은 일별 reset이 정석. 다만 우리 차트는 다일간이라
+// 전체 기간 누적 VWAP을 계산 (대안 — 매일 reset이지만 실용성↓).
+export function vwap(
+  bars: { high: number; low: number; close: number; volume: number }[],
+): (number | undefined)[] {
+  const out: (number | undefined)[] = [];
+  let cumPV = 0;
+  let cumV = 0;
+  for (const b of bars) {
+    const typical = (b.high + b.low + b.close) / 3;
+    cumPV += typical * b.volume;
+    cumV += b.volume;
+    out.push(cumV === 0 ? undefined : cumPV / cumV);
+  }
+  return out;
+}
+
 // Stochastic Oscillator — %K, %D
 // %K = 100 × (close - low(n)) / (high(n) - low(n)), n=14 default
 // %D = SMA of %K, period=3 default

@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Spline, Trash2 } from "lucide-react";
 import {
   StockChart,
+  type DrawingMode,
   type IndicatorType,
   type TrendlinePoints,
 } from "@/components/stock-chart";
@@ -41,8 +42,9 @@ export function ChartArea({ symbol, initialBars }: Props) {
   const [indicator, setIndicator] = useState<IndicatorType>("ma");
   const [loaded, setLoaded] = useState<LoadedState | null>(null);
   const [paletteId, setPaletteId] = useState<PaletteId>(DEFAULT_PALETTE_ID);
-  const [drawingMode, setDrawingMode] = useState(false);
+  const [drawingMode, setDrawingMode] = useState<DrawingMode>("none");
   const [trendlines, setTrendlines] = useState<TrendlinePoints[]>([]);
+  const [fibLines, setFibLines] = useState<TrendlinePoints[]>([]);
 
   useEffect(() => {
     const stored = loadPaletteId();
@@ -52,11 +54,11 @@ export function ChartArea({ symbol, initialBars }: Props) {
     }
   }, []);
 
-  // Clear trendlines on symbol/interval change (서로 다른 데이터셋에 트렌드 의미 없음)
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setTrendlines([]);
-    setDrawingMode(false);
+    setFibLines([]);
+    setDrawingMode("none");
   }, [symbol, chartInterval]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
@@ -67,13 +69,21 @@ export function ChartArea({ symbol, initialBars }: Props) {
 
   function handleTrendlineComplete(line: TrendlinePoints) {
     setTrendlines((prev) => [...prev, line]);
-    setDrawingMode(false); // 한 번 그리면 mode off
+    setDrawingMode("none");
+  }
+
+  function handleFibComplete(line: TrendlinePoints) {
+    setFibLines((prev) => [...prev, line]);
+    setDrawingMode("none");
+  }
+
+  function clearAllDrawings() {
+    setTrendlines([]);
+    setFibLines([]);
   }
 
   useEffect(() => {
-    if (chartInterval === "1d") {
-      return;
-    }
+    if (chartInterval === "1d") return;
     let cancelled = false;
     fetch(`/api/stocks/${encodeURIComponent(symbol)}/bars?interval=${chartInterval}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(r.statusText)))
@@ -102,6 +112,8 @@ export function ChartArea({ symbol, initialBars }: Props) {
       ? loaded.bars
       : [];
 
+  const totalDrawings = trendlines.length + fibLines.length;
+
   return (
     <div>
       <ChartControls
@@ -112,27 +124,41 @@ export function ChartArea({ symbol, initialBars }: Props) {
         paletteId={paletteId}
         onPaletteChange={handlePaletteChange}
       />
-      <div className="flex gap-2 items-center mb-2">
+      <div className="flex flex-wrap gap-2 items-center mb-2">
         <Button
           type="button"
           size="sm"
-          variant={drawingMode ? "default" : "outline"}
-          onClick={() => setDrawingMode((v) => !v)}
-          title="추세선 그리기 — 차트에 두 점 클릭"
+          variant={drawingMode === "trendline" ? "default" : "outline"}
+          onClick={() =>
+            setDrawingMode((v) => (v === "trendline" ? "none" : "trendline"))
+          }
+          title="추세선 — 차트에 두 점 클릭"
         >
           <Pencil className="h-3 w-3 mr-1" />
-          {drawingMode ? "추세선 그리는 중 (두 점 클릭)" : "추세선"}
+          {drawingMode === "trendline" ? "추세선 그리는 중" : "추세선"}
         </Button>
-        {trendlines.length > 0 && (
+        <Button
+          type="button"
+          size="sm"
+          variant={drawingMode === "fib" ? "default" : "outline"}
+          onClick={() =>
+            setDrawingMode((v) => (v === "fib" ? "none" : "fib"))
+          }
+          title="피보나치 되돌림 — 차트에 고점/저점 두 점 클릭"
+        >
+          <Spline className="h-3 w-3 mr-1" />
+          {drawingMode === "fib" ? "Fib 그리는 중" : "Fib"}
+        </Button>
+        {totalDrawings > 0 && (
           <Button
             type="button"
             size="sm"
             variant="ghost"
-            onClick={() => setTrendlines([])}
-            title="그린 추세선 모두 삭제"
+            onClick={clearAllDrawings}
+            title="모든 도형 삭제"
           >
             <Trash2 className="h-3 w-3 mr-1" />
-            지우기 ({trendlines.length})
+            지우기 ({totalDrawings})
           </Button>
         )}
       </div>
@@ -145,7 +171,9 @@ export function ChartArea({ symbol, initialBars }: Props) {
           paletteId={paletteId}
           drawingMode={drawingMode}
           trendlines={trendlines}
+          fibLines={fibLines}
           onTrendlineComplete={handleTrendlineComplete}
+          onFibComplete={handleFibComplete}
         />
       )}
     </div>

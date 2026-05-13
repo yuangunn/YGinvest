@@ -1,7 +1,15 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { ArrowLeftRight, ArrowRight, Bell, Search, Tags, Users } from "lucide-react";
+import {
+  ArrowLeftRight,
+  ArrowRight,
+  Bell,
+  Search,
+  Sparkles,
+  Tags,
+  Users,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -40,6 +48,7 @@ const USD = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" 
 
 const QUICK_ACTIONS = [
   { href: "/app/trade/search", label: "종목 검색", Icon: Search },
+  { href: "/app/curation", label: "큐레이션", Icon: Sparkles },
   { href: "/app/themes", label: "테마주", Icon: Tags },
   { href: "/app/fx", label: "환전", Icon: ArrowLeftRight },
   { href: "/app/rooms", label: "친구방", Icon: Users },
@@ -124,7 +133,7 @@ export default async function DashboardPage() {
           <CardTitle className="text-base">빠른 작업</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
             {QUICK_ACTIONS.map(({ href, label, Icon }) => (
               <Link
                 key={href}

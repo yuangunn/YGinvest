@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ChevronLeft, Tags } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ThemeFavoriteButton } from "@/components/theme-favorite-button";
 
 type Theme = {
   id: string;
@@ -77,6 +78,14 @@ export default async function ThemeDetailPage({
     parent = data as Theme | null;
   }
 
+  // 즐겨찾기 여부
+  const { data: fav } = await supabase
+    .from("theme_favorites")
+    .select("theme_id")
+    .eq("user_id", user.id)
+    .eq("theme_id", t.id)
+    .maybeSingle();
+
   // 이 테마(+ 자식 테마)에 속한 stocks
   const themeIds = [t.id, ...childList.map((c) => c.id)];
   const { data: stRows } = await supabase
@@ -137,14 +146,21 @@ export default async function ThemeDetailPage({
         )}
       </div>
 
-      <div>
-        <h1 className="text-xl font-bold flex items-center gap-2">
-          <Tags className="h-5 w-5 text-primary" />
-          {t.name}
-        </h1>
-        {t.description && (
-          <p className="text-sm text-muted-foreground mt-1">{t.description}</p>
-        )}
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <h1 className="text-xl font-bold flex items-center gap-2">
+            <Tags className="h-5 w-5 text-primary" />
+            {t.name}
+          </h1>
+          {t.description && (
+            <p className="text-sm text-muted-foreground mt-1">{t.description}</p>
+          )}
+        </div>
+        <ThemeFavoriteButton
+          themeId={t.id}
+          themeName={t.name}
+          initialFavorited={!!fav}
+        />
       </div>
 
       {/* Sub-themes */}

@@ -42,7 +42,15 @@ export function ChartControls({
         </div>
         <div className="flex gap-1 flex-wrap">
           {(
-            ["none", "ma", "rsi", "bollinger", "macd", "stoch"] as IndicatorType[]
+            [
+              "none",
+              "ma",
+              "vwap",
+              "bollinger",
+              "rsi",
+              "macd",
+              "stoch",
+            ] as IndicatorType[]
           ).map((ind) => (
             <Button
               key={ind}
@@ -55,13 +63,15 @@ export function ChartControls({
                 ? "지표 없음"
                 : ind === "ma"
                   ? "MA"
-                  : ind === "rsi"
-                    ? "RSI"
-                    : ind === "bollinger"
-                      ? "BB"
-                      : ind === "macd"
-                        ? "MACD"
-                        : "Stoch"}
+                  : ind === "vwap"
+                    ? "VWAP"
+                    : ind === "rsi"
+                      ? "RSI"
+                      : ind === "bollinger"
+                        ? "BB"
+                        : ind === "macd"
+                          ? "MACD"
+                          : "Stoch"}
             </Button>
           ))}
         </div>
