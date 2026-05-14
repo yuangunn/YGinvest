@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { BottomNav } from "@/components/bottom-nav";
+import { InstallBanner } from "@/components/install-banner";
 import { Logo } from "@/components/logo";
 import { LogoutButton } from "@/components/logout-button";
 import { PortfolioSwitcher } from "@/components/portfolio-switcher";
@@ -44,6 +45,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <LogoutButton />
         </div>
       </header>
+      <InstallBanner />
       <main className="flex-1 pb-20 md:pb-0">{children}</main>
       <BottomNav />
     </div>
