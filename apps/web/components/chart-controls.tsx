@@ -5,10 +5,9 @@ import { Button } from "@/components/ui/button";
 import type { IndicatorType } from "@/components/stock-chart";
 import { PALETTES, type PaletteId } from "@/lib/chart-palettes";
 
-export type Interval = "1y" | "1mo" | "1wk" | "1d" | "1h" | "15m";
+export type Interval = "1mo" | "1wk" | "1d" | "1h" | "15m";
 
 const INTERVAL_LABEL: Record<Interval, string> = {
-  "1y": "연봉",
   "1mo": "월봉",
   "1wk": "주봉",
   "1d": "일봉",
@@ -16,7 +15,7 @@ const INTERVAL_LABEL: Record<Interval, string> = {
   "15m": "15분",
 };
 
-const INTERVALS: Interval[] = ["1y", "1mo", "1wk", "1d", "1h", "15m"];
+const INTERVALS: Interval[] = ["1mo", "1wk", "1d", "1h", "15m"];
 
 type Props = {
   interval: Interval;

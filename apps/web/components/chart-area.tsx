@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pencil, Spline, Trash2, TrendingUp, Zap } from "lucide-react";
 import {
   StockChart,
@@ -71,15 +71,16 @@ export function ChartArea({ symbol, initialBars }: Props) {
     savePaletteId(p);
   }
 
-  function handleTrendlineComplete(line: TrendlinePoints) {
+  // useCallback로 stable ref — StockChart의 useEffect 재실행 방지
+  const handleTrendlineComplete = useCallback((line: TrendlinePoints) => {
     setTrendlines((prev) => [...prev, line]);
     setDrawingMode("none");
-  }
+  }, []);
 
-  function handleFibComplete(line: TrendlinePoints) {
+  const handleFibComplete = useCallback((line: TrendlinePoints) => {
     setFibLines((prev) => [...prev, line]);
     setDrawingMode("none");
-  }
+  }, []);
 
   function clearAllDrawings() {
     setTrendlines([]);

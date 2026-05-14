@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { fetchBarsViaWorker } from "@/lib/workerRpc";
 import { aggregateBars, type AggInterval } from "@/lib/aggregate-bars";
 
-const VALID = new Set(["15m", "1h", "1d", "1wk", "1mo", "1y"]);
+const VALID = new Set(["15m", "1h", "1d", "1wk", "1mo"]);
 
 export async function GET(
   request: Request,
@@ -19,13 +19,8 @@ export async function GET(
     return NextResponse.json({ error: "invalid_interval" }, { status: 400 });
   }
 
-  // 1d / 1wk / 1mo / 1y: DB의 일봉을 사용 (1d 직접 / 나머지는 집계)
-  if (
-    interval === "1d" ||
-    interval === "1wk" ||
-    interval === "1mo" ||
-    interval === "1y"
-  ) {
+  // 1d / 1wk / 1mo: DB의 일봉을 사용 (1d 직접 / 나머지는 집계)
+  if (interval === "1d" || interval === "1wk" || interval === "1mo") {
     const supabase = await createClient();
     // 일봉은 limit 그대로, 주/월/연봉은 충분한 일봉을 가져온 뒤 집계
     const fetchLimit = interval === "1d" ? limit : Math.max(limit, 365);

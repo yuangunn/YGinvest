@@ -1,10 +1,9 @@
-// 일봉을 주봉/월봉/연봉으로 그룹화하는 헬퍼.
+// 일봉을 주봉/월봉으로 그룹화하는 헬퍼.
 // 서버 사이드(bars API)에서 호출.
 //
 // 그룹 키:
 //   1wk: ISO week (월요일 기준)
 //   1mo: 년-월
-//   1y:  년
 //
 // 각 그룹의 OHLCV:
 //   open  = 그룹 첫 날의 open
@@ -23,7 +22,7 @@ export type RawBar = {
   volume: number;
 };
 
-export type AggInterval = "1wk" | "1mo" | "1y";
+export type AggInterval = "1wk" | "1mo";
 
 function weekKey(d: Date): string {
   // ISO week: 1월 1일이 속한 주 = 첫 주 (월요일 기준)
@@ -39,7 +38,6 @@ function weekKey(d: Date): string {
 
 function groupKey(bar: RawBar, interval: AggInterval): string {
   const d = new Date(bar.ts);
-  if (interval === "1y") return String(d.getUTCFullYear());
   if (interval === "1mo") {
     return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
   }
@@ -47,7 +45,7 @@ function groupKey(bar: RawBar, interval: AggInterval): string {
 }
 
 /**
- * 일봉 배열을 시간순(ascending) 가정하고 주/월/연 단위로 집계.
+ * 일봉 배열을 시간순(ascending) 가정하고 주/월 단위로 집계.
  * 결과도 시간순.
  */
 export function aggregateBars(

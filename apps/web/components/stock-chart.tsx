@@ -124,6 +124,15 @@ export function StockChart({
   const drawingStateRef = useRef<{ point1: { t: Time; p: number } | null }>({
     point1: null,
   });
+  // drawingMode / onComplete 콜백은 ref로 보관 — chart 재생성 없이 최신값 사용.
+  const drawingModeRef = useRef(drawingMode);
+  const onTrendlineCompleteRef = useRef(onTrendlineComplete);
+  const onFibCompleteRef = useRef(onFibComplete);
+  useEffect(() => {
+    drawingModeRef.current = drawingMode;
+    onTrendlineCompleteRef.current = onTrendlineComplete;
+    onFibCompleteRef.current = onFibComplete;
+  }, [drawingMode, onTrendlineComplete, onFibComplete]);
 
   // total chart height — price + volume (+ indicator sub-panel if active)
   const hasIndicatorPane =
@@ -561,8 +570,10 @@ export function StockChart({
     }
 
     // ─── Click capture for drawing trendlines / fib ──────────────────────
+    // ref로 최신 drawingMode/콜백 사용 — chart 인스턴스 재생성 없이 모드 전환 가능
     const clickHandler = (param: MouseEventParams) => {
-      if (drawingMode === "none") return;
+      const cur = drawingModeRef.current;
+      if (cur === "none") return;
       if (!param.time || !param.point) return;
       const series = candleSeriesRef.current;
       if (!series) return;
@@ -581,10 +592,10 @@ export function StockChart({
         t2: param.time,
         p2: price,
       };
-      if (drawingMode === "trendline" && onTrendlineComplete) {
-        onTrendlineComplete(line);
-      } else if (drawingMode === "fib" && onFibComplete) {
-        onFibComplete(line);
+      if (cur === "trendline" && onTrendlineCompleteRef.current) {
+        onTrendlineCompleteRef.current(line);
+      } else if (cur === "fib" && onFibCompleteRef.current) {
+        onFibCompleteRef.current(line);
       }
     };
     chart.subscribeClick(clickHandler);
@@ -641,6 +652,7 @@ export function StockChart({
       chartRef.current = null;
       candleSeriesRef.current = null;
     };
+    // drawingMode/onComplete는 ref로 관리 → deps 제외 (chart 재생성 불필요)
   }, [
     bars,
     height,
@@ -648,11 +660,8 @@ export function StockChart({
     hasIndicatorPane,
     indicator,
     paletteId,
-    drawingMode,
     trendlines,
     fibLines,
-    onTrendlineComplete,
-    onFibComplete,
     signals,
     autoTrendlines,
   ]);
