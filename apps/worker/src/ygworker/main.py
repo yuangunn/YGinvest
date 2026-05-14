@@ -17,6 +17,7 @@ from ygworker.jobs.fetch_corporate_data import run_fetch_corporate_data
 from ygworker.jobs.fetch_daily_bars import run_fetch_daily_bars
 from ygworker.jobs.fetch_earnings import run_fetch_earnings
 from ygworker.jobs.fetch_fx import run_fetch_fx
+from ygworker.jobs.fetch_macro_indicators import run_fetch_macro_indicators
 from ygworker.jobs.fetch_prices import run_fetch_prices
 from ygworker.jobs.heartbeat import run_heartbeat
 from ygworker.jobs.matching_engine import run_matching_engine
@@ -163,6 +164,15 @@ async def main_async() -> None:
         hour=4,
         minute=0,
         id="fetch_earnings",
+        replace_existing=True,
+    )
+    # Plan #26: 거시경제 지표 fetch — 매일 03:30 KST (시장 종료 후 + earnings 전)
+    scheduler.add_job(
+        _wrap_in_thread(run_fetch_macro_indicators, supabase, logger),
+        trigger="cron",
+        hour=3,
+        minute=30,
+        id="fetch_macro_indicators",
         replace_existing=True,
     )
     # 매일 09:00 KST: ex_date 도달한 dividend/action 적용

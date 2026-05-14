@@ -2,13 +2,19 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import {
+  Activity,
   ArrowLeftRight,
   ArrowRight,
+  Award,
   Bell,
   BookOpen,
+  Brain,
   Calendar,
+  Coins,
+  GitCompare,
   Grid3x3,
   LineChart,
+  PieChart,
   Search,
   Sparkles,
   Tags,
@@ -64,6 +70,18 @@ const QUICK_ACTIONS = [
   { href: "/app/fx", label: "환전", Icon: ArrowLeftRight },
   { href: "/app/rooms", label: "친구방", Icon: Users },
   { href: "/app/settings", label: "알림", Icon: Bell },
+] as const;
+
+const ECONOMY_ACTIONS = [
+  { href: "/app/macro", label: "거시경제", Icon: Activity },
+  { href: "/app/macro/calendar", label: "경제 캘린더", Icon: Calendar },
+  { href: "/app/macro/history", label: "경제 사건", Icon: BookOpen },
+  { href: "/app/portfolio/scenarios", label: "시나리오", Icon: Activity },
+  { href: "/app/portfolio/allocation", label: "자산배분", Icon: PieChart },
+  { href: "/app/portfolio/dividend-sim", label: "배당시뮬", Icon: Coins },
+  { href: "/app/strategies", label: "유명 전략", Icon: Award },
+  { href: "/app/portfolio/behavior", label: "행동분석", Icon: Brain },
+  { href: "/app/portfolio/what-if", label: "What-If", Icon: GitCompare },
 ] as const;
 
 export default async function DashboardPage() {
@@ -153,6 +171,29 @@ export default async function DashboardPage() {
               >
                 <Icon className="h-5 w-5 text-primary" />
                 <span className="text-xs font-medium">{label}</span>
+              </Link>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">📚 경제 학습</CardTitle>
+          <p className="text-xs text-muted-foreground mt-1">
+            거시경제 + 펀더멘털 + 행동경제학 — 시장을 더 깊이 이해하는 도구
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+            {ECONOMY_ACTIONS.map(({ href, label, Icon }) => (
+              <Link
+                key={href}
+                href={href}
+                className="flex flex-col items-center gap-2 p-3 rounded-lg border hover:bg-accent hover:border-primary/40 transition-colors"
+              >
+                <Icon className="h-5 w-5 text-primary" />
+                <span className="text-xs font-medium text-center">{label}</span>
               </Link>
             ))}
           </div>
