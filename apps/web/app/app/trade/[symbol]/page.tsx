@@ -17,6 +17,7 @@ import { Term } from "@/components/term";
 import { OrderBook } from "@/components/order-book";
 import { PriceAlertForm } from "@/components/price-alert-form";
 import { getSelectedPortfolioId } from "@/lib/portfolio-context";
+import { formatMarketTimestamp } from "@/lib/time-format";
 
 const KRW = new Intl.NumberFormat("ko-KR", { style: "currency", currency: "KRW", maximumFractionDigits: 0 });
 const USD = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
@@ -106,7 +107,10 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
             {stock.last_price ? fmt.format(Number(stock.last_price)) : "—"}
           </div>
           <div className="text-xs text-muted-foreground mt-1">
-            업데이트: {stock.last_price_at ? new Date(stock.last_price_at).toLocaleString("ko-KR") : "—"}
+            업데이트:{" "}
+            {stock.last_price_at
+              ? formatMarketTimestamp(stock.last_price_at, stock.market)
+              : "—"}
           </div>
           <div className="mt-2">
             <NxtSpreadBadge
