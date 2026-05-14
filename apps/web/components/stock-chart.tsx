@@ -406,7 +406,20 @@ export function StockChart({
       // pane API 변경 시 graceful — 기본 height ratio 사용
     }
 
-    chart.timeScale().fitContent();
+    // 기본 view: 최근 100봉만. 사용자가 좌측으로 스크롤하면 과거 데이터 조회 가능.
+    // 100봉 미만이면 전체 표시.
+    if (bars.length > 100) {
+      try {
+        chart.timeScale().setVisibleLogicalRange({
+          from: bars.length - 100,
+          to: bars.length - 1,
+        });
+      } catch {
+        chart.timeScale().fitContent();
+      }
+    } else {
+      chart.timeScale().fitContent();
+    }
 
     // ─── Crosshair tooltip ───────────────────────────────────────────────
     const ma20Vals = indicator === "ma" ? ma(closes, 20) : [];

@@ -5,7 +5,18 @@ import { Button } from "@/components/ui/button";
 import type { IndicatorType } from "@/components/stock-chart";
 import { PALETTES, type PaletteId } from "@/lib/chart-palettes";
 
-export type Interval = "1d" | "1h" | "15m";
+export type Interval = "1y" | "1mo" | "1wk" | "1d" | "1h" | "15m";
+
+const INTERVAL_LABEL: Record<Interval, string> = {
+  "1y": "연봉",
+  "1mo": "월봉",
+  "1wk": "주봉",
+  "1d": "일봉",
+  "1h": "1시간",
+  "15m": "15분",
+};
+
+const INTERVALS: Interval[] = ["1y", "1mo", "1wk", "1d", "1h", "15m"];
 
 type Props = {
   interval: Interval;
@@ -27,8 +38,8 @@ export function ChartControls({
   return (
     <div className="space-y-2 mb-3">
       <div className="flex flex-wrap gap-2 items-center justify-between">
-        <div className="flex gap-1">
-          {(["1d", "1h", "15m"] as Interval[]).map((i) => (
+        <div className="flex gap-1 flex-wrap">
+          {INTERVALS.map((i) => (
             <Button
               key={i}
               type="button"
@@ -36,7 +47,7 @@ export function ChartControls({
               variant={interval === i ? "default" : "outline"}
               onClick={() => onIntervalChange(i)}
             >
-              {i === "1d" ? "일봉" : i === "1h" ? "1시간" : "15분"}
+              {INTERVAL_LABEL[i]}
             </Button>
           ))}
         </div>

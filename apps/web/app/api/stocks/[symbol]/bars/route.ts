@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { fetchBarsViaWorker } from "@/lib/workerRpc";
+import { aggregateBars, type AggInterval } from "@/lib/aggregate-bars";
+
+const VALID = new Set(["15m", "1h", "1d", "1wk", "1mo", "1y"]);
 
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ symbol: string }> }
+  { params }: { params: Promise<{ symbol: string }> },
 ) {
   const { symbol } = await params;
   const decodedSymbol = decodeURIComponent(symbol);
@@ -12,22 +15,39 @@ export async function GET(
   const interval = searchParams.get("interval") ?? "1d";
   const limit = Number(searchParams.get("limit") ?? "365");
 
-  if (!["15m", "1h", "1d"].includes(interval)) {
+  if (!VALID.has(interval)) {
     return NextResponse.json({ error: "invalid_interval" }, { status: 400 });
   }
 
-  // 1d는 DB 캐시에서, 인트라데이는 워커 RPC로 on-demand
-  if (interval === "1d") {
+  // 1d / 1wk / 1mo / 1y: DB의 일봉을 사용 (1d 직접 / 나머지는 집계)
+  if (
+    interval === "1d" ||
+    interval === "1wk" ||
+    interval === "1mo" ||
+    interval === "1y"
+  ) {
     const supabase = await createClient();
+    // 일봉은 limit 그대로, 주/월/연봉은 충분한 일봉을 가져온 뒤 집계
+    const fetchLimit = interval === "1d" ? limit : Math.max(limit, 365);
     const { data, error } = await supabase
       .from("stock_bars")
       .select("ts, open, high, low, close, volume")
       .eq("symbol", decodedSymbol)
       .eq("interval", "1d")
       .order("ts", { ascending: true })
-      .limit(limit);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ symbol: decodedSymbol, interval, bars: data ?? [] });
+      .limit(fetchLimit);
+    if (error)
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    const daily = data ?? [];
+    if (interval === "1d") {
+      return NextResponse.json({
+        symbol: decodedSymbol,
+        interval,
+        bars: daily,
+      });
+    }
+    const bars = aggregateBars(daily, interval as AggInterval);
+    return NextResponse.json({ symbol: decodedSymbol, interval, bars });
   }
 
   // 15m / 1h: 워커 RPC
