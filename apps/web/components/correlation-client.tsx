@@ -1,19 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Play, Plus, X } from "lucide-react";
+import { Loader2, Play, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Term } from "@/components/term";
+import { StockPicker, type PickedStock } from "@/components/stock-picker";
 
-type SymbolBars = { symbol: string; name: string; returns: number[] };
+type ResolvedBar = { symbol: string; name: string; returns: number[] };
 
 // Pearson correlation
 function correlation(a: number[], b: number[]): number {
   const n = Math.min(a.length, b.length);
   if (n < 3) return 0;
-  let sumA = 0, sumB = 0, sumA2 = 0, sumB2 = 0, sumAB = 0;
+  let sumA = 0,
+    sumB = 0,
+    sumA2 = 0,
+    sumB2 = 0,
+    sumAB = 0;
   for (let i = 0; i < n; i++) {
     sumA += a[i];
     sumB += b[i];
@@ -37,36 +41,51 @@ function corrColor(c: number): string {
   return "bg-blue-500 text-white";
 }
 
-export function CorrelationClient({ initialSymbols }: { initialSymbols: string[] }) {
-  const [symbols, setSymbols] = useState<string[]>(
-    initialSymbols.length > 0
-      ? initialSymbols
-      : ["005930.KS", "000660.KS", "035420.KS"],
+const DEFAULTS: PickedStock[] = [
+  { symbol: "005930.KS", name: "삼성전자" },
+  { symbol: "000660.KS", name: "SK하이닉스" },
+  { symbol: "035420.KS", name: "NAVER" },
+];
+
+export function CorrelationClient({
+  initial,
+}: {
+  initial: { symbol: string; name: string }[];
+}) {
+  const [items, setItems] = useState<PickedStock[]>(
+    initial.length > 0 ? initial : DEFAULTS,
   );
-  const [newSym, setNewSym] = useState("");
+  const [pending, setPending] = useState<PickedStock | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [matrix, setMatrix] = useState<{
-    syms: SymbolBars[];
+    syms: ResolvedBar[];
     corr: number[][];
   } | null>(null);
 
-  function addSym() {
-    if (!newSym.trim() || symbols.length >= 8) return;
-    if (symbols.includes(newSym.trim())) {
-      setNewSym("");
+  function addPicked(p: PickedStock | null) {
+    if (!p) {
+      setPending(null);
       return;
     }
-    setSymbols([...symbols, newSym.trim()]);
-    setNewSym("");
+    if (items.length >= 8) {
+      setPending(null);
+      return;
+    }
+    if (items.some((i) => i.symbol === p.symbol)) {
+      setPending(null);
+      return;
+    }
+    setItems([...items, p]);
+    setPending(null);
   }
 
-  function removeSym(idx: number) {
-    setSymbols(symbols.filter((_, i) => i !== idx));
+  function removeAt(idx: number) {
+    setItems(items.filter((_, i) => i !== idx));
   }
 
   async function run() {
-    if (symbols.length < 2) {
+    if (items.length < 2) {
       setError("최소 2개 종목 필요");
       return;
     }
@@ -74,34 +93,54 @@ export function CorrelationClient({ initialSymbols }: { initialSymbols: string[]
     setError(null);
     setMatrix(null);
     try {
-      const results = await Promise.all(
-        symbols.map(async (sym) => {
-          const [barsRes, lookupRes] = await Promise.all([
-            fetch(`/api/stocks/${encodeURIComponent(sym)}/bars?interval=1d`),
-            fetch(`/api/stocks/lookup?symbol=${encodeURIComponent(sym)}`),
-          ]);
-          if (!barsRes.ok) throw new Error(`${sym} 데이터 없음`);
-          const j = await barsRes.json();
-          const bars = (j.bars ?? []) as { ts: string; close: number }[];
-          if (bars.length < 30) throw new Error(`${sym} 데이터 부족 (30일 이상 필요)`);
-          // Daily returns
-          const returns: number[] = [];
-          for (let i = 1; i < bars.length; i++) {
-            const prev = bars[i - 1].close;
-            if (prev > 0) returns.push((bars[i].close - prev) / prev);
-          }
-          let name = sym;
-          if (lookupRes.ok) {
-            const lj = await lookupRes.json();
-            name = lj.stock?.name_ko ?? lj.stock?.name ?? sym;
-          }
-          return { symbol: sym, name, returns };
-        }),
+      const results: (ResolvedBar | { skip: PickedStock; reason: string })[] =
+        await Promise.all(
+          items.map(async (it) => {
+            const barsRes = await fetch(
+              `/api/stocks/${encodeURIComponent(it.symbol)}/bars?interval=1d`,
+            );
+            if (!barsRes.ok) {
+              return {
+                skip: it,
+                reason: `${it.name}: 일봉 데이터 조회 실패`,
+              };
+            }
+            const j = await barsRes.json();
+            const bars = (j.bars ?? []) as { ts: string; close: number }[];
+            if (bars.length < 30) {
+              return {
+                skip: it,
+                reason: `${it.name}: 일봉 ${bars.length}개 (30개 이상 필요)`,
+              };
+            }
+            const returns: number[] = [];
+            for (let i = 1; i < bars.length; i++) {
+              const prev = bars[i - 1].close;
+              if (prev > 0) returns.push((bars[i].close - prev) / prev);
+            }
+            return { symbol: it.symbol, name: it.name, returns };
+          }),
+        );
+
+      // 실패한 종목 분리
+      const valid = results.filter(
+        (r): r is ResolvedBar => "returns" in r,
+      );
+      const skipped = results.filter(
+        (r): r is { skip: PickedStock; reason: string } => "skip" in r,
       );
 
+      if (valid.length < 2) {
+        setError(
+          `유효한 종목이 ${valid.length}개뿐입니다 (최소 2개 필요).\n` +
+            skipped.map((s) => `• ${s.reason}`).join("\n"),
+        );
+        return;
+      }
+
       // Truncate all to min length for fair comparison
-      const minLen = Math.min(...results.map((r) => r.returns.length));
-      const aligned = results.map((r) => ({
+      const minLen = Math.min(...valid.map((r) => r.returns.length));
+      const aligned = valid.map((r) => ({
         ...r,
         returns: r.returns.slice(-minLen),
       }));
@@ -115,6 +154,12 @@ export function CorrelationClient({ initialSymbols }: { initialSymbols: string[]
         corr.push(row);
       }
       setMatrix({ syms: aligned, corr });
+      if (skipped.length > 0) {
+        setError(
+          `일부 종목 제외됨:\n` +
+            skipped.map((s) => `• ${s.reason}`).join("\n"),
+        );
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "실행 실패");
     } finally {
@@ -129,39 +174,36 @@ export function CorrelationClient({ initialSymbols }: { initialSymbols: string[]
           <CardTitle className="text-base">종목 선택 (2-8개)</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          {/* 선택된 종목 chips — 회사명 + 심볼 표시 */}
           <div className="flex flex-wrap gap-1.5">
-            {symbols.map((s, i) => (
+            {items.map((it, i) => (
               <button
-                key={s}
+                key={it.symbol}
                 type="button"
-                onClick={() => removeSym(i)}
-                className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary px-3 py-1 text-xs hover:bg-primary/20"
+                onClick={() => removeAt(i)}
+                className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary px-3 py-1 text-xs hover:bg-primary/20"
               >
-                {s}
+                <span className="font-medium">{it.name}</span>
+                <span className="text-[10px] opacity-60">{it.symbol}</span>
                 <X className="h-3 w-3" />
               </button>
             ))}
           </div>
-          {symbols.length < 8 && (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                addSym();
-              }}
-              className="flex gap-2"
-            >
-              <Input
-                value={newSym}
-                onChange={(e) => setNewSym(e.target.value)}
-                placeholder="심볼 추가 (예: AAPL)"
-              />
-              <Button type="submit" size="sm" variant="outline">
-                <Plus className="h-3 w-3 mr-1" />
-                추가
-              </Button>
-            </form>
+
+          {/* 종목 검색 picker */}
+          {items.length < 8 && (
+            <StockPicker
+              value={pending}
+              onChange={addPicked}
+              placeholder="종목명 또는 심볼 추가 (예: 삼성전자, AAPL)"
+            />
           )}
-          <Button onClick={run} disabled={loading || symbols.length < 2} className="w-full">
+
+          <Button
+            onClick={run}
+            disabled={loading || items.length < 2}
+            className="w-full"
+          >
             {loading ? (
               <>
                 <Loader2 className="h-3 w-3 mr-1 animate-spin" />
@@ -174,7 +216,11 @@ export function CorrelationClient({ initialSymbols }: { initialSymbols: string[]
               </>
             )}
           </Button>
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && (
+            <p className="text-xs text-amber-500 whitespace-pre-line">
+              {error}
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -194,9 +240,9 @@ export function CorrelationClient({ initialSymbols }: { initialSymbols: string[]
                         <th
                           key={s.symbol}
                           className="text-center px-1 py-1 font-medium"
-                          title={s.name}
+                          title={`${s.name} (${s.symbol})`}
                         >
-                          {s.symbol.split(".")[0].slice(0, 6)}
+                          {s.name.slice(0, 4)}
                         </th>
                       ))}
                     </tr>
@@ -245,7 +291,10 @@ export function CorrelationClient({ initialSymbols }: { initialSymbols: string[]
             <CardContent className="text-sm py-3">
               <p className="font-semibold mb-1">📌 해석</p>
               <ul className="text-xs space-y-1 text-muted-foreground list-disc ml-4">
-                <li>높은 양의 상관 (빨강) = 같은 방향으로 움직임 → <Term k="diversification">분산</Term> 효과 ↓</li>
+                <li>
+                  높은 양의 상관 (빨강) = 같은 방향으로 움직임 →{" "}
+                  <Term k="diversification">분산</Term> 효과 ↓
+                </li>
                 <li>음의 상관 (파랑) = 반대 방향 → 헤지 효과</li>
                 <li>같은 섹터/테마 종목은 보통 0.5-0.8</li>
                 <li>다른 자산 클래스(주식/채권/금/원자재)는 낮은 상관 권장</li>

@@ -68,26 +68,31 @@ export default async function SectorsHeatmapPage({
     if (data.length < 1000) break;
   }
 
-  // 최근 2 일봉 fetch (pagination)
+  // 최근 2 일봉 fetch — symbols를 1000개씩 chunk (PostgREST IN limit)
+  // 각 chunk마다 pagination으로 1000건씩 fetch
   const symbols = allStocks.map((s) => s.symbol);
   const closesBySymbol = new Map<string, number[]>();
-  for (let offset = 0; ; offset += 1000) {
-    const { data: bars } = await supabase
-      .from("stock_bars")
-      .select("symbol, ts, close")
-      .in("symbol", symbols.slice(0, Math.min(symbols.length, 1500))) // PostgREST IN limit
-      .eq("interval", "1d")
-      .order("ts", { ascending: false })
-      .range(offset, offset + 999);
-    if (!bars || bars.length === 0) break;
-    for (const b of bars as BarRow[]) {
-      const arr = closesBySymbol.get(b.symbol) ?? [];
-      if (arr.length < 2) {
-        arr.push(b.close);
-        closesBySymbol.set(b.symbol, arr);
+  const CHUNK = 1000;
+  for (let ci = 0; ci < symbols.length; ci += CHUNK) {
+    const symChunk = symbols.slice(ci, ci + CHUNK);
+    for (let offset = 0; ; offset += 1000) {
+      const { data: bars } = await supabase
+        .from("stock_bars")
+        .select("symbol, ts, close")
+        .in("symbol", symChunk)
+        .eq("interval", "1d")
+        .order("ts", { ascending: false })
+        .range(offset, offset + 999);
+      if (!bars || bars.length === 0) break;
+      for (const b of bars as BarRow[]) {
+        const arr = closesBySymbol.get(b.symbol) ?? [];
+        if (arr.length < 2) {
+          arr.push(b.close);
+          closesBySymbol.set(b.symbol, arr);
+        }
       }
+      if (bars.length < 1000) break;
     }
-    if (bars.length < 1000) break;
   }
 
   // sector별 weighted average return (by market cap)

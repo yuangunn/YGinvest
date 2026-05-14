@@ -50,16 +50,18 @@ export default async function CurationPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
-  // 모든 active stocks 로드 (pagination)
+  // Top 1500 by market_cap 만 — 시총 작은 종목은 데이터 부실 확률 ↑ + 페이지 무거워짐
+  // PER이 있는 종목이 558개라 1500개 한도면 충분히 cover
   const all: StockRow[] = [];
-  for (let offset = 0; ; offset += 1000) {
+  for (let offset = 0; offset < 1500; offset += 1000) {
     const { data } = await supabase
       .from("stocks")
       .select(
         "symbol, name, name_ko, market, currency, sector, last_price, per, market_cap, fifty_two_week_high, fifty_two_week_low",
       )
       .eq("is_active", true)
-      .range(offset, offset + 999);
+      .order("market_cap", { ascending: false, nullsFirst: false })
+      .range(offset, Math.min(offset + 999, 1499));
     if (!data || data.length === 0) break;
     all.push(...(data as StockRow[]));
     if (data.length < 1000) break;
