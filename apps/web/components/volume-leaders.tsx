@@ -64,28 +64,40 @@ export async function VolumeLeaders({
   if (stocks.length === 0) return null;
   const symbols = stocks.map((s) => s.symbol);
 
-  // 가장 최근 일봉 거래량
+  // Plan #27.5: 거래대금 = 최근 7일 내 일봉의 마지막 (장 마감 후엔 당일, 휴장이면 직전 영업일).
+  // 기존 코드: 전체 일봉 row를 fetch (547K+ rows) → 30분 stuck.
+  // 수정: 7일 범위로 제한 → 시간순 정렬 후 symbol별 첫 결과만 사용.
+  const sevenDaysAgo = new Date(new Date().getTime() - 7 * 86400000)
+    .toISOString()
+    .slice(0, 10);
   const latestBars = new Map<string, { close: number; volume: number }>();
-  for (let off = 0; ; off += 1000) {
-    const { data: bars } = await supabase
-      .from("stock_bars")
-      .select("symbol, ts, close, volume")
-      .in("symbol", symbols.slice(0, Math.min(symbols.length, 1500)))
-      .eq("interval", "1d")
-      .order("ts", { ascending: false })
-      .range(off, off + 999);
-    if (!bars || bars.length === 0) break;
-    for (const b of bars as {
-      symbol: string;
-      ts: string;
-      close: number;
-      volume: number;
-    }[]) {
-      if (!latestBars.has(b.symbol)) {
-        latestBars.set(b.symbol, { close: b.close, volume: b.volume });
+
+  // 심볼이 많으면 chunk로 나눠서 IN 절 URL 길이 초과 방지
+  const CHUNK = 800;
+  for (let ci = 0; ci < symbols.length; ci += CHUNK) {
+    const symChunk = symbols.slice(ci, ci + CHUNK);
+    for (let off = 0; ; off += 1000) {
+      const { data: bars } = await supabase
+        .from("stock_bars")
+        .select("symbol, ts, close, volume")
+        .in("symbol", symChunk)
+        .eq("interval", "1d")
+        .gte("ts", sevenDaysAgo)
+        .order("ts", { ascending: false })
+        .range(off, off + 999);
+      if (!bars || bars.length === 0) break;
+      for (const b of bars as {
+        symbol: string;
+        ts: string;
+        close: number;
+        volume: number;
+      }[]) {
+        if (!latestBars.has(b.symbol)) {
+          latestBars.set(b.symbol, { close: b.close, volume: b.volume });
+        }
       }
+      if (bars.length < 1000) break;
     }
-    if (bars.length < 1000) break;
   }
 
   // 거래대금 = close × volume

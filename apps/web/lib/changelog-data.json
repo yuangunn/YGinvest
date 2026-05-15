@@ -1,5 +1,14 @@
 [
   {
+    "sha": "3913e9b",
+    "date": "2026-05-16T00:11:32+09:00",
+    "type": "fix",
+    "scope": null,
+    "breaking": false,
+    "title": "NumberInput 소수점 + 'YGI' 아이콘 + Macro 수동 trigger",
+    "description": "## NumberInput 소수점 입력 버그 수정\n이전: \"3.\" → 부모 value 3 → format \"3\" → 점 사라짐. \"3.5\", \"3.50\" 입력 불가능.\n원인: 내부 state 없이 부모 number → format → display 사이클이라 mid-typing 보존 X.\n\n수정:\n- 내부 `text` state 추가 — 사용자가 보는 그대로 유지\n- 외부 value 변화는 ref로 추적, user-typing이 아닌 경우에만 re-format\n- \"3.\"  \"3.50\"  \"-\" 같은 mid-typing 모두 보존\n- 콤마는 정수 부분에만, 소수 부분은 그대로\n\n## 앱 아이콘 'YGI' 재디자인\n- 테두리 / 둥근 모서리 제거 — OS가 자체 곡률로 클립 (스쿼클, 원형 등)\n- 그라데이션 배경 (primary blue → darker blue)\n- maskable 아이콘은 safe zone(중앙 ~70%)에 텍스트 배치\n- `scripts/generate-icons.mjs` 추가 — SVG → PNG (sharp)\n- `npm run icons`로 재생성 가능\n- 생성: icon-192, icon-512, icon-maskable-512, apple-touch-icon, icon-32\n\n## 거시경제 데이터 수동 trigger\n이슈: 05/16 03:30 KST에 Railway worker cron이 fetch 누락 (원인 불명) → DB 비어있었음.\n\n조치:\n1) 로컬에서 직접 Cloud DB로 fetch 실행 → 627건 backfill 완료\n2) Worker RPC: `/rpc/macro_now` 엔드포인트 추가\n3) Web API: `POST /api/admin/fetch-macro` — 수동 trigger\n   → 다음에 cron 누락 시 즉시 backfill 가능"
+  },
+  {
     "sha": "5d25d57",
     "date": "2026-05-16T00:00:13+09:00",
     "type": "feat",

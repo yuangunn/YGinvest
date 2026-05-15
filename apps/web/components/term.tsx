@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { BookOpen, X } from "lucide-react";
 import { GLOSSARY, type GlossaryEntry } from "@/lib/glossary";
@@ -11,20 +12,54 @@ type Props = {
   className?: string;
 };
 
+type Bounds = { top: number; left: number; width: number };
+
+const POPOVER_W = 320;
+const POPOVER_PAD = 16; // viewport edge padding
+
 export function Term({ k, children, className = "" }: Props) {
   const entry = GLOSSARY[k.toLowerCase()];
   const [open, setOpen] = useState(false);
-  const wrapperRef = useRef<HTMLSpanElement>(null);
+  const [bounds, setBounds] = useState<Bounds | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
+  // 트리거 좌표 계산 — viewport 안에 fit
+  useEffect(() => {
+    if (!open) return;
+    function update() {
+      if (!triggerRef.current) return;
+      const r = triggerRef.current.getBoundingClientRect();
+      const viewportW = window.innerWidth;
+      // popover의 좌측 = trigger 좌측. 단 우측이 viewport를 넘으면 우측에 붙임.
+      let left = r.left;
+      const maxLeft = viewportW - POPOVER_W - POPOVER_PAD;
+      if (left > maxLeft) left = Math.max(POPOVER_PAD, maxLeft);
+      if (left < POPOVER_PAD) left = POPOVER_PAD;
+      const width = Math.min(POPOVER_W, viewportW - POPOVER_PAD * 2);
+      setBounds({
+        top: r.bottom + 4,
+        left,
+        width,
+      });
+    }
+    update();
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
+  }, [open]);
+
+  // 바깥 클릭 / ESC 닫기
   useEffect(() => {
     if (!open) return;
     function onClickOutside(e: MouseEvent) {
-      if (
-        wrapperRef.current &&
-        !wrapperRef.current.contains(e.target as Node)
-      ) {
-        setOpen(false);
-      }
+      const target = e.target as Node;
+      if (triggerRef.current && triggerRef.current.contains(target)) return;
+      const popover = document.getElementById("term-popover");
+      if (popover && popover.contains(target)) return;
+      setOpen(false);
     }
     function onEsc(e: KeyboardEvent) {
       if (e.key === "Escape") setOpen(false);
@@ -38,13 +73,25 @@ export function Term({ k, children, className = "" }: Props) {
   }, [open]);
 
   if (!entry) {
-    // 사전에 없는 키 — 그냥 children만 렌더
     return <span className={className}>{children ?? k}</span>;
   }
 
+  const popover =
+    open && bounds && typeof document !== "undefined"
+      ? createPortal(
+          <TermPopover
+            entry={entry}
+            bounds={bounds}
+            onClose={() => setOpen(false)}
+          />,
+          document.body,
+        )
+      : null;
+
   return (
-    <span ref={wrapperRef} className="relative inline-block">
+    <>
       <button
+        ref={triggerRef}
         type="button"
         onClick={(e) => {
           e.preventDefault();
@@ -56,25 +103,37 @@ export function Term({ k, children, className = "" }: Props) {
       >
         {children ?? entry.term}
       </button>
-      {open && <TermPopover entry={entry} onClose={() => setOpen(false)} />}
-    </span>
+      {popover}
+    </>
   );
 }
 
 function TermPopover({
   entry,
+  bounds,
   onClose,
 }: {
   entry: GlossaryEntry;
+  bounds: Bounds;
   onClose: () => void;
 }) {
   return (
-    <span
+    <div
+      id="term-popover"
       role="dialog"
-      className="absolute z-50 left-0 top-full mt-1 w-[320px] max-w-[calc(100vw-2rem)] rounded-lg border bg-popover shadow-lg p-3 text-sm text-foreground"
-      style={{ wordBreak: "keep-all" }}
+      style={{
+        position: "fixed",
+        top: bounds.top,
+        left: bounds.left,
+        width: bounds.width,
+        maxHeight: "70vh",
+        overflowY: "auto",
+        zIndex: 80,
+        wordBreak: "keep-all",
+      }}
+      className="rounded-lg border bg-popover shadow-lg p-3 text-sm text-foreground"
     >
-      <span className="flex items-start justify-between gap-2 mb-2">
+      <div className="flex items-start justify-between gap-2 mb-2">
         <span className="font-bold flex items-center gap-1.5 text-primary">
           <BookOpen className="h-3.5 w-3.5" aria-hidden />
           {entry.term}
@@ -87,28 +146,28 @@ function TermPopover({
         >
           <X className="h-3.5 w-3.5" />
         </button>
-      </span>
-      <span className="block text-xs text-muted-foreground italic mb-2">
+      </div>
+      <p className="text-xs text-muted-foreground italic mb-2">
         {entry.short}
-      </span>
-      <span
-        className="block text-xs leading-relaxed whitespace-pre-line"
+      </p>
+      <p
+        className="text-xs leading-relaxed whitespace-pre-line"
         style={{ wordBreak: "keep-all" }}
       >
         {entry.detail}
-      </span>
+      </p>
       {entry.formula && (
-        <span className="block mt-2 text-[11px] font-mono bg-muted/50 rounded px-2 py-1">
+        <p className="mt-2 text-[11px] font-mono bg-muted/50 rounded px-2 py-1">
           {entry.formula}
-        </span>
+        </p>
       )}
       {entry.example && (
-        <span className="block mt-2 text-[11px] text-muted-foreground">
+        <p className="mt-2 text-[11px] text-muted-foreground">
           📌 {entry.example}
-        </span>
+        </p>
       )}
       {entry.related && entry.related.length > 0 && (
-        <span className="block mt-2 pt-2 border-t flex flex-wrap gap-1">
+        <div className="mt-2 pt-2 border-t flex flex-wrap gap-1">
           {entry.related.map((r) => {
             const rel = GLOSSARY[r];
             if (!rel) return null;
@@ -123,15 +182,8 @@ function TermPopover({
               </Link>
             );
           })}
-        </span>
+        </div>
       )}
-      <Link
-        href={`/app/learn/glossary#${Object.keys(GLOSSARY).find((k) => GLOSSARY[k] === entry)}`}
-        onClick={onClose}
-        className="block mt-2 text-[10px] text-primary hover:underline text-right"
-      >
-        용어사전 전체 보기 →
-      </Link>
-    </span>
+    </div>
   );
 }
