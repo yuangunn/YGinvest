@@ -1,18 +1,17 @@
 "use client";
 
-import { useId } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 
 /**
- * Plan #27.1: 천 단위 콤마 표시 + spinner 버튼 제거된 금액 입력 컴포넌트.
+ * Plan #27.1: 천 단위 콤마 표시 + spinner 버튼 제거된 금액 입력.
+ * Plan #27.4: 내부 텍스트 state로 소수점 입력 보존.
  *
- * - type="text" + inputMode="numeric" → 모바일에서 숫자 키패드 + 위/아래 버튼 X
- * - 입력값은 항상 number로 부모에 전달 (콤마 자동 제거)
- * - 빈 값은 0으로 처리
- *
- * @example
- *   <NumberInput value={amount} onChange={setAmount} />
- *   → 화면: "1,000,000"  부모: number 1000000
+ * 이전 버그:
+ *   "3." 입력 → onChange로 3 emit → 부모 value 3 → format 결과 "3" → 점이 사라짐.
+ * 해결:
+ *   내부에 text state를 유지하여 "3." "3.5" "3.50" 같은 중간 상태를 보존.
+ *   외부 value가 사용자 입력과 무관하게 바뀌었을 때만 re-format.
  */
 type Props = Omit<
   React.ComponentProps<"input">,
@@ -26,30 +25,58 @@ type Props = Omit<
   allowNegative?: boolean;
 };
 
-function formatWithCommas(n: number, allowDecimal: boolean): string {
+function formatForDisplay(n: number, allowDecimal: boolean): string {
   if (!Number.isFinite(n)) return "";
   if (n === 0) return "";
   return n.toLocaleString("en-US", {
-    maximumFractionDigits: allowDecimal ? 6 : 0,
+    maximumFractionDigits: allowDecimal ? 8 : 0,
   });
 }
 
-function parseInput(
+function parseToNumber(s: string): number {
+  const cleaned = s.replace(/,/g, "");
+  if (cleaned === "" || cleaned === "-" || cleaned === "." || cleaned === "-.")
+    return 0;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * 사용자 입력 raw를 정제해 표시용 텍스트 생성.
+ * 중간 상태 ("3.", "3.50", "-")를 보존.
+ */
+function sanitizeAndFormat(
   raw: string,
   allowDecimal: boolean,
   allowNegative: boolean,
-): number {
-  if (!raw) return 0;
-  // strip everything but digits, dot, minus
-  let cleaned = raw.replace(/,/g, "");
+): string {
+  // 1) 허용 문자만 (digits, dot, minus, comma)
+  let cleaned = raw.replace(/[^\d.\-,]/g, "").replace(/,/g, "");
   if (!allowDecimal) cleaned = cleaned.replace(/\./g, "");
-  if (!allowNegative) cleaned = cleaned.replace(/-/g, "");
-  // 음수는 앞에 한 번만, 소수점도 한 번만 유효
-  cleaned = cleaned.replace(/[^\d.\-]/g, "");
-  // 잘못된 위치의 -와 중복 .는 정리
-  if (cleaned === "" || cleaned === "-" || cleaned === ".") return 0;
-  const n = Number(cleaned);
-  return Number.isFinite(n) ? n : 0;
+  // 2) minus 처리 — 앞에만 한 번
+  let neg = "";
+  if (allowNegative && cleaned.startsWith("-")) {
+    neg = "-";
+  }
+  cleaned = cleaned.replace(/-/g, "");
+  // 3) dot 처리 — 첫 번째 dot만 유지
+  if (allowDecimal) {
+    const firstDot = cleaned.indexOf(".");
+    if (firstDot >= 0) {
+      cleaned =
+        cleaned.slice(0, firstDot + 1) +
+        cleaned.slice(firstDot + 1).replace(/\./g, "");
+    }
+  }
+  if (cleaned === "") return neg; // "-" 또는 ""
+  // 4) 정수 부분에만 콤마, 소수 부분은 그대로
+  if (cleaned.includes(".")) {
+    const [intPart, decPart] = cleaned.split(".");
+    const intFormatted =
+      intPart === "" ? "" : Number(intPart).toLocaleString("en-US");
+    return neg + intFormatted + "." + (decPart ?? "");
+  }
+  return neg + Number(cleaned).toLocaleString("en-US");
 }
 
 export function NumberInput({
@@ -60,18 +87,39 @@ export function NumberInput({
   className,
   ...rest
 }: Props) {
-  const id = useId();
-  const displayValue = formatWithCommas(value, allowDecimal);
+  // 내부 텍스트 state — 사용자가 보는 그대로
+  const [text, setText] = useState<string>(() =>
+    formatForDisplay(value, allowDecimal),
+  );
+  // 마지막으로 우리가 emit한 number 추적 (부모가 외부에서 value 변경했는지 판별)
+  const lastEmittedRef = useRef<number>(value);
+
+  // 외부 value 변화가 user-typing 결과가 아니면 text 재동기화
+  useEffect(() => {
+    if (value === lastEmittedRef.current) return;
+    setText(formatForDisplay(value, allowDecimal));
+    lastEmittedRef.current = value;
+  }, [value, allowDecimal]);
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const formatted = sanitizeAndFormat(
+      e.target.value,
+      allowDecimal,
+      allowNegative,
+    );
+    setText(formatted);
+    const n = parseToNumber(formatted);
+    lastEmittedRef.current = n;
+    if (n !== value) onChange(n);
+  }
+
   return (
     <Input
-      id={rest.id ?? id}
       type="text"
       inputMode={allowDecimal ? "decimal" : "numeric"}
       autoComplete="off"
-      value={displayValue}
-      onChange={(e) =>
-        onChange(parseInput(e.target.value, allowDecimal, allowNegative))
-      }
+      value={text}
+      onChange={handleChange}
       className={className}
       {...rest}
     />

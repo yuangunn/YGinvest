@@ -8,6 +8,7 @@ from ygworker.data_sources.naver_news import fetch_kr_news
 from ygworker.data_sources.yahoo import fetch_history, fetch_quote
 from ygworker.data_sources.yahoo_news import fetch_key_metrics, fetch_news
 from ygworker.jobs.enrich_stock_info import run_enrich_stock_info
+from ygworker.jobs.fetch_macro_indicators import run_fetch_macro_indicators
 
 
 class LookupRequest(BaseModel):
@@ -36,6 +37,13 @@ def make_router(supabase: Any, secret: str) -> APIRouter:
         """Plan #22 hotfix — 모든 stocks의 sector/PER/52w/market_cap를 yfinance로 갱신."""
         log = structlog.get_logger()
         return run_enrich_stock_info(supabase, log)
+
+    @router.post("/rpc/macro_now")
+    def macro_now(_: None = Depends(_check_secret)) -> dict:
+        """Plan #27.4: 거시경제 지표 수동 fetch (cron 누락 시 backfill)."""
+        log = structlog.get_logger()
+        run_fetch_macro_indicators(supabase, log)
+        return {"ok": True}
 
     @router.post("/rpc/stocks/lookup", response_model=LookupResponse)
     def lookup(req: LookupRequest, _: None = Depends(_check_secret)) -> LookupResponse:

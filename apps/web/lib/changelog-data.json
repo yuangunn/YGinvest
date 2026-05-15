@@ -1,5 +1,23 @@
 [
   {
+    "sha": "5d25d57",
+    "date": "2026-05-16T00:00:13+09:00",
+    "type": "feat",
+    "scope": "learn",
+    "breaking": false,
+    "title": "금융 용어사전 ~110개 용어 추가 (39 → 150)",
+    "description": "기존 39개 → 150개로 확장. 경제 상식까지 포함.\n\n## 추가된 카테고리\n\n### 가치평가 확장\nforward-pe, peg, ev-ebitda, dcf, fcf, payout-ratio, dividend-yield,\nintrinsic-value\n\n### 재무제표 / 기업 분석\nbalance-sheet, income-statement, cash-flow-statement, ebitda,\noperating-margin, gross-margin, net-margin, debt-to-equity,\ncurrent-ratio, capex\n\n### 거래 메커니즘\nbid-ask, slippage, short-selling, margin, leverage, hedge, arbitrage,\ncircuit-breaker, vi, ipo, buyback, stock-split\n\n### 채권 / 금리\nyield, yield-curve, duration, credit-rating, junk-bond, treasury\n\n### 거시경제 / 지표\ngdp, cpi-core, ppi, unemployment, nfp, fomc, fed, bok, qe, qt,\nmonetary-policy, fiscal-policy, recession, soft-landing, stagflation,\ndeflation\n\n### 통화 / 환율\ndxy, carry-trade\n\n### 원자재 / 선물 / 옵션\ncommodity, futures, options-basic, vix, contango, backwardation\n\n### 펀드 / ETF\nindex-fund, etf, mutual-fund, hedge-fund\n\n### 위험 / 통계\nbeta, alpha, sharpe-ratio, sortino-ratio, max-drawdown, value-at-risk,\ncagr, standard-deviation, kelly-criterion, correlation\n\n### 투자 스타일 / 행동경제학\nvalue-investing, growth-investing, dollar-cost-averaging, rebalancing,\nasset-allocation, loss-aversion, disposition-effect, anchoring-bias,\nherd-mentality, fomo, confirmation-bias, behavioral-biases\n\n### 한국 시장 특이\nkr-trading-session, preferred-stock, rights-offering, kosdaq-vs-kospi\n\n### 세금 / 절세\ncapital-gains-tax, isa-irp\n\n### 코퍼레이트 액션\nm-and-a, earnings-season, ex-dividend\n\n### 일반 경제 상식\nsupply-demand, opportunity-cost, efficient-market-hypothesis,\nrandom-walk, black-swan, bubble, moral-hazard, wealth-effect,\ntrickle-down, gini-coefficient, phillips-curve, real-vs-nominal,\nlagging-leading, soft-vs-hard-currency, barbell-strategy, j-curve,\ncomparative-advantage, network-effect, lindy-effect\n\n## 일관성\n- 모든 항목: term / short / detail (+optional formula, example, related)\n- related 링크로 용어 간 연결망 형성 → 한 용어에서 관련 용어로 탐색\n- 한국 시장 + 미국 시장 사례를 함께 제공\n- 학습 글(/app/learn/[slug])과 cross-link 가능\n\n## 학습 효과\n- 검색 가능한 백과사전 → /app/learn/glossary\n- Term 컴포넌트로 어떤 페이지에서든 popover로 즉시 학습\n- 일일 퀴즈(C5)의 문제 풀도 4배 확장 → 더 다양한 문제"
+  },
+  {
+    "sha": "5aa3c4f",
+    "date": "2026-05-15T23:41:10+09:00",
+    "type": "feat",
+    "scope": null,
+    "breaking": false,
+    "title": "앱 내 업데이트 소식 페이지 (/app/changelog)",
+    "description": "git commit log를 자동으로 파싱해 사용자가 볼 수 있는 changelog로\n변환. 대시보드와 Cmd+K에서 바로 접근.\n\n## 구성\n- `scripts/generate-changelog.mjs` — git log → JSON 빌드 스크립트\n  - Conventional Commit prefix 파싱 (feat/fix/perf/refactor/revert만)\n  - chore/docs/style/ci/build/test 제외\n  - Co-Authored-By / Generated with 라인 제거\n- `package.json` prebuild hook — 빌드 전 자동 갱신\n  - `|| true`로 fallback (Vercel shallow clone 시 기존 JSON 사용)\n- `npm run changelog` — 수동 갱신\n- `lib/changelog-data.json` (커밋됨) — 빌드 결과물\n\n## UI\n- `/app/changelog`: 월별 그룹 + 타입별 컬러 뱃지\n  - feat ✨ / fix 🐞 / perf ⚡ / refactor ♻️ / revert ↩️\n  - 상세 보기 토글로 commit body 표시\n  - \"방금/X분 전/X일 전/Mon DD\" 상대 시간\n- `components/changelog-link.tsx`: 대시보드 상단 헤더에 표시\n  - localStorage `yg-changelog-seen-sha`로 NEW 배지 관리\n  - 페이지 진입 시 latest sha를 mark → NEW 사라짐\n- Cmd+K 팔레트에 \"업데이트 소식\" 추가\n\n## 초기 데이터\n- 127개 entry 생성 (현재 시점까지 모든 의미있는 커밋)"
+  },
+  {
     "sha": "531d67c",
     "date": "2026-05-15T23:27:31+09:00",
     "type": "feat",
