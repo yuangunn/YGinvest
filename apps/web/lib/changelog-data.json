@@ -1,0 +1,1145 @@
+[
+  {
+    "sha": "531d67c",
+    "date": "2026-05-15T23:27:31+09:00",
+    "type": "feat",
+    "scope": "ui",
+    "breaking": false,
+    "title": "NumberInput — 천단위 콤마 자동 표시 + spinner 버튼 제거",
+    "description": "은행앱 같은 깔끔한 금액 입력. 6개 form에 일괄 적용.\n\n## 신규 컴포넌트\n- `components/number-input.tsx` — 재사용 가능한 금액 입력\n  - type=\"text\" + inputMode=\"numeric\" → 모바일 숫자 키패드 + 위/아래 버튼 X\n  - 입력 시 자동 콤마: 5000 → \"5,000\"\n  - 부모엔 항상 plain number 전달 (콤마 자동 제거)\n  - `allowDecimal` 옵션으로 소수점 입력 허용\n\n## 적용된 form (6개)\n- whatif (가상 매수 — 투자 금액)\n- fx-exchange (환전 — KRW/USD 금액)\n- dividend-sim (배당 시뮬 — 초기/월적립/수익률/기간 모두)\n- price-alert (가격 알림 — 트리거 가격)\n- order-form (매수/매도 — 수량 + 지정가)\n- room-create (방 만들기 — 시작 KRW/USD/기간)\n\n## 전역 CSS\n- input[type=\"number\"] spinner 버튼 모든 브라우저에서 숨김\n  (혹시 남아있는 type=\"number\" 입력에도 적용)"
+  },
+  {
+    "sha": "5d7d712",
+    "date": "2026-05-15T22:42:28+09:00",
+    "type": "feat",
+    "scope": null,
+    "breaking": false,
+    "title": "Plan #27 — 품질 + 비용 절감 일괄 (A4/A5 + B1~B5 + C1~C6 + D1~D4)",
+    "description": "## A. 비용 절감 (Railway/Supabase ↓)\n### A4. Worker 잡 주기 완화\n- matching_engine: 1분 → 2분\n- room_lifecycle: 1분 → 5분\n- check_price_alerts: 1분 → 5분\n- send_notifications: 1분 → 5분\n- 누적 Railway compute 30~40% 절감 기대\n\n### A5. 오래된 데이터 정리 (cleanup_old_data)\n- 새 worker job (매일 02:00 KST)\n- stock_bars 15m/1h: 90일 이전 삭제\n- notification_queue dispatched: 30일 이전\n- recommendation_clicks: 60일 이전\n- client_errors: 30일 이전\n\n## B. UX 품질\n### B1. Cmd+K 명령 팔레트 (components/command-palette.tsx)\n- 어디서든 Cmd/Ctrl+K → 종목 검색 + 페이지 점프\n- 최근 본 종목 + 24개 nav link fuzzy 매칭\n- 키보드 ↑↓ + Enter 지원\n\n### B2. 마켓 상태 라이브 (market-status.tsx + lib/market-hours-client.ts)\n- 헤더에 KR/US 시장 상태 (장 시작 D-X분 / 장중 / 마감)\n- 1분 자동 갱신, KST/ET 시간대 자동 처리, DST 반영\n\n### B3. 최근 본 종목 (lib/recent-stocks.ts + recent-tracker.tsx)\n- 종목 페이지 진입 시 localStorage에 기록 (최대 8개)\n- Cmd+K에서 표시\n\n### B4. ErrorBoundary + 자체 에러 로깅 (B4)\n- AppErrorBoundary로 페이지 다운 방지 + 친화 UI\n- GlobalErrorListener: unhandledrejection / window error 캡처\n- /api/errors/log → client_errors 테이블 (rate-limit 60s)\n\n### B5. EmptyState 컴포넌트 (empty-state.tsx)\n- 일관된 빈 상태 UI + CTA 버튼\n- 매매분석 페이지에 적용 (확장 가능)\n\n## C. 학습 콘텐츠\n### C1. 매매일지 (trade-notes.tsx + /api/trade-notes)\n- 종목 페이지에 메모 위젯 (CRUD)\n- 종목별/전체 노트 조회, 최대 2000자/노트\n\n### C2. What-If 계산기 (/app/whatif + whatif-client.tsx)\n- \"그때 NVDA 100만원 샀으면?\" 가상 매수 시뮬\n- CAGR, 실질 수익률(인플레 보정) 계산\n\n### C3. 학습 글 5편 추가\n- 행동경제학 / 복리·72의 법칙 / FOMC 점도표 / 버블 역사 / ETF 입문\n\n### C4. 경제 일정 D-1 푸시 (notify_economic_events.py)\n- 매일 08:00 KST: 내일 FOMC/CPI/한은 등 importance≥2 이벤트 푸시\n- notification_settings.economic_events_enabled로 옵트인\n\n### C5. 일일 퀴즈 카드 (daily-quiz-card.tsx + lib/daily-quiz.ts)\n- 대시보드에 매일 1문제 (glossary 기반, 날짜 시드 결정성)\n- localStorage로 streak 기록\n\n### C6. AI 분석 → 매매일지는 자연스러운 후속 — 매매일지 기본 인프라 마련\n\n## D. 안정성 / 운영\n### D1. Health 페이지 (/app/health)\n- 5개 데이터 source 신선도 (FX, last_price, daily bars, macro, earnings)\n- 7일 활동 사용자 카운트\n- 운영 모니터링용\n\n### D2. Freshness Indicator (freshness-indicator.tsx)\n- 가격 카드에 \"실시간\" / \"X분 전\" 뱃지\n- 장중 5분+ stale이면 노란 경고\n\n### D3. 백테스트 결과 24h localStorage 캐시 (lib/backtest-cache.ts)\n- 같은 종목+전략 재계산 방지\n\n### D4. 거래 transient 실패 재시도 (offline-fetch.ts)\n- 5xx/429/408/네트워크 일시 → 지수 백오프 2회 재시도\n- order-form.tsx에 retries: 2 적용\n\n## DB 마이그레이션 (20260515000001_plan27.sql)\n- trade_notes (C1)\n- client_errors (B4)\n- notification_settings.economic_events_enabled (C4)\n\n## Layout 통합\n- AppLayout: GlobalErrorListener + CommandPalette + MarketStatusBar + AppErrorBoundary\n- Dashboard: DailyQuizCard 추가, 가상 매수 quick action 추가"
+  },
+  {
+    "sha": "98c6e2d",
+    "date": "2026-05-14T23:21:23+09:00",
+    "type": "fix",
+    "scope": "chart",
+    "breaking": false,
+    "title": "연봉 제거 + 추세선 그리기 안 됨 수정",
+    "description": "## 연봉 (1y) 제거\n일봉 데이터가 365일치라 연봉 candle이 1-2개뿐이라 실용성 없음.\n인터벌: 월봉 / 주봉 / 일봉 / 1시간 / 15분 (5종).\n\n## 추세선 그리기 안 되는 버그 수정\n원인: useEffect deps에 drawingMode + onTrendlineComplete/onFibComplete가\n들어있어, 모드 전환할 때마다 chart 인스턴스가 완전 재생성됨. 또한 매\n렌더링마다 callback prop이 새 ref라 더 자주 재생성. 결과적으로 사용자의\n첫 클릭과 두번째 클릭 사이에 chart가 destroy/recreate 되어 클릭이\n일관성 없이 처리됨.\n\n수정:\n- StockChart에서 drawingMode + onTrendlineComplete + onFibComplete를\n  ref로 보관 (`drawingModeRef` / `onTrendlineCompleteRef` / `onFibCompleteRef`)\n- ref는 별도 useEffect로 동기화\n- 메인 useEffect deps에서 위 3개 제거 → chart 재생성 빈도 ↓\n- ChartArea에서 handleTrendlineComplete / handleFibComplete를 useCallback로\n  안정화 (props 변경 빈도 ↓)\n\n이제:\n- 추세선 버튼 클릭 → 모드만 ref 업데이트, chart 그대로 유지\n- 1번째 클릭 → drawingStateRef.point1 저장\n- 2번째 클릭 → onTrendlineComplete 호출 → trendlines state 업데이트\n  → chart 재생성하면서 trendline 렌더"
+  },
+  {
+    "sha": "fbaba56",
+    "date": "2026-05-14T23:09:45+09:00",
+    "type": "feat",
+    "scope": "chart",
+    "breaking": false,
+    "title": "연봉/월봉/주봉 추가 + 기본 view 최근 100봉으로 제한",
+    "description": "## 인터벌 확장 (6종 buttons)\n- 연봉 (1y) / 월봉 (1mo) / 주봉 (1wk) / 일봉 (1d) / 1시간 (1h) / 15분 (15m)\n- 1d 일봉 데이터를 서버에서 주/월/연 단위로 집계 (lib/aggregate-bars.ts)\n  - 그룹 키: ISO week / 년-월 / 년\n  - OHLCV: first.open / last.close / max.high / min.low / Σvolume\n- 1wk/1mo/1y는 db의 1d bars(최소 365개) 가져온 뒤 server-side aggregate\n- 15m/1h는 기존대로 worker RPC\n\n## 기본 view 최근 100봉\n- 기존: chart.timeScale().fitContent() — 전체 봉 화면에 맞춤 → 봉이 빽빽이 보임\n- 변경: bars.length > 100면 setVisibleLogicalRange로 최근 100봉만 visible\n- 100봉 미만은 fitContent 그대로\n- 사용자가 좌측 스크롤하면 과거 데이터 정상 조회\n\n## API 변경\n- /api/stocks/[symbol]/bars 가 1wk/1mo/1y 인터벌 지원\n- 검증 set으로 깔끔 처리\n\n## 데이터 한계 (TODO)\n- 현재 일봉 데이터가 365일 정도라 연봉은 1-2개 candle만 보임\n- 향후 fetch_daily_bars의 days를 1825(5년)로 늘리면 연봉도 5개 candle로 useful해짐"
+  },
+  {
+    "sha": "109cbe0",
+    "date": "2026-05-14T23:03:32+09:00",
+    "type": "feat",
+    "scope": "stock",
+    "breaking": false,
+    "title": "업데이트 timestamp에 시장 TZ 라벨 추가",
+    "description": "기존: 업데이트 시각을 사용자 브라우저 locale로만 표시 → KST/현지시간 구분 모호.\n변경: 종목 시장(KR/US)에 맞는 timezone으로 변환 + 라벨 표기.\n\n표시 예시:\n- 삼성전자(.KS): \"2026. 5. 14. 오후 1:45:23 (KST / UTC +9)\"\n- AAPL(NASDAQ): \"2026. 5. 14. 오전 12:45:23 (EDT / UTC -4)\"\n  → 5월은 미국 DST 적용, EDT 자동 판별 (Intl.DateTimeFormat short name)\n\nformatMarketTimestamp(iso, market) helper로 분리해 다른 곳에서도 재사용 가능."
+  },
+  {
+    "sha": "8154784",
+    "date": "2026-05-14T22:58:43+09:00",
+    "type": "feat",
+    "scope": "pwa",
+    "breaking": false,
+    "title": "인앱 설치 안내 배너 + /app/help/install 가이드 페이지",
+    "description": "## InstallBanner — /app/* 상단에 표시\n- 플랫폼 자동 감지: Android Chrome/Samsung / iOS Safari / 인앱(카카오톡·\n  네이버·인스타·라인·페이스북·X) / Firefox / Desktop\n- `beforeinstallprompt` 이벤트 처리 → Chrome/Samsung에서 네이티브 prompt\n- iOS Safari: \"Safari 공유 → 홈 화면에 추가\" 안내\n- 인앱 브라우저: \"외부 브라우저로 열기\" 가이드 링크\n- 14일 dismiss 기억 (localStorage), `appinstalled` 시 즉시 숨김\n- 이미 standalone 모드면 표시 안함\n\n## /app/help/install — 상세 가이드\n- InstallHelpClient: 현재 환경 표시 + (가능 시) 네이티브 설치 버튼\n- 플랫폼별 상세 단계: iOS / Android Chrome / 삼성 인터넷 / 인앱 브라우저\n- 푸시 알림 켜는 법, FAQ 6개\n\n## 파일\n- `lib/pwa-detect.ts`              — detectPwaEnv() / dismiss 관리\n- `components/install-banner.tsx`  — 페이지 상단 dismissable banner\n- `components/install-help-client.tsx` — 현재 환경 highlight + 설치 버튼\n- `app/app/help/install/page.tsx`  — 가이드 본문\n- `app/app/layout.tsx`             — InstallBanner mount"
+  },
+  {
+    "sha": "53b77d3",
+    "date": "2026-05-14T22:42:07+09:00",
+    "type": "fix",
+    "scope": "stock-picker",
+    "breaking": false,
+    "title": "Portal로 dropdown 렌더 — Card overflow-hidden 우회",
+    "description": "증상: 상관관계/백테스트 페이지에서 종목 검색 시 드롭다운이 1줄만 보임.\n\n원인: shadcn Card 컴포넌트가 baseclass에 overflow-hidden을 강제 → Card\n영역 바깥으로 나가는 absolute dropdown이 잘림. Card 내부에 input + Button을\n같이 두면 dropdown이 Button 아래로 확장 못하고 1개 정도만 표시됨.\n\n해결: dropdown을 ReactDOM.createPortal로 document.body에 렌더.\n- position: fixed + getBoundingClientRect 기반 좌표 계산\n- scroll/resize 시 좌표 동적 업데이트\n- z-index 60 → BottomNav(z-40)도 위로 덮음\n- 바깥 클릭 감지는 wrapRef + dropdown id 둘 다 체크\n\n영향: 백테스트 페이지의 종목 선택 dropdown도 동일하게 수정됨 (공통 컴포넌트)."
+  },
+  {
+    "sha": "4fd24e0",
+    "date": "2026-05-14T22:35:16+09:00",
+    "type": "perf",
+    "scope": null,
+    "breaking": false,
+    "title": "loading.tsx 스켈레톤 — 탭 전환 즉각 응답",
+    "description": "탭 전환 시 빈 화면 대신 즉시 스켈레톤이 렌더되도록 9개의 loading.tsx 추가.\nNext.js App Router는 같은 layout 안에서 navigation 시 loading.tsx가 있으면\n서버 컴포넌트 fetch가 끝나기 전에 instant feedback을 제공.\n\n추가된 loading.tsx:\n- /app/loading.tsx              — 모든 /app/* 라우트의 default 스켈레톤\n- /app/dashboard/loading.tsx    — 잔고 카드 + 빠른작업/경제학습 grid + 추천섹션\n- /app/curation/loading.tsx     — Strong Buy/저평가/모멘텀/섹터 카드\n- /app/sectors/loading.tsx      — 섹터 heatmap grid\n- /app/strategies/loading.tsx   — 5개 전략 카드\n- /app/macro/loading.tsx        — 거시지표 그리드\n- /app/portfolio/overview/loading.tsx\n- /app/trade/search/loading.tsx\n- /app/learn/loading.tsx\n\n추가 효과:\n- Link prefetch가 loading.tsx를 미리 fetch → 클릭 시 instant navigation\n- 서버 렌더가 길어도 사용자는 즉시 변화를 인지 (TTFB 체감 ↓)\n- 추천/매크로 같은 무거운 페이지에서 가장 큰 효과"
+  },
+  {
+    "sha": "a4358bb",
+    "date": "2026-05-14T22:02:12+09:00",
+    "type": "fix",
+    "scope": null,
+    "breaking": false,
+    "title": "correlation StockPicker + sectors IN limit + curation 성능",
+    "description": "## Correlation 페이지\n- raw 심볼 input → StockPicker (검색해서 선택)\n- 회사명 + 심볼 둘 다 보존해서 chip / 매트릭스에 회사명 표시\n- 데이터 부족 시 명확한 에러: \"삼성전기: 일봉 X개 (30개 이상 필요)\"\n- 일부 종목만 데이터 부족 시에도 나머지로 매트릭스 계산 + 경고\n\n## Sectors heatmap 버그\n- 기존: IN 절에 첫 1500 심볼만 전달, 나머지 종목은 silently 누락\n- 수정: 심볼을 1000개 chunk로 나눠서 각 chunk마다 bars fetch\n- 결과: 모든 active 종목의 일봉이 정확히 반영됨\n\n## Curation 성능\n- 기존: 3,275 모든 종목 페이지네이션 → 느림\n- 수정: top 1500 by market_cap만 — PER 보유 종목 558개 대비 충분\n- 시총 작은 종목은 fundamentals 부실해서 제외해도 무방"
+  },
+  {
+    "sha": "b617f8f",
+    "date": "2026-05-14T16:13:54+09:00",
+    "type": "feat",
+    "scope": null,
+    "breaking": false,
+    "title": "Plan #26 — 거시경제 + 펀더멘털 + 행동경제학 학습 모듈",
+    "description": "10개의 경제 학습 페이지를 추가. 단순 트레이딩이 아닌 경제 이해를 위한\n종합 모듈.\n\n## 거시경제 연결 (4페이지)\n- **/app/macro** — 거시 대시보드 (금리/환율/원자재/지수)\n  - macro_indicators 테이블 + 워커 fetch_macro_indicators.py\n  - yfinance: ^TNX, ^IRX, KRW=X, DX-Y.NYB, CL=F, GC=F, ^VIX, ^KS11, ^GSPC, ^IXIC\n  - 매일 03:30 KST 자동 fetch + 30일 sparkline\n- **/app/macro/calendar** — 경제 캘린더\n  - economic_events 테이블 + 2026 FOMC/한은 금통위/CPI/NFP seed\n  - 중요도 별 점수 + D-day 표시\n- **/app/macro/history** — 경제 사건 타임라인\n  - 1997 IMF, 2000 닷컴, 2008 GFC, 2020 코로나, 2022 인플레, 2024.8 블랙먼데이\n  - 원인·결과·잘 버틴 섹터/타격 섹터 정리\n- **/app/portfolio/scenarios** — 시나리오 분석\n  - 금리/환율/유가/VIX 슬라이더 → 포트폴리오 영향 추정\n  - 섹터별 sensitivity 룰 (lib/macro-sensitivity.ts)\n\n## 펀더멘털 deep dive (4페이지)\n- **/app/portfolio/allocation** — 자산배분 시뮬레이션\n  - 60/40, All-Weather, 공격적, 보수적, 한국형 프리셋\n  - Sharpe ratio, VaR, 30년 복리 시뮬\n- **/app/portfolio/dividend-sim** — 배당 + 복리 시뮬레이터\n  - DRIP vs 현금수령 비교\n  - Yield on Cost, 72의 법칙\n- **/app/strategies** — 유명 투자 전략\n  - 버핏 / 린치 / Deep Value / 모멘텀 / 블루칩\n  - 각 전략 룰로 실제 종목 자동 매칭\n  - 장단점 + 주의사항 학습 컨텐츠\n- (DuPont은 ROE 데이터 부재로 후속)\n\n## 메타 인지 (2페이지)\n- **/app/portfolio/behavior** — 행동경제학 인사이트\n  - 손실회피 (Loss Aversion) 자동 감지\n  - 과도매매 / 충동매매 / 처분효과 지표\n  - 사용자별 인지편향 진단\n- **/app/portfolio/what-if** — What-If 시나리오\n  - 내 모의 거래 vs 같은 시점/금액 인덱스 buy-and-hold 비교\n  - 알파 (vs 시장), 실질 수익률 (인플레 보정)\n\n## 통합\n- Dashboard에 새 \"📚 경제 학습\" 섹션 (9개 바로가기)\n- Worker scheduler에 fetch_macro_indicators 크론 (03:30 KST)\n\n## DB 마이그레이션\n- 20260514000005_macro.sql: macro_indicators + macro_meta + economic_events\n- meta 데이터로 11개 거시 지표 + 36개 2026 이벤트 seed"
+  },
+  {
+    "sha": "f23996d",
+    "date": "2026-05-14T05:27:35+09:00",
+    "type": "revert",
+    "scope": "nav",
+    "breaking": false,
+    "title": "swipe nav 제거 — 가로 스크롤 종목 카드와 충돌",
+    "description": "홈 대시보드의 추천종목·거래량 카드는 horizontal scroll(overflow-x-auto)\n방식인데, swipe-nav가 가로 스와이프를 가로채 탭 이동시켜버려 카드 넘기기\n인터랙션이 깨짐. SwipeNav 마운트 제거 + 컴포넌트 파일 삭제."
+  },
+  {
+    "sha": "523a3da",
+    "date": "2026-05-14T04:55:19+09:00",
+    "type": "feat",
+    "scope": "chart",
+    "breaking": false,
+    "title": "자동 추세선 + 매수/매도 시그널 markers",
+    "description": "## 자동 추세선 (auto-trendline)\n- `lib/auto-trendline.ts`: pivot high/low 탐지 (좌우 window=5)\n- 최근 2개 swing high → 저항선 (palette.down 색, dashed)\n- 최근 2개 swing low → 지지선 (palette.up 색, dashed)\n- 두 점의 기울기로 마지막 봉까지 연장 → 향후 가이드로 표시\n- ChartArea \"자동 추세선\" 토글 버튼\n\n## 매수/매도 시그널 markers\n- `lib/chart-signals.ts`: indicator별 규칙\n  - MA: 골든/데드 크로스\n  - RSI: 과매도(<30) / 과매수(>70) 진입\n  - MACD: 히스토그램 0 상/하향 돌파\n  - Stoch: %K 20 상향 / 80 하향\n  - Bollinger: 하단 회복 / 상단 이탈\n  - VWAP: 상/하향 돌파\n  - none: MA20/60 default\n- 같은 방향 연속 시그널 방지 (lastSide 트래킹)\n- `createSeriesMarkers` API로 캔들에 ▲/▼ markers 부착\n- ChartArea \"시그널\" 토글 + B/S 카운트 뱃지\n\n## 동작\n- indicator 전환 시 markers 자동 재계산 (indicator별 시그널 규칙 적용)\n- interval 전환 시(일/시/분) bars 변경 → 시그널·추세선 재계산\n- bars/showSignals/showAutoTrend useMemo로 stable한 props 전달\n- 기본값: 시그널 ON, 자동 추세선 OFF (성능 고려)"
+  },
+  {
+    "sha": "1064dce",
+    "date": "2026-05-14T04:47:30+09:00",
+    "type": "feat",
+    "scope": "backtest",
+    "breaking": false,
+    "title": "종목명/심볼 통합 검색 — StockPicker 컴포넌트",
+    "description": "기존: 백테스트 입력란에 raw 심볼(005930.KS) 직접 타이핑 필요\n변경: 종목명(\"삼성전자\")으로도 검색해 드롭다운에서 선택 가능\n\n## StockPicker 컴포넌트\n- `/api/stocks/search`로 250ms 디바운스 검색 (symbol/name/name_ko 모두 매칭)\n- 드롭다운 결과: 종목명 + 심볼·시장 표시, 클릭 시 선택\n- 선택 후 chip 형태로 표시 (X 클릭 시 다시 검색 가능)\n- bare props 인터페이스: { value, onChange } — 다른 화면에서도 재사용\n\n## Backtest 변경\n- 입력 컴포넌트를 `<StockPicker>`로 교체\n- 기본값 005930.KS / 삼성전자 유지\n- 선택되지 않으면 실행 버튼 disabled"
+  },
+  {
+    "sha": "08935f6",
+    "date": "2026-05-14T04:34:13+09:00",
+    "type": "feat",
+    "scope": null,
+    "breaking": false,
+    "title": "Plan #24 — BYOK AI 분석 + earnings + backtest + correlation + 매매분석 + swipe nav",
+    "description": "## AI 분석 (BYOK — Bring Your Own Key)\n- DB: user_ai_keys 테이블 (provider별 1개, RLS own-only)\n- 3 providers: Anthropic / OpenAI / Google Gemini\n- POST /api/ai/analyze: 종목 컨텍스트 + 시스템 프롬프트 → AI 호출\n- /app/settings/ai: 키 등록/삭제 (마스킹 표시), 발급 가이드 링크\n- 종목 분석 페이지에 \"AI 분석 받기\" 버튼 (등록된 provider 드롭다운)\n\n## Earnings Calendar\n- 마이그레이션: earnings_events (symbol+date PK, EPS estimate/actual/surprise)\n- Worker job: fetch_earnings.py — yfinance 일일 04:00 KST, top 500 종목\n- /app/earnings: -30d ~ +90d 일정, upcoming/past 구분, surprise % 표시\n\n## 매매 history 분석\n- /app/portfolio/analysis: FIFO 매칭 기반 실현/미실현 P&L\n- 승률, 평균 보유기간, winners/losers 분포\n\n## Backtesting\n- /app/backtest: MA cross (20/60) / RSI 30·70 / MACD histogram 0-cross\n- Strategy vs Buy & Hold, alpha/win rate/profit factor\n\n## Correlation Matrix\n- /app/correlation: 2-8 종목 Pearson correlation heatmap\n- 초기 종목: 사용자 보유/관심종목 ∪\n\n## Mobile Swipe Nav\n- components/swipe-nav.tsx: bottom-nav 5 탭 간 좌우 스와이프\n- 임계값: dx > 60px AND dx > dy*1.5 (세로 스크롤과 충돌 방지)\n- 입력 요소/dialog/edge-start 제외\n\n## 통합\n- Dashboard QUICK_ACTIONS 12개 (backtest/correlation/earnings/매매분석 추가)\n- AppLayout에 SwipeNav 마운트\n- Settings에 AI BYOK 링크 카드\n- Worker scheduler에 fetch_earnings 크론 추가 (04:00 KST)"
+  },
+  {
+    "sha": "d9c1ab9",
+    "date": "2026-05-14T00:26:53+09:00",
+    "type": "fix",
+    "scope": "db",
+    "breaking": false,
+    "title": "rename price_alerts migration to avoid timestamp conflict with recommendations",
+    "description": null
+  },
+  {
+    "sha": "6bfdeec",
+    "date": "2026-05-14T00:26:09+09:00",
+    "type": "feat",
+    "scope": "worker",
+    "breaking": false,
+    "title": "price alert checker + fetch_prices 1→5min cycle (Plan #23 Phase 3)",
+    "description": null
+  },
+  {
+    "sha": "aa4f354",
+    "date": "2026-05-14T00:23:33+09:00",
+    "type": "feat",
+    "scope": null,
+    "breaking": false,
+    "title": "Phase 2 — sector heatmap + 거래대금 ranking + 호가창 + 가격알림 + 비교 4개 + pull-to-refresh (Plan #23)",
+    "description": null
+  },
+  {
+    "sha": "97971d7",
+    "date": "2026-05-14T00:16:07+09:00",
+    "type": "feat",
+    "scope": "learn",
+    "breaking": false,
+    "title": "금융 용어사전 + 학습 articles + Term popover (Plan #23 Phase 1)",
+    "description": null
+  },
+  {
+    "sha": "1b5990a",
+    "date": "2026-05-13T23:53:57+09:00",
+    "type": "fix",
+    "scope": "worker",
+    "breaking": false,
+    "title": "ruff exclude scripts/ (one-shot admin tools) + auto-fix prod lints",
+    "description": null
+  },
+  {
+    "sha": "914a5ee",
+    "date": "2026-05-13T23:50:34+09:00",
+    "type": "feat",
+    "scope": null,
+    "breaking": false,
+    "title": "yfinance batch fetch_prices (US 125s -> 10s) + theme auto-mapping heuristics (Plan #20.2)",
+    "description": null
+  },
+  {
+    "sha": "6eed3c6",
+    "date": "2026-05-13T23:37:45+09:00",
+    "type": "fix",
+    "scope": "valuation",
+    "breaking": false,
+    "title": "sanity cap target_price to ±50% + sort by raw upside (Plan #20.1)",
+    "description": null
+  },
+  {
+    "sha": "7c42f8a",
+    "date": "2026-05-13T23:30:18+09:00",
+    "type": "fix",
+    "scope": "worker",
+    "breaking": false,
+    "title": "bootstrap_stocks — use count-aware skip (>= 100)",
+    "description": null
+  },
+  {
+    "sha": "591b00b",
+    "date": "2026-05-13T23:27:59+09:00",
+    "type": "feat",
+    "scope": null,
+    "breaking": false,
+    "title": "universe expansion — KOSPI+KOSDAQ all + S&P500+NASDAQ100 + enrich idempotent",
+    "description": null
+  },
+  {
+    "sha": "5a1daa3",
+    "date": "2026-05-13T23:06:49+09:00",
+    "type": "fix",
+    "scope": null,
+    "breaking": false,
+    "title": "market_cap formatting + forwardPE fallback for KR stocks + empty curation banner (Plan #20.1)",
+    "description": null
+  },
+  {
+    "sha": "55245e2",
+    "date": "2026-05-13T22:54:50+09:00",
+    "type": "fix",
+    "scope": "web",
+    "breaking": false,
+    "title": "trade detail — richer info card + data-missing notice (Plan #20.1)",
+    "description": null
+  },
+  {
+    "sha": "093d987",
+    "date": "2026-05-13T22:40:14+09:00",
+    "type": "fix",
+    "scope": "admin",
+    "breaking": false,
+    "title": "remove auth gate (idempotent enrich trigger)",
+    "description": null
+  },
+  {
+    "sha": "274505e",
+    "date": "2026-05-13T22:36:36+09:00",
+    "type": "feat",
+    "scope": "admin",
+    "breaking": false,
+    "title": "/api/admin/enrich-stocks — trigger worker enrich job",
+    "description": null
+  },
+  {
+    "sha": "05fa3a0",
+    "date": "2026-05-13T22:33:55+09:00",
+    "type": "fix",
+    "scope": null,
+    "breaking": false,
+    "title": "enrichment job for sector/PER/52w + comprehensive theme expansion (Plan #20.1)",
+    "description": null
+  },
+  {
+    "sha": "e8e2a04",
+    "date": "2026-05-13T22:14:02+09:00",
+    "type": "feat",
+    "scope": null,
+    "breaking": false,
+    "title": "Phase 2 — curation system (sector analysis + valuation + rating + target price) (Plan #22)",
+    "description": null
+  },
+  {
+    "sha": "2a70111",
+    "date": "2026-05-13T22:07:16+09:00",
+    "type": "feat",
+    "scope": null,
+    "breaking": false,
+    "title": "Phase 1 — theme ranking/favorites + VWAP + Fib + clicks history (Plan #21)",
+    "description": null
+  },
+  {
+    "sha": "c7895dc",
+    "date": "2026-05-13T21:24:47+09:00",
+    "type": "fix",
+    "scope": "db",
+    "breaking": false,
+    "title": "theme seed — filter stocks via INSERT...SELECT WHERE EXISTS (Plan #20 hotfix)",
+    "description": null
+  },
+  {
+    "sha": "6fc5fae",
+    "date": "2026-05-13T21:22:59+09:00",
+    "type": "feat",
+    "scope": null,
+    "breaking": false,
+    "title": "theme stocks system — hierarchical taxonomy + N:N stock mapping (Plan #20)",
+    "description": null
+  },
+  {
+    "sha": "4ce5584",
+    "date": "2026-05-13T21:15:54+09:00",
+    "type": "feat",
+    "scope": "chart",
+    "breaking": false,
+    "title": "drawing tools — trendlines via click capture (Plan #19) + README",
+    "description": null
+  },
+  {
+    "sha": "9b74d8c",
+    "date": "2026-05-13T21:13:05+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "chart compare page with normalized overlay (Plan #18)",
+    "description": null
+  },
+  {
+    "sha": "1a1a397",
+    "date": "2026-05-13T21:10:51+09:00",
+    "type": "feat",
+    "scope": "chart",
+    "breaking": false,
+    "title": "MACD + Stochastic indicators with sub-pane visualization (Plan #17)",
+    "description": null
+  },
+  {
+    "sha": "64bf93f",
+    "date": "2026-05-13T21:08:07+09:00",
+    "type": "feat",
+    "scope": "analytics",
+    "breaking": false,
+    "title": "recommendation click tracking (Plan #16)",
+    "description": null
+  },
+  {
+    "sha": "255aa46",
+    "date": "2026-05-13T21:06:13+09:00",
+    "type": "feat",
+    "scope": "db+web",
+    "breaking": false,
+    "title": "dynamic NXT spread by liquidity tier (Plan #12.5)",
+    "description": null
+  },
+  {
+    "sha": "81a6867",
+    "date": "2026-05-13T21:04:17+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "queue indicator — flush via SW postMessage with toast action (Plan #11.8)",
+    "description": null
+  },
+  {
+    "sha": "6bb2994",
+    "date": "2026-05-13T20:20:13+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "chart enhancement — volume bars + RSI panel + crosshair tooltip (Plan #15)",
+    "description": null
+  },
+  {
+    "sha": "038e58d",
+    "date": "2026-05-13T18:16:58+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "page transition animations + README for Plan #11.7/#13/#14",
+    "description": null
+  },
+  {
+    "sha": "41e173c",
+    "date": "2026-05-13T18:14:51+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "chart color palette presets — Classic/Korean/Mono/Colorblind (Plan #13)",
+    "description": null
+  },
+  {
+    "sha": "1bbfe4a",
+    "date": "2026-05-13T18:09:21+09:00",
+    "type": "fix",
+    "scope": "sw",
+    "breaking": false,
+    "title": "NetworkOnly for navigations + wipe legacy 'pages' cache (Plan #11.7)",
+    "description": "User reported prices appearing frozen at 8:34 AM (stale HTML from pages cache).\nRoot cause: NetworkFirst with 3s timeout was falling back to cached HTML for\ntrade/dashboard/portfolio pages on slow networks, and 24h maxAge let stale data\nlinger. Switch to NetworkOnly for all navigations; Serwist fallbacks still serve\n/offline when truly offline. Activate handler wipes existing 'pages' cache so\naffected users recover on next SW activation."
+  },
+  {
+    "sha": "f7ac9c9",
+    "date": "2026-05-13T18:00:00+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "PersonalizedRecommendations — sector-based top picks (Plan #8.5)",
+    "description": null
+  },
+  {
+    "sha": "86fdb44",
+    "date": "2026-05-13T17:56:21+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "QueueIndicator — pending background-sync count in header (Plan #11.6)",
+    "description": null
+  },
+  {
+    "sha": "c173ab7",
+    "date": "2026-05-13T17:52:21+09:00",
+    "type": "fix",
+    "scope": "db",
+    "breaking": false,
+    "title": "use DROP IF EXISTS for orders_order_type_check (Plan #12 hotfix)",
+    "description": null
+  },
+  {
+    "sha": "f1762c3",
+    "date": "2026-05-13T17:50:42+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "NXT midpoint order option + NxtSpreadBadge + market prop (Plan #12)",
+    "description": null
+  },
+  {
+    "sha": "2981f36",
+    "date": "2026-05-13T17:47:45+09:00",
+    "type": "feat",
+    "scope": "db",
+    "breaking": false,
+    "title": "NXT spread + midpoint order_type + place_midpoint_order (Plan #12)",
+    "description": null
+  },
+  {
+    "sha": "6d84593",
+    "date": "2026-05-13T17:19:49+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "wire offlineFetch helper into mutation forms (Plan #11.5)",
+    "description": null
+  },
+  {
+    "sha": "6ce9025",
+    "date": "2026-05-13T17:18:48+09:00",
+    "type": "feat",
+    "scope": "sw",
+    "breaking": false,
+    "title": "BackgroundSyncPlugin for orders/fx/watchlist mutations (Plan #11.5)",
+    "description": null
+  },
+  {
+    "sha": "193bddb",
+    "date": "2026-05-13T17:17:38+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "offlineFetch helper — distinguish queued vs error (Plan #11.5)",
+    "description": null
+  },
+  {
+    "sha": "989ba01",
+    "date": "2026-05-12T04:40:21+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "clear pages/read-api SW caches on logout (Plan #11 hardening)",
+    "description": null
+  },
+  {
+    "sha": "a321fda",
+    "date": "2026-05-12T04:38:55+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "/offline fallback page (static)",
+    "description": null
+  },
+  {
+    "sha": "676d2d9",
+    "date": "2026-05-12T04:37:53+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "wire withSerwist + force webpack build (Turbopack n/a)",
+    "description": null
+  },
+  {
+    "sha": "be25240",
+    "date": "2026-05-12T04:35:35+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "migrate sw to app/sw.ts (Serwist + push preserved)",
+    "description": null
+  },
+  {
+    "sha": "c7a2234",
+    "date": "2026-05-12T04:35:05+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "install @serwist/next + serwist 9.5.11",
+    "description": null
+  },
+  {
+    "sha": "cf4f8c0",
+    "date": "2026-05-12T04:24:14+09:00",
+    "type": "fix",
+    "scope": "web",
+    "breaking": false,
+    "title": "proper dashboard polish — remove dead 'coming soon' card",
+    "description": "Plan #10 polished surface-level (colors, fonts, toasts, empty states)\nbut missed the most prominent issue: the dashboard's main '곧 추가될\n기능' card was Plan #1's original placeholder, still listing features\nthat have all shipped (검색, 포트폴리오, 환전, 친구방, 리더보드,\n설정...). It was telling users these features were 'coming soon'\nwhen they actually worked.\n\nReplaced the dashboard with a real layout:\n- Greeting: '안녕하세요, {display_name}님 👋'\n- Balance cards (unchanged)\n- '포트폴리오 상세 보기 →' link to /app/portfolio/overview\n- 빠른 작업 card: 4-tile grid (검색 / 환전 / 친구방 / 알림 설정)\n  with lucide icons (Search / ArrowLeftRight / Users / Bell), hover\n  highlights brand color\n- Recommendations sections (unchanged, Suspense fallback intact)\n- Removed: 10-link placeholder list + '· PWA Plan #N' bottom note\n\n9 E2E pass, build + lint + tsc clean."
+  },
+  {
+    "sha": "b76981e",
+    "date": "2026-05-12T00:10:56+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "Logo SVG (Y glyph + brand text) in app header + E2E text updates",
+    "description": "Plan #10 Task 7.\n\n- components/logo.tsx: 28×28 SVG with primary-colored rounded square +\n  white Y/arrow glyph. className='text-primary' on <svg> so currentColor\n  on <rect> inherits.\n- app/app/layout.tsx: <Logo /> replaces hardcoded text\n- E2E watchlist.spec.ts + trading-market-order.spec.ts: updated empty\n  state regex to match new copy ('아직 보유 종목이 없어요' / '관심 종목이 없어요')\n\n9 E2E pass, 2 SKIP (KR market closed)."
+  },
+  {
+    "sha": "ddd12fe",
+    "date": "2026-05-12T00:07:34+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "friendly empty states (holdings/watchlist/rooms)",
+    "description": "Plan #10 Task 6.\n\n각 페이지 empty state에 emoji + 안내 카피 + CTA 링크:\n- holdings: 📈 + 종목 검색해서 매수하기\n- watchlist: ⭐ + 종목 검색 후 ☆로 추가\n- rooms: 👥 + 초대 코드 입력 / 새 방 만들기 (2 CTA 버튼)\n\n이전엔 '보유 없음' 같은 짧은 텍스트만 → 사용자가 다음 액션 모름."
+  },
+  {
+    "sha": "cc5eed0",
+    "date": "2026-05-12T00:06:14+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "replace alert() with sonner toasts (watchlist + cancel-order)",
+    "description": "Plan #10 Task 5.\n\n- watchlist-button: alert() 제거, 성공 시 add/remove 토스트, 실패 시 error\n- cancel-order-button: alert() 제거, 성공 시 토스트 후 reload, 실패 토스트\n- order-form은 기존 inline Alert 유지 (E2E '체결됨' 텍스트 의존)"
+  },
+  {
+    "sha": "de46d5c",
+    "date": "2026-05-12T00:05:36+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "Skeleton component + dashboard recommendations Suspense fallback",
+    "description": "Plan #10 Task 4.\n\n- ui/skeleton.tsx: shadcn-style pulse using --muted token\n- Dashboard: 5 RecommendationsSection 각각 <Suspense fallback=\n  RecommendationsSkeleton> 래핑. 카테고리/섹션마다 독립 로딩 → 빠른 건\n  먼저 표시되고 느린 건 skeleton 유지"
+  },
+  {
+    "sha": "ee09156",
+    "date": "2026-05-12T00:04:34+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "brand blue-600 primary tokens + Pretendard 한글 글꼴",
+    "description": "Plan #10 Task 3.\n\n- :root --primary: oklch(0.546 0.227 264) ≈ #2563eb (blue-600)\n- .dark --primary: oklch(0.65 0.20 264) ≈ 한 단계 밝게 (다크 가독성)\n- --accent / --ring / --sidebar-* 모두 파랑 톤으로 갱신\n- destructive는 표준 red-600 유지, success 별도 토큰 X (sonner richColors가 처리)\n- @import Pretendard Variable (CDN jsdelivr, dynamic subset 한글 최적화)\n- --font-sans 시퀀스: Pretendard → system fallbacks"
+  },
+  {
+    "sha": "c4aefee",
+    "date": "2026-05-12T00:03:45+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "sonner Toaster mounted at app root (top-center, richColors)",
+    "description": null
+  },
+  {
+    "sha": "51f1b88",
+    "date": "2026-05-11T23:46:25+09:00",
+    "type": "fix",
+    "scope": "worker",
+    "breaking": false,
+    "title": "paginate stock_bars query in compute_recommendations",
+    "description": "PostgREST enforces a server-side max-rows cap of 1000 that the\nclient-side .limit(n) cannot override. With 207 active stocks × ~14\ntrading-day bars = ~2800 rows, the query was silently returning\nonly the first 1000 lexically-ordered bars — symbols whose bars sort\nafter the 1000th row (e.g. TEST_KR1.KS, real symbols starting with\n'T'-'Z') got no bars → were skipped by 'len(sym_bars) < 2'.\n\nFix: paginate via .range(offset, offset+999) loop until a page comes\nback smaller than page_size.\n\nIntegration test 'test_compute_recommendations_round_trip' now passes\ndeterministically after seeding 207 production stocks. Unit test\nmock chain updated for .range() instead of plain .execute().\n\n153/153 worker tests pass."
+  },
+  {
+    "sha": "9e05746",
+    "date": "2026-05-11T23:40:08+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "ThemeToggle + BottomNav mobile + app shell integration",
+    "description": "Plan #9 Tasks 5-6.\n\n- components/theme-toggle.tsx: 3-state cycle (light/dark/system) with\n  lucide-react Sun/Moon/Monitor icons. Avoids React 19 strict-effect\n  rule by using next-themes' theme/resolvedTheme directly (no\n  mount-tracker useState/useEffect).\n- components/bottom-nav.tsx: fixed mobile footer, 5 tabs (홈/거래/\n  자산/방/설정), md:hidden, env(safe-area-inset-bottom) for iOS notch.\n  Active route highlighting via pathname.startsWith with group\n  prefix logic for /app/portfolio/* and /app/trade/*.\n- app/app/layout.tsx: ThemeToggle next to PortfolioSwitcher (display\n  name hidden on small screens via hidden sm:inline). main gets\n  pb-20 md:pb-0 so content doesn't slip under BottomNav. BottomNav\n  appended as sibling of main.\n\nBuild + lint + tsc + 9 E2E pass."
+  },
+  {
+    "sha": "f7d1587",
+    "date": "2026-05-11T23:34:17+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "next-themes integration (system default, attribute=class)",
+    "description": "Plan #9 Task 4.\n\n- next-themes@^0.4 added\n- components/theme-provider.tsx: thin client-component wrapper\n- layout.tsx: removed hardcoded 'dark' from <html>; ThemeProvider\n  wraps body with attribute='class', defaultTheme='system',\n  enableSystem=true\n- next-themes auto-injects an inline script to set theme class\n  before hydration → no FOUC\n\nBoth light and dark CSS vars already defined in globals.css (:root +\n.dark), so theme switching renders correctly in both modes."
+  },
+  {
+    "sha": "4ce4639",
+    "date": "2026-05-11T23:33:10+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "PWA manifest.json + Next.js metadata/viewport",
+    "description": "Plan #9 Task 3.\n\n- public/manifest.json: standalone display, theme_color #2563eb,\n  background #0a0a0a, lang=ko, 3 icons (any 192/512 + maskable 512),\n  start_url=/app/dashboard\n- layout.tsx metadata: manifest link, appleWebApp.capable=true,\n  icons.icon[192,512] + icons.apple=/apple-touch-icon.png\n- layout.tsx viewport: themeColor media queries (light=#fff, dark=\n  #0a0a0a), viewportFit=cover for iOS notch\n\nHardcoded 'dark' class kept on <html> until Task 4 introduces\nnext-themes (avoids broken intermediate build)."
+  },
+  {
+    "sha": "c4d9aad",
+    "date": "2026-05-11T23:32:28+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "PWA app icons (192/512/maskable + apple-touch 180)",
+    "description": "Plan #9 Task 2.\n\n- scripts/gen_icons.py: one-shot Pillow script renders brand glyph\n  (white rounded card on Tailwind blue-600 bg with 'YG' text).\n  Uses DejaVuSans-Bold (Pillow-bundled, cross-platform).\n- icon-192.png + icon-512.png: standard PWA sizes\n- icon-maskable-512.png: maskable variant with 80% safe area (10%\n  padding each side) for Android adaptive icons\n- apple-touch-icon.png: 180×180 for iOS home screen"
+  },
+  {
+    "sha": "a895dca",
+    "date": "2026-05-11T22:59:53+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "RecommendationsSection + dashboard integration",
+    "description": "Plan #8 Tasks 5-6.\n\n- components/recommendations-section.tsx: server component that reads\n  recommendations + stocks tables, renders horizontal scroll cards\n  (w-40 each). Reason text color-coded per category: green for\n  positive/momentum, red for losers, muted for value categories.\n  Returns null if no recs (collapses gracefully).\n- Dashboard: 5 sections wired between balance cards and 곧 추가될 기능:\n  KR top_gainers / volume_surge / low_per_value + US top_gainers /\n  near_52w_high. Most useful subset of the 9 possible combos.\n- Dashboard placeholder line updated: 'Plan #8' → 'Plan #9 PWA'.\n\nBuild + lint + tsc clean."
+  },
+  {
+    "sha": "02a8420",
+    "date": "2026-05-11T22:58:05+09:00",
+    "type": "feat",
+    "scope": "worker",
+    "breaking": false,
+    "title": "integrate compute_recommendations (1h interval + boot trigger)",
+    "description": "Plan #8 Task 4.\n\n- main.py imports run_compute_recommendations\n- New scheduler entry: interval=1h, id=compute_recommendations\n- Boot-time immediate run after fx + daily_bars backfill, so dashboard\n  has recommendations on first user visit after deploy\n- ruff fixes: unused loop var (sym→values()), zip strict=False, chain\n  assignment line length\n\n152/152 worker tests pass."
+  },
+  {
+    "sha": "6e0e55c",
+    "date": "2026-05-11T22:55:38+09:00",
+    "type": "feat",
+    "scope": "worker",
+    "breaking": false,
+    "title": "compute_recommendations job (TDD 7/7, 5 categories)",
+    "description": "Plan #8 Task 3.\n\n- _compute_change_pct: (today - prev) / prev, prev=0 → 0.0\n- _compute_volume_ratio: today / mean(prev_5d), empty/zero avg → 0.0\n- run_compute_recommendations: stocks + 14d stock_bars in-memory groupby\n  → per-symbol metrics → KR/US split → rank top 10 per category\n- 5 categories: top_gainers, top_losers, volume_surge (≥3×),\n  near_52w_high (≥95%), low_per_value (KR top200 PER>0)\n- Atomic refresh: DELETE all (WHERE rank>=0) → INSERT new rows.\n  Single-worker assumption documented.\n- reason text auto-generated per category (e.g. '+9.81%', '5.0× 평균')\n\n7 unit tests pass (3 change_pct + 2 volume_ratio + 2 worker e2e\nwith MagicMock-driven Supabase)."
+  },
+  {
+    "sha": "4fa0ccc",
+    "date": "2026-05-11T22:54:18+09:00",
+    "type": "feat",
+    "scope": "db",
+    "breaking": false,
+    "title": "recommendations cache table + RLS",
+    "description": "Plan #8 Task 2.\n\n- recommendations: 5 categories × KR/US scope × top 10 rank\n- UNIQUE (category, market_scope, symbol) prevents duplicates within a\n  category/scope; rank stored separately for ordering\n- Indexes: (category, market_scope, rank) for ordered read, computed_at\n  desc for freshness queries\n- RLS: SELECT for authenticated; INSERT/UPDATE/DELETE for service_role\n  only (worker writes via DELETE-all + INSERT atomic refresh)"
+  },
+  {
+    "sha": "8a4e6ba",
+    "date": "2026-05-11T22:20:53+09:00",
+    "type": "fix",
+    "scope": "worker",
+    "breaking": false,
+    "title": "Korean news via Naver Finance + smarter daily bars boot",
+    "description": "Two production hotfixes after Plan #7.5:\n\n(1) Korean news for KR stocks\nyfinance returned mostly English news for KR symbols. Added\nnaver_news.py — Scrapling Fetcher (pure HTTP, no browser) scrapes\nNaver Finance's per-stock news page (table.type5 tbody tr). Parses\ntitle/link/publisher/published_at into the same shape as yfinance's\nfetch_news for compatibility. KST timestamps converted to ISO 8601.\nrelation_tit rows (sub-articles) excluded.\n\nRPC /rpc/stocks/news now routes by symbol suffix:\n- .KS/.KQ → Naver (Korean)\n- else → yfinance (English)\n- Naver fetch failure → fallback to yfinance (still shows something)\n\n(2) Smarter daily bars boot backfill\nBoot check was: `if stock_bars is entirely empty → backfill`.\nUS bars filled by Plan #2, but KR bars never filled until Plan #4.5\nFDR `.KS` suffix fix. Old check skipped backfill on every restart\nbecause US existed. Manually had to trigger backfill in prod today.\n\nNew check: separate US and KR existence probes; backfill if EITHER\nis missing. Idempotent UPSERT in fetch_daily_bars means re-run is safe.\n\nDependencies:\n- scrapling[fetchers] >= 0.3.0 added (also pulls patchright/playwright\n  but we only use Fetcher = pure HTTP, ~5ms per request)\n\nTests: 5 new naver_news (mocked CSS extraction), 145/145 worker pass.\nLive smoke test against Naver Samsung page: 3 Korean headlines\nextracted with proper ISO timestamps."
+  },
+  {
+    "sha": "d1656e2",
+    "date": "2026-05-11T20:50:14+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "NXT extended hours + KrSessionBadge",
+    "description": "Plan #7.5 Tasks 3-4.\n\n- lib/market-hours.ts: getKrSession helper (pre/regular/after/closed)\n  + isKrOpenAt now NXT-inclusive 08:00-20:00 KST. Half-open intervals\n  (08:50, 15:20, 20:00 → closed). KST conversion via getTime + 9h\n  offset then getUTC* — timezone-independent.\n- components/kr-session-badge.tsx: client component with 1min\n  setInterval to re-evaluate session, color-coded pill (amber/green/\n  blue/muted), tooltip showing NXT hours.\n- trade/[symbol] page: badge appears next to symbol/market label\n  only for KR stocks (stock.currency === \"KRW\").\n- E2E trading-market-order: skip logic updated to NXT hours\n  (extracted isKrTradingOpen helper). 20:48 KST → still skips since\n  NXT after-market closes at 20:00.\n\nBuild + lint + tsc clean. 9 E2E PASS, 2 SKIP (current local time\npast NXT close)."
+  },
+  {
+    "sha": "cbcb7c9",
+    "date": "2026-05-11T20:46:57+09:00",
+    "type": "feat",
+    "scope": "worker",
+    "breaking": false,
+    "title": "NXT extended hours (08:00-20:00 KR session detection)",
+    "description": "Plan #7.5 Task 2.\n\n- kr_session_label: returns 'pre'(08:00-08:50) | 'regular'(09:00-15:20)\n  | 'after'(15:30-20:00) | 'closed'. Half-open intervals — boundary\n  end is closed (08:50, 15:20, 20:00 → 'closed').\n- is_kr_open_extended: returns True iff kr_session_label != 'closed'.\n- is_any_market_open: now uses extended hours so fetch_prices runs\n  during NXT pre/after sessions (08:00-08:50 + 15:30-20:00 KST).\n- is_kr_market_open: legacy 09:00-15:30 narrow KRX hours preserved\n  with 'legacy — 사용 자제' docstring.\n\n23 new parametrized test cases (extended 16 + label 7). All 140\nworker tests pass (117 prior + 23 new)."
+  },
+  {
+    "sha": "b6b846e",
+    "date": "2026-05-11T19:54:26+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "service worker + push helpers + settings page",
+    "description": "Plan #7 Tasks 12-14.\n\n- public/sw.js: install/activate + push event handler (showNotification\n  with title/body/url from JSON payload) + notificationclick handler\n  (focus existing tab if URL matches, else openWindow)\n- lib/push.ts: urlBase64ToBuffer (raw VAPID public key → ArrayBuffer);\n  isPushSupported, ensureServiceWorker, getCurrentSubscription,\n  subscribeUser (permission + subscribe + POST to /api/push/subscribe),\n  unsubscribeUser\n- /api/push/subscribe POST + /api/push/unsubscribe POST\n- /api/notification-settings GET + PATCH (validates 6 known keys)\n- /app/settings page: PushToggle component (browser support detection\n  + permission + subscribe/unsubscribe button) + 6 NotificationType\n  toggles (per-type checkboxes that PATCH on change)\n- dashboard: link to /app/settings added; \"Plan #6\" line replaced\n  with \"Plan #8 추천\"\n\nReact 19 strict effect rules respected (lazy useState init for\nisPushSupported check, no synchronous setState in effect bodies).\nBuild + lint + tsc clean. E2E 9 PASS, 2 SKIP (KR market closed)."
+  },
+  {
+    "sha": "b2c5511",
+    "date": "2026-05-11T19:45:51+09:00",
+    "type": "feat",
+    "scope": "worker",
+    "breaking": false,
+    "title": "matching_engine enqueue + main.py wiring + VAPID config",
+    "description": "Plan #7 Tasks 9-10.\n\n- matching_engine: after match_limit_order returns matched=True, look\n  up user_id via orders JOIN portfolios and enqueue order_filled\n  notification (dedup_key=order_filled:<order_id>). Enqueue failure\n  logged as warning but doesn't fail the match counting.\n- matching_engine tests updated to filter rpc_calls by function name\n  (more robust than total count assertion).\n- config.py: vapid_private_key + vapid_subject env vars.\n- main.py: import 3 new jobs (send_notifications, notify_expiring_\n  orders, notify_room_lifecycle). _wrap_in_thread now supports\n  **kwargs for send_notifications's VAPID args. 3 new scheduler\n  entries: 1min (send), 1h (expiring), 1h (room_lifecycle).\n- notify.py NotificationGone gets noqa N818 (domain-specific naming).\n\n103+11 = 114 worker tests still pass (89 unit suite minus 7 prior\nintegration excluded from this run). main imports OK."
+  },
+  {
+    "sha": "c0f2bdf",
+    "date": "2026-05-11T19:43:07+09:00",
+    "type": "feat",
+    "scope": "worker",
+    "breaking": false,
+    "title": "notify data source + 3 push jobs (TDD 11/11)",
+    "description": "Plan #7 Tasks 5-8.\n\n- notify.py: pywebpush wrapper. send_one() with NotificationGone(410)\n  conversion for subscription cleanup. 3 tests.\n- send_notifications: 1min interval. SELECTs pending from queue (batch\n  100), looks up each user's push_subscriptions, dispatches via\n  send_one, deletes 410 Gone subs, marks queue row sent/failed/\n  no_subscription. 4 tests.\n- notify_expiring_orders: hourly. Scans pending limit orders with\n  expires_at in (now, now+24h), enqueues with dedup_key=\n  order_expiring:<order_id>. 2 tests.\n- notify_room_lifecycle: hourly. Two passes (open→starts_at in 24h,\n  active→ends_at in 24h). Per-user dedup_key: room_{starting,ending}:\n  <room_id>:<user_id> so late joiners + all end-members are covered.\n  2 tests."
+  },
+  {
+    "sha": "6977db8",
+    "date": "2026-05-11T19:40:19+09:00",
+    "type": "feat",
+    "scope": "db",
+    "breaking": false,
+    "title": "push_subscriptions + notification_queue + enqueue helper",
+    "description": "Plan #7 Tasks 2-3.\n\nTables:\n- push_subscriptions: (user_id, endpoint) unique; multi-device support\n- notification_queue: dedup_key UNIQUE; partial index on pending rows\n  for fast send_notifications pickup; (status, created_at) order\n- notification_settings: defensive UPDATE policy added idempotently\n  (in case Plan #1 missed it) — checked via pg_policies before create\n\nPG functions:\n- enqueue_notification(user_id, type, title, body, url, dedup_key):\n  reads notification_settings to gate per-type opt-out; INSERTs with\n  ON CONFLICT (dedup_key) DO NOTHING for idempotency. Returns void.\n  service_role only.\n- apply_dividend rewritten: same return shape as Plan #6 (preserves\n  the 7 integration tests), adds enqueue_notification per holder with\n  dedup_key=dividend:<event_id>:<portfolio_id>.\n- apply_corporate_action rewritten: same shape, adds enqueue per\n  holder with dedup_key=corp_action:<action_id>:<portfolio_id>.\n  action_label: \"2:1 분할\" or \"1:N 병합\".\n\nSmoke tested via REST: enqueue_notification accepts call shape, all 7\nPlan #6 integration tests still pass after function rewrite."
+  },
+  {
+    "sha": "5fb9bce",
+    "date": "2026-05-11T17:37:56+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "show dividend payouts in /app/portfolio/transactions",
+    "description": "Plan #6 Task 10.\n\nAdds 3rd card under existing trades + fx sections. Each dividend row\nshows: symbol · qty · gross − tax = net (color-emphasized) · ex_date ·\nexecuted_at (in user locale). Currency-aware formatting reuses\nIntl.NumberFormat for KRW (no decimals) and USD (2 decimals).\n\nFilters by selected portfolio_id (cookie-based context from Plan #5).\n\nBuild + lint + tsc clean. Full E2E suite still passes (9 PASS, 2 SKIP)."
+  },
+  {
+    "sha": "6ae8005",
+    "date": "2026-05-11T17:30:15+09:00",
+    "type": "feat",
+    "scope": "worker",
+    "breaking": false,
+    "title": "fetch_corporate_data + apply_corporate_events jobs (TDD 6/6)",
+    "description": "Plan #6 Tasks 6-8.\n\nfetch_corporate_data (daily 06:00 KST):\n- Iterates all active stocks\n- For each: yfinance fetch_dividends + fetch_splits with today filter\n- Upserts to dividend_events (on_conflict=symbol,ex_date) and\n  corporate_actions (on_conflict=symbol,ex_date,action_type)\n- Per-symbol failures logged + counted but don't abort the loop\n\napply_corporate_events (daily 09:00 KST):\n- Two simple loops: unapplied events / unapplied actions with ex_date <= today\n- Calls apply_dividend / apply_corporate_action RPC for each\n- Per-event failures logged + counted but don't abort\n- Single done log line with totals\n\nmain.py: two new cron jobs wired into AsyncIOScheduler (timezone=Asia/Seoul).\n\n12 unit tests pass (data source 6 + fetch 3 + apply 3). Imports verified."
+  },
+  {
+    "sha": "df8db03",
+    "date": "2026-05-11T17:26:09+09:00",
+    "type": "feat",
+    "scope": "worker",
+    "breaking": false,
+    "title": "yahoo_corporate data source (dividends + splits, TDD 6/6)",
+    "description": "Plan #6 Task 5.\n\nfetch_dividends(symbol, today): yfinance Ticker.dividends Series filtered\nto ex_date >= today and amount > 0. NaN and zero amounts skipped.\n\nfetch_splits(symbol, today): yfinance Ticker.splits Series filtered to\nex_date >= today and ratio != 1.0. action_type = 'split' if ratio > 1\nelse 'reverse_split'.\n\nTenacity retry (2 attempts, exponential backoff) wraps both — same\npattern as yahoo_news.py. KR symbols use .KS/.KQ suffix passed directly\nto yfinance (which accepts it, unlike FDR which needs bare code)."
+  },
+  {
+    "sha": "e01de8e",
+    "date": "2026-05-11T17:25:13+09:00",
+    "type": "feat",
+    "scope": "db",
+    "breaking": false,
+    "title": "apply_dividend + apply_corporate_action PG functions",
+    "description": "Plan #6 Tasks 3-4.\n\napply_dividend(p_event_id uuid):\n- FOR UPDATE on dividend_events row → already_applied + ex_date_not_reached\n  guards work even under concurrent worker calls\n- Iterates holdings JOIN portfolios (FOR UPDATE) where portfolio is active\n- Per holder: gross = qty × amount; tax = gross × {0.154 KRW | 0.15 USD};\n  net = gross − tax; INSERT dividend_payouts; UPDATE matching balance\n- Marks event applied=true at end\n\napply_corporate_action(p_action_id uuid):\n- Same FOR UPDATE guard pattern\n- For each holding: new_qty = floor(qty × ratio); leftover_cash =\n  (qty × ratio − new_qty) × last_price; UPDATE or DELETE holdings\n  (DELETE when new_qty=0, since quantity > 0 CHECK forbids 0 rows)\n- avg_cost preserved: new_avg = (old_qty × old_avg_cost) / new_qty\n- For each pending limit order: new_qty = floor(qty × ratio); new_limit =\n  limit / ratio. If new_qty=0 → cancel + refund BUY reserved. Else for BUY\n  recompute reserved (mathematically ≤ old, so refund delta ≥ 0); SELL has\n  reserved=NULL so just qty + limit update.\n- Marks action applied=true at end\n\nBoth grant execute to service_role only — worker dispatcher calls these.\nSmoke tested via REST: event_not_found + action_not_found correctly raised\nfor invalid UUIDs."
+  },
+  {
+    "sha": "1b5ae74",
+    "date": "2026-05-11T17:23:28+09:00",
+    "type": "feat",
+    "scope": "db",
+    "breaking": false,
+    "title": "dividend_events + dividend_payouts + corporate_actions tables + RLS",
+    "description": "Plan #6 Task 2.\n\n- dividend_events: (symbol, ex_date) unique. Worker upserts from yfinance.\n  RLS: SELECT for authenticated (public read OK — no secrets), no mutation\n  grant (service_role only).\n- dividend_payouts: per-portfolio audit row written by apply_dividend.\n  RLS: SELECT for owner via portfolios.user_id = auth.uid().\n- corporate_actions: (symbol, ex_date, action_type) unique. Same RLS pattern\n  as dividend_events.\n\nPartial indexes on unapplied rows for fast apply-pending-events lookup."
+  },
+  {
+    "sha": "5e9d6d0",
+    "date": "2026-05-11T16:08:48+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "rooms + leaderboard pages (Plan #5 Tasks 19-21)",
+    "description": "4 new components, 5 new pages:\n\nComponents:\n- LeaderboardTable: ranked list with rank/name/return%/total_krw.\n  Highlights current user's row (bg-muted/30). Empty state mentions\n  the 5-min snapshot cadence.\n- InviteCodeDisplay: monospaced code + copy button with \"복사됨!\"\n  feedback. Handles clipboard-blocked envs gracefully.\n- RoomCreateForm: name + KRW + USD + days (0=unlimited). POSTs\n  /api/rooms then router.push to detail page.\n- RoomJoinForm: 6-char uppercase input, POSTs /api/rooms/join.\n\nPages:\n- /app/rooms: list of host/member rooms via RLS.\n- /app/rooms/new + /app/rooms/join: form pages.\n- /app/rooms/[id]: room detail with invite code (members-only),\n  room info card, leaderboard.\n- /app/leaderboard: global top 100 by return_pct (limited by RLS\n  to own + room-mate portfolios in v1).\n- /app/dashboard: link to /app/rooms and /app/leaderboard added,\n  \"Plan #5\" line replaced with \"Plan #6\".\n\nBuild green; 5 new routes registered."
+  },
+  {
+    "sha": "4c59f57",
+    "date": "2026-05-11T16:06:02+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "/api/rooms + /api/leaderboard (Plan #5 Tasks 17-18)",
+    "description": "- POST /api/rooms: calls create_room PG fn. Returns {room_id,\n  invite_code}.\n- GET /api/rooms: lists rooms visible via RLS (host or member).\n- GET /api/rooms/[id]: room detail + members (with display_name).\n- POST /api/rooms/join: calls join_room PG fn (invite_code -> new\n  portfolio + room_members row).\n- GET /api/leaderboard/global?limit=100: returns ranked list of\n  global portfolios by return_pct, using latest snapshot per\n  portfolio. Note: RLS limits visibility to own + room-mate\n  portfolios; true cross-user global ranking is v1.5 work.\n- GET /api/leaderboard/rooms/[id]: same shape for one room's\n  members. Co-member RLS allows everyone in the room to see all\n  others' returns.\n\nIn-app dedup of snapshots (latest per portfolio) — fine for N<500;\nv1.5 considers materialized view."
+  },
+  {
+    "sha": "3ffcd01",
+    "date": "2026-05-11T16:04:43+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "cookie-based portfolio context + switcher (Plan #5 Tasks 13-16)",
+    "description": "Foundation for the rooms feature on the web side. Without this,\nadding a room would just create a new portfolio that the user has\nno way to navigate to.\n\nNew:\n- lib/portfolio-context.ts: getSelectedPortfolioId reads cookie\n  yginvest_portfolio, validates ownership server-side, falls back\n  to global (room_id IS NULL). listUserPortfolios returns global +\n  all room portfolios for the switcher.\n- components/portfolio-switcher.tsx: client component, native select\n  posts to /api/portfolio/select then reloads.\n- app/api/portfolio/select/route.ts: validates ownership before\n  setting cookie (sameSite=lax, 1y maxAge).\n- app/app/layout.tsx: PortfolioSwitcher added to header, fetches\n  portfolios + selectedId via Promise.all.\n\nUpdated (8 pages + 1 API route):\n- dashboard, fx, portfolio/{overview,holdings,orders,transactions},\n  watchlist, trade/[symbol]: all use getSelectedPortfolioId and\n  filter holdings/orders/trades/transactions/watchlists by\n  portfolio_id explicitly.\n- api/watchlist/[symbol]: POST/DELETE use selected portfolio (was\n  hardcoded to global; room contexts would silently mutate global\n  watchlist).\n\nOther API routes (orders, fx/exchange, holdings, trades) unchanged\nbecause clients pass portfolio_id in body/query and PG functions\nverify via auth.uid().\n\nBuild + lint + tsc clean. Manual switch + room walkthrough comes in\nTasks 19+."
+  },
+  {
+    "sha": "e2d36df",
+    "date": "2026-05-11T15:59:22+09:00",
+    "type": "feat",
+    "scope": "worker",
+    "breaking": false,
+    "title": "portfolio_snapshot (5m) + room_lifecycle (1m) jobs",
+    "description": "Plan #5 Tasks 9-11.\n\n- portfolio_snapshot: every 5 min, iterates all active portfolios,\n  calls compute_portfolio_value RPC, batch-inserts to\n  portfolio_snapshots table. Continues on per-portfolio errors so\n  one bad portfolio doesn't block the others.\n- room_lifecycle: every 1 min, calls transition_room_lifecycle RPC\n  (PG function handles all the logic atomically).\n- main.py: scheduled both jobs via AsyncIOScheduler.\n\n6 unit tests (3 per job) with MagicMock — empty case, success case,\nper-item error tolerance. All 78 worker tests pass."
+  },
+  {
+    "sha": "af10d15",
+    "date": "2026-05-11T15:57:13+09:00",
+    "type": "feat",
+    "scope": "db",
+    "breaking": false,
+    "title": "rooms PG functions (create/join/transition/compute)",
+    "description": "Plan #5 Tasks 5-8.\n\n- _gen_invite_code: 6-char A-Z 2-9 (excludes 0/O/1/I), with collision\n  retry loop in create_room (10 attempts ~ 32^6 ≈ 1B codes)\n- create_room: validates inputs, host_room limit (5), inserts row with\n  status='open'|'active' based on starts_at (immediate-start rooms\n  skip the open state)\n- join_room: locks room row FOR UPDATE, checks late_join + capacity +\n  user_room_limit (10), seeds new portfolio with FX rate snapshot at\n  join time (fairness: late joiners locked at that day's rate)\n- transition_room_lifecycle: worker-only. open→active on starts_at;\n  active→ended on ends_at. For ended rooms, cascades portfolios to\n  ended, REFUNDS reserved BUY balances (raw UPDATE since cancel_order\n  requires auth.uid), then marks pending orders cancelled. Refund\n  order matters for final leaderboard snapshot accuracy.\n- compute_portfolio_value: stable function for snapshot writes. Grants\n  service_role only — clients read portfolio_snapshots table directly\n  (protected by RLS so co-members can see each other).\n\nAll 4 functions applied via supabase db reset; transition_room_lifecycle\nRPC smoke-tested via REST: returns {opened:0, ended:0} with no errors."
+  },
+  {
+    "sha": "457b194",
+    "date": "2026-05-11T15:54:53+09:00",
+    "type": "feat",
+    "scope": "db",
+    "breaking": false,
+    "title": "rooms + room_members + portfolio_snapshots + RLS",
+    "description": "Plan #5 Tasks 2-4. Foundation tables for friend rooms feature:\n\n- rooms: invite_code unique, status enum (open/active/ended),\n  starting_krw/usd, starts_at/ends_at, max_members 2-50\n- room_members: composite PK (room_id, user_id), portfolio_id unique\n  (each membership maps to its own per-room portfolio)\n- portfolio_snapshots: (portfolio_id, ts) PK, total_value_krw +\n  return_pct for leaderboard time-series\n- RLS extensions: rooms/room_members visible to members; portfolios\n  and holdings extend visibility to co-members (so leaderboard can\n  show others' portfolio values)\n\nINSERT/UPDATE on rooms goes through PG functions (Tasks 5-7), so\nonly SELECT policies are defined here."
+  },
+  {
+    "sha": "38542fd",
+    "date": "2026-05-11T15:51:43+09:00",
+    "type": "fix",
+    "scope": "worker",
+    "breaking": false,
+    "title": "KR daily bars + yfinance news shape (Plan #4/#4.5 regressions)",
+    "description": "Two production bugs found while diagnosing why 일봉 차트와 뉴스가\n프로덕션에서 동작하지 않는지:\n\n1. KR daily bars never populated\n   - `fetch_daily_history` passed `005930.KS` (with suffix) directly to\n     `fdr.DataReader`, which only accepts bare KR codes (`005930`).\n   - All 24,598 existing bars were US-only; KR table was empty.\n   - Tests passed because they only mocked AAPL (no suffix).\n   - Fix: strip `.KS`/`.KQ` before FDR call. Added regression test\n     asserting `005930.KS → 005930` translation happens.\n\n2. yfinance news returns empty fields\n   - yfinance changed shape: was `{title, link, publisher,\n     providerPublishTime}` at top-level; now `{id, content: {title,\n     provider: {displayName}, clickThroughUrl: {url}, pubDate}}`.\n   - Old code read `item.get(\"title\")` → always None → empty news cards.\n   - Tests passed because mocks used the legacy shape.\n   - Fix: read from nested `content` dict with fallback to legacy shape\n     for forward/backward compat. Skip items where both title and link\n     are empty (defensive). Updated tests to cover both shapes + an\n     empty-item skip case.\n\nLocal backfill confirmed: 24,170 KR bars now in `stock_bars`\n(Samsung 005930.KS has 244 daily bars).\n\nAll 72 worker tests pass."
+  },
+  {
+    "sha": "c8e5c85",
+    "date": "2026-05-10T23:41:33+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "ChartArea + StockNews/StockFinancials integration + /app/portfolio/overview",
+    "description": null
+  },
+  {
+    "sha": "c12e2e4",
+    "date": "2026-05-10T23:36:56+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "StockNews + StockFinancials components (lazy-load via API)",
+    "description": null
+  },
+  {
+    "sha": "51ee470",
+    "date": "2026-05-10T23:35:17+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "indicators lib + StockChart indicator prop + ChartControls",
+    "description": "Add pure indicator helpers (MA, EMA, RSI, MACD, Bollinger) in\napps/web/lib/indicators.ts. Refactor StockChart to accept an\n`indicator` prop ('none' | 'ma' | 'rsi' | 'bollinger') with conditional\noverlays + legend, and switch time mapping to handle intraday ISO\ntimestamps. Add ChartControls component for interval/indicator\nselection."
+  },
+  {
+    "sha": "12c61d6",
+    "date": "2026-05-10T23:32:15+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "/api/stocks/[symbol]/{news,financials} + bars intraday via worker RPC",
+    "description": null
+  },
+  {
+    "sha": "71421bc",
+    "date": "2026-05-10T23:30:04+09:00",
+    "type": "feat",
+    "scope": "worker",
+    "breaking": false,
+    "title": "/rpc/stocks/{bars,news,financials} endpoints (TDD, 4 tests)",
+    "description": null
+  },
+  {
+    "sha": "c53a39d",
+    "date": "2026-05-10T23:27:50+09:00",
+    "type": "feat",
+    "scope": "worker",
+    "breaking": false,
+    "title": "yahoo.fetch_history + yahoo_news.{fetch_news,fetch_key_metrics} (TDD, 6 tests)",
+    "description": null
+  },
+  {
+    "sha": "47e25b6",
+    "date": "2026-05-10T22:47:00+09:00",
+    "type": "fix",
+    "scope": "test",
+    "breaking": false,
+    "title": "update trading-limit-cancel E2E for Plan #4 BuySellSheet",
+    "description": "Plan #4's BuySellSheet refactor moved the OrderForm into a modal. The\ntest now opens the sheet via the 매수 trigger before interacting with\nthe 지정가 toggle and submit button."
+  },
+  {
+    "sha": "62c7c94",
+    "date": "2026-05-10T22:42:04+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "integrate StockChart+BuySellSheet+Watchlist on stock detail + /app/watchlist + dashboard",
+    "description": null
+  },
+  {
+    "sha": "3c4dc97",
+    "date": "2026-05-10T22:39:45+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "BuySellSheet + WatchlistButton + OrderForm forceSide prop",
+    "description": null
+  },
+  {
+    "sha": "4f669d8",
+    "date": "2026-05-10T22:37:25+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "StockChart with Lightweight Charts v5 (candle + MA20/MA60)",
+    "description": null
+  },
+  {
+    "sha": "20a544e",
+    "date": "2026-05-10T22:35:22+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "/api/stocks/[symbol]/bars + /api/watchlist routes",
+    "description": null
+  },
+  {
+    "sha": "ff868a2",
+    "date": "2026-05-10T22:26:12+09:00",
+    "type": "feat",
+    "scope": "worker",
+    "breaking": false,
+    "title": "fetch_daily_bars job (TDD, 6 tests, KR/US cron + boot backfill)",
+    "description": null
+  },
+  {
+    "sha": "b6819e1",
+    "date": "2026-05-10T22:20:03+09:00",
+    "type": "feat",
+    "scope": "db",
+    "breaking": false,
+    "title": "add stock_bars + watchlists tables with RLS (Plan #4)",
+    "description": null
+  },
+  {
+    "sha": "0b32851",
+    "date": "2026-05-10T20:42:50+09:00",
+    "type": "fix",
+    "scope": "web",
+    "breaking": false,
+    "title": "add htmlFor on form labels (a11y) + use semantic getByLabel in E2E",
+    "description": null
+  },
+  {
+    "sha": "6f20438",
+    "date": "2026-05-10T20:35:59+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "portfolio (holdings/orders/transactions) + FX exchange page + dashboard links",
+    "description": null
+  },
+  {
+    "sha": "601af84",
+    "date": "2026-05-10T20:32:27+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "add OrderForm + integrate buy/sell into stock detail page",
+    "description": null
+  },
+  {
+    "sha": "634ddb3",
+    "date": "2026-05-10T20:29:16+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "add /api routes for orders/fx/holdings/trades + market-hours util",
+    "description": null
+  },
+  {
+    "sha": "57ed6f8",
+    "date": "2026-05-10T20:19:50+09:00",
+    "type": "feat",
+    "scope": "worker",
+    "breaking": false,
+    "title": "add matching_engine job (1m, processes pending + expired orders)",
+    "description": "Wire up periodic matching engine that drives Plan #3 limit-order lifecycle:\n- expires_at < now() pending orders → expire_pending_order (refunds reserve)\n- remaining pending orders → match_limit_order (fills if last_price hits limit)\n\nErrors per-order are logged + counted, never abort the loop. Scheduled via\nAPScheduler at 60s interval alongside heartbeat / fetch_prices / fetch_fx."
+  },
+  {
+    "sha": "654daf0",
+    "date": "2026-05-10T20:15:15+09:00",
+    "type": "fix",
+    "scope": "db",
+    "breaking": false,
+    "title": "explicit portfolios lock in match/expire + amount_too_small guard",
+    "description": null
+  },
+  {
+    "sha": "3aa108d",
+    "date": "2026-05-10T20:09:22+09:00",
+    "type": "feat",
+    "scope": "db",
+    "breaking": false,
+    "title": "add match_limit_order/exchange_currency/expire_pending_order functions",
+    "description": null
+  },
+  {
+    "sha": "28975fd",
+    "date": "2026-05-10T20:06:18+09:00",
+    "type": "fix",
+    "scope": "db",
+    "breaking": false,
+    "title": "apply Batch B review (stocks lock, lock order, error msgs, revoke)",
+    "description": null
+  },
+  {
+    "sha": "114816e",
+    "date": "2026-05-10T19:59:07+09:00",
+    "type": "feat",
+    "scope": "db",
+    "breaking": false,
+    "title": "add place_market_order/place_limit_order/cancel_order PG functions",
+    "description": null
+  },
+  {
+    "sha": "f06837c",
+    "date": "2026-05-10T19:56:00+09:00",
+    "type": "feat",
+    "scope": "db",
+    "breaking": false,
+    "title": "add orders integrity constraints (filled bound, terminal state, reserved pair)",
+    "description": null
+  },
+  {
+    "sha": "2a1830a",
+    "date": "2026-05-10T17:44:58+09:00",
+    "type": "feat",
+    "scope": "db",
+    "breaking": false,
+    "title": "add holdings/orders/trades/fx_transactions tables + RLS (Plan #3)",
+    "description": null
+  },
+  {
+    "sha": "749e969",
+    "date": "2026-05-10T17:25:30+09:00",
+    "type": "fix",
+    "scope": "worker",
+    "breaking": false,
+    "title": "replace exchangerate.host (paywalled) with Frankfurter (ECB, free)",
+    "description": "exchangerate.host moved to paid tier, returning missing_access_key error.\nSwitch to api.frankfurter.dev/v1/latest which is free + no key + ECB rates.\nResponse shape is similar — only URL changes."
+  },
+  {
+    "sha": "d6d65fc",
+    "date": "2026-05-10T17:03:55+09:00",
+    "type": "fix",
+    "scope": "worker",
+    "breaking": false,
+    "title": "replace pykrx with FinanceDataReader for stable KR/US data",
+    "description": "Plan #2의 알려진 한계 2개를 모두 해결:\n\n(1) pykrx 1.0.x가 현재 KRX API 변경에 호환 안 됨 → FinanceDataReader 도입\n    - StockListing('KOSPI')/('KOSDAQ')으로 948 + 1820 종목을 한 번에 조회\n    - 시가총액으로 자동 정렬 → 동적 top 100 선정 (이전엔 하드코딩 99개)\n    - 한국어명 + 가격 + 시총 모두 한 번의 API 호출에 포함\n\n(2) yfinance가 빠른 200건 호출 시 SSL/rate-limit 에러 → bootstrap에서 FDR 사용\n    - KR: StockListing 2회 → 100종목 가격 즉시\n    - US: fdr.DataReader per symbol → 안정적 (yfinance는 같은 데이터지만 FDR transport가 rate limit 회피)\n    - 결과: bootstrap 28초에 200종목 중 198 가격 채워짐 (이전엔 0/200)\n\n코드 변경:\n- New: data_sources/fdr.py (KrListingItem, list_kr_top, fetch_us_close)\n- New: tests/test_data_sources_fdr.py (4 tests, mocked)\n- Refactored: bootstrap_stocks.py uses fdr.list_kr_top + fdr.fetch_us_close\n- Refactored: fetch_prices.py uses _fetch_listing for KR batch + fetch_us_close for US\n- Removed: data_sources/krx.py (pykrx adapter, dead code)\n- Removed: data_sources/kr_top.py (hardcoded list, replaced by dynamic FDR query)\n- Removed: tests/test_data_sources_krx.py\n- Dependency: -pykrx, +finance-datareader\n\nyfinance는 /rpc/stocks/lookup의 ad-hoc 단일 종목 조회에만 사용. 39 unit + 5 E2E 모두 PASS."
+  },
+  {
+    "sha": "f55741d",
+    "date": "2026-05-10T16:43:02+09:00",
+    "type": "feat",
+    "scope": null,
+    "breaking": false,
+    "title": "Plan #2 web search + KR/US prefetch",
+    "description": "- Worker: kr_top.py + us_top.py hardcoded top 100 (pykrx broken with current KRX)\n- Worker: bootstrap inserts records even when yfinance fails (price NULL)\n- Worker: yfinance retry shortened (2 attempts, 0.5-2s)\n- Web: /api/stocks/{search,lookup}, /app/trade/{search,[symbol]}\n- Web: stock-search component with debounced search + ad-hoc lookup fallback\n- Dashboard links to /app/trade/search"
+  },
+  {
+    "sha": "e5184dc",
+    "date": "2026-05-10T16:29:54+09:00",
+    "type": "feat",
+    "scope": "worker",
+    "breaking": false,
+    "title": "integrate AsyncIOScheduler + FastAPI + main.py + Dockerfile",
+    "description": null
+  },
+  {
+    "sha": "b79964e",
+    "date": "2026-05-10T16:26:20+09:00",
+    "type": "feat",
+    "scope": "worker",
+    "breaking": false,
+    "title": "add FastAPI RPC with /rpc/stocks/lookup (TDD)",
+    "description": null
+  },
+  {
+    "sha": "350ebb6",
+    "date": "2026-05-10T16:25:25+09:00",
+    "type": "feat",
+    "scope": "worker",
+    "breaking": false,
+    "title": "add bootstrap_stocks/fetch_prices/fetch_fx jobs (TDD)",
+    "description": null
+  },
+  {
+    "sha": "df1bbd6",
+    "date": "2026-05-10T16:23:34+09:00",
+    "type": "feat",
+    "scope": "worker",
+    "breaking": false,
+    "title": "add yahoo/krx/fx data source adapters with TDD",
+    "description": null
+  },
+  {
+    "sha": "c50a554",
+    "date": "2026-05-10T16:21:23+09:00",
+    "type": "feat",
+    "scope": "worker",
+    "breaking": false,
+    "title": "add market_hours utility with TDD (KRX + NYSE)",
+    "description": null
+  },
+  {
+    "sha": "ce77c82",
+    "date": "2026-05-10T16:19:48+09:00",
+    "type": "feat",
+    "scope": "db",
+    "breaking": false,
+    "title": "add stocks + fx_rates tables with RLS (Plan #2)",
+    "description": "- stocks: master cache with pg_trgm indexes for name/name_ko search\n- fx_rates: time-series table for FX history\n- RLS: public read, service_role write only"
+  },
+  {
+    "sha": "58a29c4",
+    "date": "2026-05-10T15:54:37+09:00",
+    "type": "feat",
+    "scope": "worker",
+    "breaking": false,
+    "title": "add config, supabase client, heartbeat job, APScheduler, Dockerfile",
+    "description": "- config.py: Settings dataclass loads SUPABASE_URL/KEY from env via dotenv\n- supabase_client.py: thin wrapper for service_role client\n- jobs/heartbeat.py: TDD-built heartbeat (mocked unit tests pass)\n- main.py: BlockingScheduler with KST timezone, signal handlers, immediate first heartbeat\n- Dockerfile: python:3.12-slim + uv with PYTHONPATH=/app/src\n- pyproject.toml: pytest pythonpath includes src\n\nTests: 5/5 (3 trigger integration + 2 heartbeat unit)\nBoot test: worker.starting → scheduler_started → heartbeat OK"
+  },
+  {
+    "sha": "a6db12b",
+    "date": "2026-05-10T15:49:11+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "add Supabase SSR clients, auth pages, app shell, dashboard",
+    "description": "- lib/supabase/{client,server,middleware}.ts for Supabase SSR pattern\n- proxy.ts (Next 16 renamed middleware) for auth gating\n- /auth/login + LoginForm (email password, Google deferred)\n- /auth/callback for OAuth code exchange\n- /app/layout.tsx with header showing display_name + logout\n- /app/dashboard showing portfolio KRW/USD balances\n- Landing page with login redirect for authed users\n- Dark mode default, Korean lang"
+  },
+  {
+    "sha": "3c9c56b",
+    "date": "2026-05-10T15:44:19+09:00",
+    "type": "feat",
+    "scope": "web",
+    "breaking": false,
+    "title": "initialize Next.js 15 with Tailwind v4, Supabase SSR, Vitest, Playwright",
+    "description": null
+  },
+  {
+    "sha": "f273ca2",
+    "date": "2026-05-10T15:40:34+09:00",
+    "type": "feat",
+    "scope": "db",
+    "breaking": false,
+    "title": "add foundation schema (profiles, portfolios, notification_settings, RLS, signup trigger)",
+    "description": "5 migrations applied + verified locally:\n- profiles linked to auth.users\n- portfolios with partial unique indexes (global vs room)\n- notification_settings with all push toggles\n- RLS for SELECT/UPDATE/DELETE per spec §4.3\n- handle_new_user trigger auto-creates profile + global portfolio + notification_settings"
+  }
+]

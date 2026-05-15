@@ -28,6 +28,8 @@ import { RecommendationsSection } from "@/components/recommendations-section";
 import { PersonalizedRecommendations } from "@/components/personalized-recommendations";
 import { VolumeLeaders } from "@/components/volume-leaders";
 import { DailyQuizCard } from "@/components/daily-quiz-card";
+import { ChangelogLink } from "@/components/changelog-link";
+import changelogData from "@/lib/changelog-data.json";
 
 function RecommendationsSkeleton() {
   return (
@@ -113,14 +115,19 @@ export default async function DashboardPage() {
     : { data: null };
 
   const greetingName = profile?.display_name ?? user.email?.split("@")[0] ?? "투자자";
+  const latestChangelogSha =
+    (changelogData as { sha: string }[])[0]?.sha ?? null;
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">안녕하세요, {greetingName}님 👋</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          오늘의 시장을 확인해보세요.
-        </p>
+      <div className="flex items-start justify-between gap-2 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold">안녕하세요, {greetingName}님 👋</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            오늘의 시장을 확인해보세요.
+          </p>
+        </div>
+        <ChangelogLink latestSha={latestChangelogSha} />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

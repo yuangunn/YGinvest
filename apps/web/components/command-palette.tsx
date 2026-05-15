@@ -14,6 +14,7 @@ import {
   Coins,
   GitCompare,
   LineChart,
+  Megaphone,
   PieChart,
   Sparkles,
   Tags,
@@ -67,6 +68,7 @@ const NAV_LINKS: NavLink[] = [
   { label: "알림 설정", href: "/app/settings", group: "기타", Icon: Bell },
   { label: "AI 키 등록", href: "/app/settings/ai", group: "기타", Icon: Sparkles },
   { label: "앱 설치", href: "/app/help/install", group: "기타", Icon: Smartphone },
+  { label: "업데이트 소식", href: "/app/changelog", group: "기타", Icon: Megaphone },
 ];
 
 /**
