@@ -2,10 +2,10 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { offlineFetch } from "@/lib/offline-fetch";
+import { NumberInput } from "@/components/number-input";
 
 export function FxExchangeForm({
   portfolioId,
@@ -19,7 +19,7 @@ export function FxExchangeForm({
   rate: number | null;
 }) {
   const [direction, setDirection] = useState<"KRW_TO_USD" | "USD_TO_KRW">("KRW_TO_USD");
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
@@ -38,7 +38,7 @@ export function FxExchangeForm({
           portfolio_id: portfolioId,
           from_currency,
           to_currency,
-          from_amount: Number(amount),
+          from_amount: amount,
         }),
       },
     );
@@ -81,14 +81,20 @@ export function FxExchangeForm({
       </div>
       <div className="space-y-1">
         <Label htmlFor="fx-amount">금액 ({direction === "KRW_TO_USD" ? "KRW" : "USD"})</Label>
-        <Input id="fx-amount" type="number" step="any" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+        <NumberInput
+          id="fx-amount"
+          value={amount}
+          onChange={setAmount}
+          allowDecimal={direction === "USD_TO_KRW"}
+          placeholder={direction === "KRW_TO_USD" ? "예: 1,000,000" : "예: 1,000.00"}
+        />
       </div>
       {message && (
         <Alert variant={message.kind === "ok" ? "default" : "destructive"}>
           <AlertDescription>{message.text}</AlertDescription>
         </Alert>
       )}
-      <Button type="submit" disabled={submitting || !amount} className="w-full">
+      <Button type="submit" disabled={submitting || amount <= 0} className="w-full">
         환전 (수수료 0.5%)
       </Button>
     </form>

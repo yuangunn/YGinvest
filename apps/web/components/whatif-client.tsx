@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { StockPicker, type PickedStock } from "@/components/stock-picker";
+import { NumberInput } from "@/components/number-input";
 
 type Bar = { ts: string; close: number };
 
@@ -122,14 +123,12 @@ export function WhatIfClient() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label htmlFor="wi-amount" className="text-xs">투자 금액</Label>
-              <Input
+              <Label htmlFor="wi-amount" className="text-xs">투자 금액 (원)</Label>
+              <NumberInput
                 id="wi-amount"
-                type="number"
                 value={amount}
-                onChange={(e) => setAmount(Number(e.target.value) || 0)}
-                step={100_000}
-                min={10_000}
+                onChange={setAmount}
+                placeholder="예: 1,000,000"
               />
             </div>
             <div>

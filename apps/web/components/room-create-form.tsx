@@ -5,13 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { NumberInput } from "@/components/number-input";
 
 export function RoomCreateForm() {
   const router = useRouter();
   const [name, setName] = useState("");
-  const [krw, setKrw] = useState("100000000");
-  const [usd, setUsd] = useState("0");
-  const [days, setDays] = useState("30");
+  const [krw, setKrw] = useState(100_000_000);
+  const [usd, setUsd] = useState(0);
+  const [days, setDays] = useState(30);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,16 +22,16 @@ export function RoomCreateForm() {
     setSubmitting(true);
     const startsAt = new Date().toISOString();
     const endsAt =
-      days === "0"
+      days === 0
         ? null
-        : new Date(Date.now() + Number(days) * 24 * 3600 * 1000).toISOString();
+        : new Date(Date.now() + days * 24 * 3600 * 1000).toISOString();
     const res = await fetch("/api/rooms", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name,
-        starting_krw: Number(krw),
-        starting_usd: Number(usd),
+        starting_krw: krw,
+        starting_usd: usd,
         starts_at: startsAt,
         ends_at: endsAt,
         max_members: 10,
@@ -60,35 +61,30 @@ export function RoomCreateForm() {
       </div>
       <div>
         <Label htmlFor="room-krw">시작 KRW</Label>
-        <Input
+        <NumberInput
           id="room-krw"
-          type="number"
-          min="0"
-          required
           value={krw}
-          onChange={(e) => setKrw(e.target.value)}
+          onChange={setKrw}
+          placeholder="예: 100,000,000"
         />
       </div>
       <div>
         <Label htmlFor="room-usd">시작 USD</Label>
-        <Input
+        <NumberInput
           id="room-usd"
-          type="number"
-          min="0"
-          required
           value={usd}
-          onChange={(e) => setUsd(e.target.value)}
+          onChange={setUsd}
+          allowDecimal
+          placeholder="예: 100,000"
         />
       </div>
       <div>
-        <Label htmlFor="room-days">기간 (일, 0=무제한)</Label>
-        <Input
+        <Label htmlFor="room-days">기간 (일, 0 = 무제한)</Label>
+        <NumberInput
           id="room-days"
-          type="number"
-          min="0"
-          required
           value={days}
-          onChange={(e) => setDays(e.target.value)}
+          onChange={setDays}
+          placeholder="예: 30"
         />
       </div>
       {error && (

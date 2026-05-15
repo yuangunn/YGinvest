@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/number-input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { offlineFetch } from "@/lib/offline-fetch";
@@ -23,8 +23,8 @@ type OrderType = "market" | "limit" | "midpoint";
 export function OrderForm({ portfolioId, symbol, currency, market, lastPrice, forceSide }: Props) {
   const [side, setSide] = useState<"buy" | "sell">(forceSide ?? "buy");
   const [type, setType] = useState<OrderType>("market");
-  const [quantity, setQuantity] = useState<string>("1");
-  const [limitPrice, setLimitPrice] = useState<string>(lastPrice ? String(lastPrice) : "");
+  const [quantity, setQuantity] = useState<number>(1);
+  const [limitPrice, setLimitPrice] = useState<number>(lastPrice ?? 0);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
@@ -49,9 +49,9 @@ export function OrderForm({ portfolioId, symbol, currency, market, lastPrice, fo
       symbol,
       side,
       type,
-      quantity: Number(quantity),
+      quantity,
     };
-    if (type === "limit") body.limit_price = Number(limitPrice);
+    if (type === "limit") body.limit_price = limitPrice;
     // D4: 거래는 transient 실패(5xx/네트워크 일시) 시 2번 재시도
     const result = await offlineFetch<{ filled_avg_price?: number }>(
       "/api/orders",
@@ -134,27 +134,22 @@ export function OrderForm({ portfolioId, symbol, currency, market, lastPrice, fo
       </div>
       <div className="space-y-1">
         <Label htmlFor="order-quantity">수량</Label>
-        <Input
+        <NumberInput
           id="order-quantity"
-          type="number"
-          min="1"
-          step="1"
           value={quantity}
-          onChange={(e) => setQuantity(e.target.value)}
-          required
+          onChange={setQuantity}
+          placeholder="1"
         />
       </div>
       {type === "limit" && (
         <div className="space-y-1">
           <Label htmlFor="order-limit-price">지정가 ({currency})</Label>
-          <Input
+          <NumberInput
             id="order-limit-price"
-            type="number"
-            min="0.0001"
-            step="any"
             value={limitPrice}
-            onChange={(e) => setLimitPrice(e.target.value)}
-            required
+            onChange={setLimitPrice}
+            allowDecimal
+            placeholder={lastPrice ? lastPrice.toLocaleString() : "0"}
           />
         </div>
       )}

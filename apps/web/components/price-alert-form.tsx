@@ -4,9 +4,9 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Bell, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { offlineFetch } from "@/lib/offline-fetch";
+import { NumberInput } from "@/components/number-input";
 
 type Alert = {
   id: string;
@@ -31,7 +31,7 @@ export function PriceAlertForm({
 }: Props) {
   const [alerts, setAlerts] = useState(initialAlerts);
   const [condition, setCondition] = useState<"above" | "below">("above");
-  const [price, setPrice] = useState(currentPrice ? String(currentPrice) : "");
+  const [price, setPrice] = useState<number>(currentPrice ?? 0);
   const [isPending, startTransition] = useTransition();
 
   async function refresh() {
@@ -45,7 +45,7 @@ export function PriceAlertForm({
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!price) return;
+    if (price <= 0) return;
     startTransition(async () => {
       const result = await offlineFetch("/api/alerts", {
         method: "POST",
@@ -53,7 +53,7 @@ export function PriceAlertForm({
         body: JSON.stringify({
           symbol,
           condition,
-          trigger_price: Number(price),
+          trigger_price: price,
         }),
       });
       if (result.status === "ok") {
@@ -108,14 +108,12 @@ export function PriceAlertForm({
           <Label htmlFor={`alert-price-${symbol}`} className="text-xs">
             가격
           </Label>
-          <Input
+          <NumberInput
             id={`alert-price-${symbol}`}
-            type="number"
-            step="any"
             value={price}
-            onChange={(e) => setPrice(e.target.value)}
+            onChange={setPrice}
+            allowDecimal
             placeholder={fmt + (currentPrice ?? 0).toLocaleString()}
-            required
           />
         </div>
         <Button type="submit" disabled={isPending} size="sm">

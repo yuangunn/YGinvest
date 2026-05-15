@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/number-input";
 
 type YearRow = {
   year: number;
@@ -126,63 +126,59 @@ export function DividendSimClient() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="ds-init" className="text-xs">초기 투자금 (원)</Label>
-              <Input
+              <NumberInput
                 id="ds-init"
-                type="number"
                 value={initial}
-                onChange={(e) => setInitial(Number(e.target.value) || 0)}
-                step={1_000_000}
+                onChange={setInitial}
+                placeholder="예: 10,000,000"
               />
             </div>
             <div>
               <Label htmlFor="ds-mo" className="text-xs">월 적립 (원)</Label>
-              <Input
+              <NumberInput
                 id="ds-mo"
-                type="number"
                 value={monthly}
-                onChange={(e) => setMonthly(Number(e.target.value) || 0)}
-                step={100_000}
+                onChange={setMonthly}
+                placeholder="예: 500,000"
               />
             </div>
             <div>
               <Label htmlFor="ds-yld" className="text-xs">초기 배당수익률 (%)</Label>
-              <Input
+              <NumberInput
                 id="ds-yld"
-                type="number"
                 value={yld}
-                onChange={(e) => setYld(Number(e.target.value) || 0)}
-                step={0.1}
+                onChange={setYld}
+                allowDecimal
+                placeholder="예: 3.5"
               />
             </div>
             <div>
               <Label htmlFor="ds-divg" className="text-xs">배당 성장률 (% / 연)</Label>
-              <Input
+              <NumberInput
                 id="ds-divg"
-                type="number"
                 value={divGrowth}
-                onChange={(e) => setDivGrowth(Number(e.target.value) || 0)}
-                step={1}
+                onChange={setDivGrowth}
+                allowDecimal
+                placeholder="예: 5"
               />
             </div>
             <div>
               <Label htmlFor="ds-pg" className="text-xs">주가 상승률 (% / 연)</Label>
-              <Input
+              <NumberInput
                 id="ds-pg"
-                type="number"
                 value={priceGrowth}
-                onChange={(e) => setPriceGrowth(Number(e.target.value) || 0)}
-                step={1}
+                onChange={setPriceGrowth}
+                allowDecimal
+                placeholder="예: 5"
               />
             </div>
             <div>
               <Label htmlFor="ds-y" className="text-xs">기간 (년)</Label>
-              <Input
+              <NumberInput
                 id="ds-y"
-                type="number"
                 value={years}
-                onChange={(e) => setYears(Number(e.target.value) || 0)}
-                min={1}
-                max={50}
+                onChange={setYears}
+                placeholder="예: 30"
               />
             </div>
           </div>

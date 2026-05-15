@@ -219,4 +219,17 @@
   .article-body strong {
     font-weight: 600;
   }
+
+  /* Plan #27.1: input[type="number"]의 위/아래 spinner 버튼 제거 */
+  /* (혹시 남아있는 type="number" 입력에도 적용) */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
 }
