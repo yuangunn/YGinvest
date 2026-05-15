@@ -4,6 +4,7 @@ import { TrendingUp, TrendingDown, Clock, Award } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSelectedPortfolioId } from "@/lib/portfolio-context";
+import { EmptyState } from "@/components/empty-state";
 
 type Trade = {
   id: string;
@@ -49,8 +50,14 @@ export default async function PortfolioAnalysisPage() {
           매매 분석
         </h1>
         <Card>
-          <CardContent className="py-6 text-center">
-            <p className="text-sm text-muted-foreground">아직 거래 내역이 없어요</p>
+          <CardContent className="py-2">
+            <EmptyState
+              Icon={Award}
+              title="아직 거래 내역이 없어요"
+              description="첫 매매 후 FIFO 매칭 기반 실현/미실현 손익, 승률, 평균 보유기간을 자동 분석해드려요."
+              action={{ label: "종목 검색해서 매수", href: "/app/trade/search" }}
+              secondaryAction={{ label: "큐레이션 보기", href: "/app/curation" }}
+            />
           </CardContent>
         </Card>
       </div>

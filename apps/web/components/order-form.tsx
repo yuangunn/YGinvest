@@ -52,6 +52,7 @@ export function OrderForm({ portfolioId, symbol, currency, market, lastPrice, fo
       quantity: Number(quantity),
     };
     if (type === "limit") body.limit_price = Number(limitPrice);
+    // D4: 거래는 transient 실패(5xx/네트워크 일시) 시 2번 재시도
     const result = await offlineFetch<{ filled_avg_price?: number }>(
       "/api/orders",
       {
@@ -59,6 +60,7 @@ export function OrderForm({ portfolioId, symbol, currency, market, lastPrice, fo
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       },
+      { retries: 2 },
     );
     setSubmitting(false);
     if (result.status === "ok") {

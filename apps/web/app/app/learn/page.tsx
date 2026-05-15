@@ -9,6 +9,10 @@ import {
   Globe,
   Scale,
   BarChart3,
+  Brain,
+  Calculator,
+  Activity,
+  History,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -69,6 +73,41 @@ const ARTICLES = [
     summary: "가치평가 3대 지표가 의미하는 것",
     icon: BookOpen,
     minutes: 7,
+  },
+  {
+    slug: "behavioral-biases",
+    title: "행동경제학 — 손실회피와 처분효과",
+    summary: "사람은 왜 손절을 못하나? 인지편향 5가지",
+    icon: Brain,
+    minutes: 6,
+  },
+  {
+    slug: "compound-rule-of-72",
+    title: "복리의 마법과 72의 법칙",
+    summary: "왜 일찍 시작하는 게 가장 강력한 무기인가",
+    icon: Calculator,
+    minutes: 4,
+  },
+  {
+    slug: "fomc-dotplot",
+    title: "FOMC 점도표 읽는 법",
+    summary: "Fed 위원들이 그리는 금리 미래 — 시장의 가장 큰 변수",
+    icon: Activity,
+    minutes: 5,
+  },
+  {
+    slug: "bubble-history",
+    title: "버블의 역사 — 4번의 큰 광기",
+    summary: "튤립, 닷컴, 2008, AI 거품. 패턴은 항상 비슷하다",
+    icon: History,
+    minutes: 7,
+  },
+  {
+    slug: "etf-basics",
+    title: "ETF 입문 — 인덱스 펀드의 원리",
+    summary: "전체 시장을 사는 가장 쉬운 방법. 액티브 vs 패시브",
+    icon: BarChart3,
+    minutes: 5,
   },
 ];
 

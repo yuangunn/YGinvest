@@ -11,6 +11,7 @@ from ygworker.config import load_settings
 from ygworker.jobs.apply_corporate_events import run_apply_corporate_events
 from ygworker.jobs.bootstrap_stocks import run_bootstrap_stocks
 from ygworker.jobs.check_price_alerts import run_check_price_alerts
+from ygworker.jobs.cleanup_old_data import run_cleanup_old_data
 from ygworker.jobs.compute_recommendations import run_compute_recommendations
 from ygworker.jobs.enrich_stock_info import run_enrich_stock_info
 from ygworker.jobs.fetch_corporate_data import run_fetch_corporate_data
@@ -21,6 +22,7 @@ from ygworker.jobs.fetch_macro_indicators import run_fetch_macro_indicators
 from ygworker.jobs.fetch_prices import run_fetch_prices
 from ygworker.jobs.heartbeat import run_heartbeat
 from ygworker.jobs.matching_engine import run_matching_engine
+from ygworker.jobs.notify_economic_events import run_notify_economic_events
 from ygworker.jobs.notify_expiring_orders import run_notify_expiring_orders
 from ygworker.jobs.notify_room_lifecycle import run_notify_room_lifecycle
 from ygworker.jobs.portfolio_snapshot import run_portfolio_snapshot
@@ -90,10 +92,11 @@ async def main_async() -> None:
         id="fetch_fx",
         replace_existing=True,
     )
+    # Plan #27: 매칭 엔진 1분 → 2분 (시뮬레이션이라 1분 결정성 불필요).
     scheduler.add_job(
         _wrap_in_thread(run_matching_engine, supabase, logger),
         trigger="interval",
-        seconds=60,
+        minutes=2,
         id="matching_engine",
         replace_existing=True,
     )
@@ -123,11 +126,11 @@ async def main_async() -> None:
         id="portfolio_snapshot",
         replace_existing=True,
     )
-    # 1분 주기: 방 status 전이 (open→active, active→ended + 펜딩 환원/취소)
+    # Plan #27: 방 status 전이 — 1분 → 5분 (시뮬이라 즉시성 불필요)
     scheduler.add_job(
         _wrap_in_thread(run_room_lifecycle, supabase, logger),
         trigger="interval",
-        minutes=1,
+        minutes=5,
         id="room_lifecycle",
         replace_existing=True,
     )
@@ -149,11 +152,11 @@ async def main_async() -> None:
         id="enrich_stock_info",
         replace_existing=True,
     )
-    # Plan #23: 가격 알림 체크 — 1분 주기 (장중에만)
+    # Plan #27: 가격 알림 체크 — 1분 → 5분
     scheduler.add_job(
         _wrap_in_thread(run_check_price_alerts, supabase, logger),
         trigger="interval",
-        minutes=1,
+        minutes=5,
         id="check_price_alerts",
         replace_existing=True,
     )
@@ -175,6 +178,24 @@ async def main_async() -> None:
         id="fetch_macro_indicators",
         replace_existing=True,
     )
+    # Plan #27 A5: 매일 02:00 KST 오래된 데이터 정리
+    scheduler.add_job(
+        _wrap_in_thread(run_cleanup_old_data, supabase, logger),
+        trigger="cron",
+        hour=2,
+        minute=0,
+        id="cleanup_old_data",
+        replace_existing=True,
+    )
+    # Plan #27 C4: 매일 08:00 KST 내일 경제 일정 push
+    scheduler.add_job(
+        _wrap_in_thread(run_notify_economic_events, supabase, logger),
+        trigger="cron",
+        hour=8,
+        minute=0,
+        id="notify_economic_events",
+        replace_existing=True,
+    )
     # 매일 09:00 KST: ex_date 도달한 dividend/action 적용
     scheduler.add_job(
         _wrap_in_thread(run_apply_corporate_events, supabase, logger),
@@ -184,7 +205,7 @@ async def main_async() -> None:
         id="apply_corporate_events",
         replace_existing=True,
     )
-    # 1분 주기: notification_queue dispatch (push)
+    # Plan #27: notification_queue dispatch — 1분 → 5분
     scheduler.add_job(
         _wrap_in_thread(
             run_send_notifications,
@@ -194,7 +215,7 @@ async def main_async() -> None:
             vapid_subject=settings.vapid_subject,
         ),
         trigger="interval",
-        minutes=1,
+        minutes=5,
         id="send_notifications",
         replace_existing=True,
     )

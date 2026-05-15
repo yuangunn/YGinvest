@@ -16,6 +16,9 @@ import { StockRatingBadge } from "@/components/stock-rating-badge";
 import { Term } from "@/components/term";
 import { OrderBook } from "@/components/order-book";
 import { PriceAlertForm } from "@/components/price-alert-form";
+import { RecentTracker } from "@/components/recent-tracker";
+import { FreshnessIndicator } from "@/components/freshness-indicator";
+import { TradeNotes } from "@/components/trade-notes";
 import { getSelectedPortfolioId } from "@/lib/portfolio-context";
 import { formatMarketTimestamp } from "@/lib/time-format";
 
@@ -77,6 +80,7 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-4">
+      <RecentTracker symbol={stock.symbol} name={symbolName} />
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-xs text-muted-foreground flex items-center gap-2">
@@ -106,11 +110,17 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
           <div className="text-3xl font-bold font-mono">
             {stock.last_price ? fmt.format(Number(stock.last_price)) : "—"}
           </div>
-          <div className="text-xs text-muted-foreground mt-1">
-            업데이트:{" "}
-            {stock.last_price_at
-              ? formatMarketTimestamp(stock.last_price_at, stock.market)
-              : "—"}
+          <div className="text-xs text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
+            <span>
+              업데이트:{" "}
+              {stock.last_price_at
+                ? formatMarketTimestamp(stock.last_price_at, stock.market)
+                : "—"}
+            </span>
+            <FreshnessIndicator
+              lastFetchedAt={stock.last_price_at}
+              market={stock.market}
+            />
           </div>
           <div className="mt-2">
             <NxtSpreadBadge
@@ -199,6 +209,9 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
           />
         </CardContent>
       </Card>
+
+      <TradeNotes symbol={stock.symbol} />
+
 
       <Card>
         <CardHeader>

@@ -27,6 +27,7 @@ import { getSelectedPortfolioId } from "@/lib/portfolio-context";
 import { RecommendationsSection } from "@/components/recommendations-section";
 import { PersonalizedRecommendations } from "@/components/personalized-recommendations";
 import { VolumeLeaders } from "@/components/volume-leaders";
+import { DailyQuizCard } from "@/components/daily-quiz-card";
 
 function RecommendationsSkeleton() {
   return (
@@ -81,7 +82,8 @@ const ECONOMY_ACTIONS = [
   { href: "/app/portfolio/dividend-sim", label: "배당시뮬", Icon: Coins },
   { href: "/app/strategies", label: "유명 전략", Icon: Award },
   { href: "/app/portfolio/behavior", label: "행동분석", Icon: Brain },
-  { href: "/app/portfolio/what-if", label: "What-If", Icon: GitCompare },
+  { href: "/app/portfolio/what-if", label: "vs 인덱스", Icon: GitCompare },
+  { href: "/app/whatif", label: "가상 매수", Icon: GitCompare },
 ] as const;
 
 export default async function DashboardPage() {
@@ -156,6 +158,8 @@ export default async function DashboardPage() {
       >
         포트폴리오 상세 보기 <ArrowRight className="h-3.5 w-3.5" />
       </Link>
+
+      <DailyQuizCard />
 
       <Card>
         <CardHeader>

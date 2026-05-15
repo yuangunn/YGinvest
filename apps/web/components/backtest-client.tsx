@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ma, rsi, macd as macdFn } from "@/lib/indicators";
 import { StockPicker, type PickedStock } from "@/components/stock-picker";
+import { getCachedBacktest, setCachedBacktest } from "@/lib/backtest-cache";
 
 type Bar = { ts: string; close: number; volume: number };
 
@@ -188,6 +189,14 @@ export function BacktestClient() {
     setLoading(true);
     setError(null);
     setResult(null);
+    // D3: 24시간 캐시 — 같은 종목 + 같은 전략은 재계산 안 함
+    const cacheKey = `${picked.symbol}|${strategy}`;
+    const cached = getCachedBacktest<Result>(cacheKey);
+    if (cached) {
+      setResult(cached);
+      setLoading(false);
+      return;
+    }
     try {
       const res = await fetch(
         `/api/stocks/${encodeURIComponent(picked.symbol)}/bars?interval=1d`,
@@ -204,7 +213,9 @@ export function BacktestClient() {
       if (bars.length < 60) {
         throw new Error(`데이터 부족 (${bars.length}개, 60개 이상 필요)`);
       }
-      setResult(runBacktest(bars, strategy));
+      const r = runBacktest(bars, strategy);
+      setCachedBacktest(cacheKey, r);
+      setResult(r);
     } catch (err) {
       setError(err instanceof Error ? err.message : "실행 실패");
     } finally {
