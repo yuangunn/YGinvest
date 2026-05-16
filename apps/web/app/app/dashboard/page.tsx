@@ -33,6 +33,8 @@ import { VolumeLeaders } from "@/components/volume-leaders";
 import { DailyQuizCard } from "@/components/daily-quiz-card";
 import { ChangelogLink } from "@/components/changelog-link";
 import { PendingOrdersCard } from "@/components/pending-orders-card";
+import { getIsAdmin } from "@/lib/auth-admin";
+import { ShieldCheck } from "lucide-react";
 import changelogData from "@/lib/changelog-data.json";
 
 function RecommendationsSkeleton() {
@@ -120,13 +122,14 @@ export default async function DashboardPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
-  const [{ data: profile }, portfolioId] = await Promise.all([
+  const [{ data: profile }, portfolioId, isAdmin] = await Promise.all([
     supabase
       .from("profiles")
       .select("display_name")
       .eq("id", user.id)
       .maybeSingle(),
     getSelectedPortfolioId(supabase, user.id),
+    getIsAdmin(supabase, user.id),
   ]);
 
   const [{ data: portfolio }, holdingsRes] = portfolioId
@@ -155,12 +158,34 @@ export default async function DashboardPage() {
     <div className="max-w-3xl mx-auto p-6 space-y-6">
       <div className="flex items-start justify-between gap-2 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold">안녕하세요, {greetingName}님 👋</h1>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            안녕하세요, {greetingName}님 👋
+            {isAdmin && (
+              <span
+                className="inline-flex items-center gap-0.5 text-[10px] rounded-md border border-purple-500/40 bg-purple-500/10 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 font-semibold"
+                title="관리자 권한 있음"
+              >
+                <ShieldCheck className="h-3 w-3" />
+                ADMIN
+              </span>
+            )}
+          </h1>
           <p className="text-sm text-muted-foreground mt-1">
             오늘의 시장을 확인해보세요.
           </p>
         </div>
-        <ChangelogLink latestSha={latestChangelogSha} />
+        <div className="flex flex-col items-end gap-1">
+          <ChangelogLink latestSha={latestChangelogSha} />
+          {isAdmin && (
+            <Link
+              href="/app/health"
+              className="inline-flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400 hover:underline"
+            >
+              <ShieldCheck className="h-3 w-3" />
+              시스템 상태
+            </Link>
+          )}
+        </div>
       </div>
 
       <Card>

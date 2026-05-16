@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
-import { Activity, CheckCircle2, AlertCircle } from "lucide-react";
+import Link from "next/link";
+import { Activity, CheckCircle2, AlertCircle, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatMarketTimestamp } from "@/lib/time-format";
+import { getIsAdmin } from "@/lib/auth-admin";
 
 type LatestRow = { ts?: string; updated_at?: string; created_at?: string };
 
@@ -17,6 +19,8 @@ export default async function HealthPage() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
+
+  const isAdmin = await getIsAdmin(supabase, user.id);
 
   // 워커 heartbeat / 마지막 fetch 시각 점검 — 가벼운 쿼리 위주
   const [
@@ -114,17 +118,90 @@ export default async function HealthPage() {
   const activeUserCount = (activeUsers?.count as number | null) ?? 0;
   const overallOk = checks.every((c) => freshness(c.age, c.thresh).state === "ok");
 
+  // ─────────── 일반 사용자 view (단순) ─────────────────────
+  if (!isAdmin) {
+    return (
+      <div className="max-w-2xl mx-auto p-4 space-y-4">
+        <div>
+          <h1 className="text-xl font-bold flex items-center gap-2">
+            <Activity className="h-5 w-5 text-primary" />
+            서비스 상태
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            현재 YGinvest 서비스 작동 상태.
+          </p>
+        </div>
+
+        <Card
+          className={
+            overallOk
+              ? "border-green-500/40 bg-green-500/5"
+              : "border-amber-500/40 bg-amber-500/5"
+          }
+        >
+          <CardContent className="py-6 flex items-center gap-3">
+            {overallOk ? (
+              <>
+                <CheckCircle2 className="h-8 w-8 text-green-500 flex-shrink-0" />
+                <div>
+                  <div className="font-semibold text-lg">
+                    모든 시스템이 정상입니다
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    가격 데이터 / 환율 / 거시지표 모두 최신
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <AlertCircle className="h-8 w-8 text-amber-500 flex-shrink-0" />
+                <div>
+                  <div className="font-semibold text-lg">일부 데이터 갱신 지연</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    운영자가 확인 중입니다. 잠시 후 다시 시도해주세요.
+                  </div>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="py-3 text-xs text-muted-foreground space-y-1.5">
+            <p>
+              🛡️ 상세 시스템 정보는 운영자만 볼 수 있습니다. 문제 발견 시
+              GitHub 또는 친구방에서 알려주세요.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // ─────────── 관리자 view (전체 진단) ──────────────────────
   return (
     <div className="max-w-3xl mx-auto p-4 space-y-4">
       <div>
         <h1 className="text-xl font-bold flex items-center gap-2">
           <Activity className="h-5 w-5 text-primary" />
           시스템 상태
+          <span className="inline-flex items-center gap-1 text-[10px] rounded-md border border-purple-500/40 bg-purple-500/10 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 font-semibold">
+            <ShieldCheck className="h-3 w-3" />
+            ADMIN
+          </span>
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
           워커 job별 마지막 갱신 시각. 운영 모니터링용.
         </p>
       </div>
+
+      <Link
+        href="/app/admin/users"
+        className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md border border-purple-500/40 bg-purple-500/5 hover:bg-purple-500/10 text-purple-600 dark:text-purple-400"
+      >
+        <ShieldCheck className="h-3.5 w-3.5" />
+        관리자 설정 (사용자 관리)
+      </Link>
 
       <Card
         className={

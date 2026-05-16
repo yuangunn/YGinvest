@@ -1,5 +1,23 @@
 [
   {
+    "sha": "89a28d5",
+    "date": "2026-05-16T11:37:50+09:00",
+    "type": "feat",
+    "scope": "infra",
+    "breaking": false,
+    "title": "ARM Always Free 자동 시도 — GitHub Actions",
+    "description": "Oracle ARM 인스턴스가 \"Out of capacity\"로 안 잡힐 때 매 15분\n자동 재시도. 성공 시 Telegram/Discord 알림.\n\n## 구성\n\n### scripts/oci-arm-retry/try_arm_instance.py\n- OCI Python SDK로 ARM A1.Flex launch 시도\n- already_has_arm 체크로 중복 생성 방지\n- 모든 가용성 도메인 순회 시도\n- Out of capacity → silent retry, LimitExceeded → 알림 + 중단\n- 성공 시 Telegram + Discord 알림 (둘 다 선택)\n- 약 200줄, 의존성은 oci SDK만\n\n### .github/workflows/try-arm-capacity.yml\n- cron: 매 15분\n- concurrency 1 (병렬 X)\n- 모든 secrets/vars를 환경변수로 주입\n- timeout 5분\n\n### docs/ARM_AUTO_RETRY.md\n6단계 셋업 가이드:\n1. OCI API Key 생성 (Console에서 5분)\n2. 필요한 OCID 수집 (Compartment / Subnet / Image)\n3. GitHub Secrets 10개 + Variables 3개 등록\n4. (선택) Telegram/Discord 알림 설정\n5. 첫 실행 (workflow_dispatch)\n6. 성공 후 마이그레이션\n\n+ 트러블슈팅 / 운영 권장사항 / 체크리스트\n\n## 사용 흐름\n1. AMD VM으로 worker 운영 시작 (지금)\n2. GitHub Actions로 ARM 자동 시도 켜기\n3. 1-7일 안에 알림 → ARM 마이그레이션\n4. AMD 종료\n\n전체 무료, downtime 거의 0."
+  },
+  {
+    "sha": "41112fa",
+    "date": "2026-05-16T10:48:59+09:00",
+    "type": "feat",
+    "scope": null,
+    "breaking": false,
+    "title": "거시지표 해석 가이드 + Oracle Cloud 이주 docs",
+    "description": "## /app/macro/guide — 거시지표 읽는 법\n8개 핵심 시나리오를 하드코딩한 학습 컨텐츠 페이지:\n1. 🏦 긴축 사이클 (금리↑ + DXY↑ + USDKRW↑)\n2. 🕊️ 완화 사이클 (금리↓ + DXY↓ + 환율↓)\n3. 🔥 스태그플레이션 위험 (CPI↑ + 유가↑ + 성장↓)\n4. ⚠️ 경기침체 임박 (yield curve 역전 + VIX↑)\n5. 🚀 리스크온 (VIX↓ + 주식↑ + 위험자산↑)\n6. 🚨 리스크오프 / 패닉 (VIX↑ + 안전자산↑ + 주식↓)\n7. 🇰🇷 원화 약세 가속 (USDKRW↑ + 한미금리차 + 자본유출)\n8. 🛢️ 유가 충격 (WTI↑ + CPI↑ + 항공/물류↓)\n\n각 시나리오:\n- 지표 조합 + 추세 + 이유\n- 의미 (2-3 단락)\n- 자산별 영향 매트릭스 (15-20개 자산)\n- 역사적 사례 (3개 이상)\n- 투자 가이드 (6개 bullet)\n- 경고/주의사항\n\n## 통합\n- /app/macro 상단에 \"📖 지표 읽는 법\" prominent 버튼\n- Cmd+K palette에 추가\n- 대시보드 경제학습 그룹에 \"지표 읽기\" 추가\n\n## docs/ORACLE_MIGRATION.md\nRailway → Oracle Cloud Always Free 단계별 이주 가이드 (10 챕터):\n1. Oracle 계정 가입 (Seoul region)\n2. ARM Ampere VM 생성 (2 vCPU + 12GB RAM 무료)\n3. SSH + Docker 셋업\n4. Security List + UFW 방화벽\n5. Git clone + Docker build + 컨테이너 실행\n6. Vercel WORKER_RPC_URL 교체\n7. HTTPS (Cloudflare Tunnel 또는 Caddy)\n8. 모니터링 + 자동 재시작\n9. 코드 갱신 스크립트\n10. Railway 종료\n\n+ 트러블슈팅 (capacity 부족 / 빌드 실패 / timeout 등) + 비용 모니터링.\n\n전체 영구 무료 + ~30분 셋업."
+  },
+  {
     "sha": "d1ebbdc",
     "date": "2026-05-16T00:23:08+09:00",
     "type": "fix",
