@@ -9,10 +9,12 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from ygworker.config import load_settings
 from ygworker.jobs.apply_corporate_events import run_apply_corporate_events
+from ygworker.jobs.bootstrap_etfs import run_bootstrap_etfs
 from ygworker.jobs.bootstrap_stocks import run_bootstrap_stocks
 from ygworker.jobs.check_price_alerts import run_check_price_alerts
 from ygworker.jobs.cleanup_old_data import run_cleanup_old_data
 from ygworker.jobs.compute_recommendations import run_compute_recommendations
+from ygworker.jobs.enrich_etfs import run_enrich_etfs
 from ygworker.jobs.enrich_stock_info import run_enrich_stock_info
 from ygworker.jobs.fetch_corporate_data import run_fetch_corporate_data
 from ygworker.jobs.fetch_daily_bars import run_fetch_daily_bars
@@ -67,6 +69,8 @@ async def main_async() -> None:
 
     # 부팅 시 1회: 종목 마스터 prefetch
     await asyncio.to_thread(run_bootstrap_stocks, supabase, logger)
+    # Plan #32: 부팅 시 1회 — ETF 마스터 prefetch (큐레이션 50 + KR 자동 상위)
+    await asyncio.to_thread(run_bootstrap_etfs, supabase, logger)
 
     scheduler = AsyncIOScheduler(timezone="Asia/Seoul")
     scheduler.add_job(
@@ -150,6 +154,24 @@ async def main_async() -> None:
         hour=5,
         minute=30,
         id="enrich_stock_info",
+        replace_existing=True,
+    )
+    # Plan #32: 매일 05:45 KST — ETF 메타 (운용보수/AUM/holdings) 갱신
+    scheduler.add_job(
+        _wrap_in_thread(run_enrich_etfs, supabase, logger),
+        trigger="cron",
+        hour=5,
+        minute=45,
+        id="enrich_etfs",
+        replace_existing=True,
+    )
+    # Plan #32: 매일 02:30 KST — KR ETF 거래량 상위 자동 수집 (cleanup 후 → enrich 전)
+    scheduler.add_job(
+        _wrap_in_thread(run_bootstrap_etfs, supabase, logger),
+        trigger="cron",
+        hour=2,
+        minute=30,
+        id="bootstrap_etfs_daily",
         replace_existing=True,
     )
     # Plan #27: 가격 알림 체크 — 1분 → 5분

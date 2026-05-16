@@ -19,6 +19,8 @@ import { PriceAlertForm } from "@/components/price-alert-form";
 import { RecentTracker } from "@/components/recent-tracker";
 import { FreshnessIndicator } from "@/components/freshness-indicator";
 import { TradeNotes } from "@/components/trade-notes";
+import { EtfInfoCard } from "@/components/etf-info-card";
+import { EtfHoldingsList } from "@/components/etf-holdings-list";
 import { getSelectedPortfolioId } from "@/lib/portfolio-context";
 import { formatMarketTimestamp } from "@/lib/time-format";
 
@@ -113,7 +115,14 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">현재가</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2">
+            현재가
+            {stock.instrument_type === "etf" && (
+              <span className="text-[10px] rounded border border-primary/40 bg-primary/10 text-primary px-1.5 py-0.5 font-semibold">
+                ETF
+              </span>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-3xl font-bold font-mono">
@@ -164,6 +173,34 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
           />
         </CardContent>
       </Card>
+
+      {/* Plan #32: ETF 메타 정보 + 구성 종목 */}
+      {stock.instrument_type === "etf" && (
+        <>
+          <EtfInfoCard
+            category={stock.etf_category ?? null}
+            fundFamily={stock.fund_family ?? null}
+            underlyingIndex={stock.underlying_index ?? null}
+            expenseRatio={
+              stock.expense_ratio ? Number(stock.expense_ratio) : null
+            }
+            aum={stock.aum ? Number(stock.aum) : null}
+            inceptionDate={stock.inception_date ?? null}
+            currency={stock.currency}
+          />
+          <Suspense
+            fallback={
+              <Card>
+                <CardContent className="py-6 text-sm text-muted-foreground">
+                  구성 종목 로딩…
+                </CardContent>
+              </Card>
+            }
+          >
+            <EtfHoldingsList etfSymbol={stock.symbol} />
+          </Suspense>
+        </>
+      )}
 
       <Card>
         <CardHeader>
@@ -334,14 +371,17 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">재무 지표</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <StockFinancials symbol={stock.symbol} />
-        </CardContent>
-      </Card>
+      {/* Plan #32: ETF는 단일 종목 재무지표가 의미 없음 — skip */}
+      {stock.instrument_type !== "etf" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">재무 지표</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <StockFinancials symbol={stock.symbol} />
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

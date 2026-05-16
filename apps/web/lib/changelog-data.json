@@ -1,5 +1,14 @@
 [
   {
+    "sha": "7a96c46",
+    "date": "2026-05-16T21:28:52+09:00",
+    "type": "feat",
+    "scope": "trade,dashboard",
+    "breaking": false,
+    "title": "주문 금액/잔고 프리뷰 + 대시보드 메뉴 collapsible",
+    "description": "## 매수/매도 UI 강화 (order-form.tsx)\n주문 시점에 \"얼마 들고, 얼마 남는지\" 한눈에:\n\n- 상단 요약 카드: 현금 잔고 + 보유 수량 (+ 평단가 — 있을 때)\n- 수량/지정가 변경 시 실시간 계산:\n  - 총 매수/매도 금액 = qty × 참조가\n    (시장가=lastPrice 추정, 지정가=limitPrice, 미드포인트=lastPrice 근사)\n  - 매수/매도 후 현금 (음수면 빨강)\n  - 매수/매도 후 보유 수량 (음수면 빨강)\n- 잔고/보유 수량 부족 시 경고 카드 + 제출 버튼 비활성화\n  - 매수: \"잔고 부족 — X 모자람\"\n  - 매도: \"보유 수량 부족 — Y주 더 필요\"\n- 매도 시 빠른 비율 버튼 (25% / 50% / 75% / 전량)\n\n데이터 흐름:\ntrade/[symbol] page → BuySellSheet → OrderForm\n새 prop: cashBalance (currency 자동 선택), currentQty, avgCost\ntrade 페이지에서 holdings.{quantity, avg_cost} 추가 fetch.\n\n## 대시보드 메뉴 collapsible (dashboard/page.tsx)\n4개 카테고리(거래/분석/학습/기타, 총 25+ 메뉴) 일괄 펼침 → 번잡 지적.\n\n- 각 그룹을 <details>로 감싸 클릭으로 펼침/접기\n- \"💼 거래\"만 기본 펼침 (가장 자주 쓰는 카테고리)\n- 나머지는 기본 접힘 → 처음 보이는 화면 정돈\n- summary에 아이템 개수 + ChevronDown 회전 애니메이션\n- Zero JS — HTML native <details>로 SSR/hydration 비용 없음"
+  },
+  {
     "sha": "ca502dc",
     "date": "2026-05-16T17:56:21+09:00",
     "type": "feat",

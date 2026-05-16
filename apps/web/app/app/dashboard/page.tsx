@@ -38,6 +38,7 @@ import { VolumeLeaders } from "@/components/volume-leaders";
 import { DailyQuizCard } from "@/components/daily-quiz-card";
 import { ChangelogLink } from "@/components/changelog-link";
 import { PendingOrdersCard } from "@/components/pending-orders-card";
+import { EtfCurationSection } from "@/components/etf-curation-section";
 import { getIsAdmin } from "@/lib/auth-admin";
 import { ShieldCheck } from "lucide-react";
 import changelogData from "@/lib/changelog-data.json";
@@ -188,13 +189,22 @@ export default async function DashboardPage() {
         <div className="flex flex-col items-end gap-1">
           <ChangelogLink latestSha={latestChangelogSha} />
           {isAdmin && (
-            <Link
-              href="/app/health"
-              className="inline-flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400 hover:underline"
-            >
-              <ShieldCheck className="h-3 w-3" />
-              시스템 상태
-            </Link>
+            <>
+              <Link
+                href="/app/health"
+                className="inline-flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400 hover:underline"
+              >
+                <ShieldCheck className="h-3 w-3" />
+                시스템 상태
+              </Link>
+              <Link
+                href="/app/admin/etfs"
+                className="inline-flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400 hover:underline"
+              >
+                <ShieldCheck className="h-3 w-3" />
+                ETF 관리
+              </Link>
+            </>
           )}
         </div>
       </div>
@@ -313,6 +323,11 @@ export default async function DashboardPage() {
           <PersonalizedRecommendations portfolioId={portfolioId} />
         </Suspense>
       )}
+
+      {/* Plan #32: ETF 카테고리별 추천 */}
+      <Suspense fallback={<RecommendationsSkeleton />}>
+        <EtfCurationSection />
+      </Suspense>
 
       <Suspense fallback={<RecommendationsSkeleton />}>
         <VolumeLeaders scope="KR" limit={5} />
