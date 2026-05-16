@@ -24,15 +24,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Check OCI secrets configured
+        id: check_secrets
+        env:
+          OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
+        run: |
+          if [ -z "$OCI_USER_OCID" ]; then
+            echo "::notice::OCI secrets not configured — skipping. See docs/ARM_AUTO_RETRY.md to enable ARM auto-retry."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Setup Python
+        if: steps.check_secrets.outputs.skip != 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
       - name: Install deps
+        if: steps.check_secrets.outputs.skip != 'true'
         run: pip install -r scripts/oci-arm-retry/requirements.txt
 
       - name: Try launch ARM instance
+        if: steps.check_secrets.outputs.skip != 'true'
         env:
           # OCI auth
           OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}

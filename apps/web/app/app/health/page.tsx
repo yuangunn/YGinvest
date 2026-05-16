@@ -1,6 +1,10 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Activity, CheckCircle2, AlertCircle, ShieldCheck } from "lucide-react";
+import {
+  getKrMarketStatus,
+  getUsMarketStatus,
+} from "@/lib/market-hours-client";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -86,6 +90,12 @@ export default async function HealthPage() {
     return { state: "stale" as const, label: "오래됨" };
   }
 
+  // 시장 휴장 시 fetch_prices는 gated → 데이터 안 갱신되는 게 정상.
+  const krStatus = getKrMarketStatus();
+  const usStatus = getUsMarketStatus();
+  const anyMarketOpen =
+    krStatus.state === "open" || usStatus.state === "open";
+
   const checks = [
     {
       name: "환율 (FX)",
@@ -96,8 +106,11 @@ export default async function HealthPage() {
     {
       name: "종목 가격 (last_price)",
       age: stocksAge,
-      thresh: 60,
-      detail: "5분 cron — 60분 내 갱신 정상 (장중)",
+      // 휴장 시엔 last fetch가 오래된 게 정상. 임계값 크게 잡음.
+      thresh: anyMarketOpen ? 60 : 60 * 24 * 3,
+      detail: anyMarketOpen
+        ? "5분 cron — 60분 내 갱신 정상 (장중)"
+        : `5분 cron — 현재 KR/US 모두 휴장 (${krStatus.message})`,
     },
     {
       name: "일봉 (stock_bars)",

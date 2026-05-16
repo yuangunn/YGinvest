@@ -1,5 +1,32 @@
 [
   {
+    "sha": "a055869",
+    "date": "2026-05-16T17:16:15+09:00",
+    "type": "fix",
+    "scope": "rls",
+    "breaking": false,
+    "title": "profiles 정책 무한재귀 수정 (SECURITY DEFINER 함수)",
+    "description": "원인: 이전 마이그레이션이 profiles 테이블 정책 안에서\n  exists (select 1 from public.profiles where ...)\n  형태로 자기 자신을 SELECT → 정책 재실행 → 무한루프.\n  Postgres가 \"infinite recursion detected\" 에러 발생.\n\n증상: /api/debug/me에서\n  \"profileError\": \"infinite recursion detected in policy for relation \\\"profiles\\\"\"\n대시보드 isAdmin이 false로 평가됨 (모든 사용자에 대해).\n\n수정:\n1) SECURITY DEFINER 함수 public.user_is_admin(uuid) 신규\n   - 함수 owner(postgres) 권한으로 실행 → RLS 우회\n   - search_path = public 고정 (보안)\n   - stable + sql language로 최적화\n2) 정책에서 위 함수만 호출 → 재귀 X\n   - profiles_admin_update: public.user_is_admin(auth.uid())\n   - profiles_admin_select_all: self OR public.user_is_admin()"
+  },
+  {
+    "sha": "b7375cc",
+    "date": "2026-05-16T17:09:36+09:00",
+    "type": "fix",
+    "scope": "admin",
+    "breaking": false,
+    "title": "정적 캐시 방지 + 디버그 endpoint",
+    "description": "증상: DB에서 is_admin=true인데 대시보드에서 ADMIN 배지 안 보임.\n\n원인 (추정): Next.js가 dashboard/health 페이지를 정적 캐시해서\n사용자별 isAdmin 계산 대신 build-time 결과 제공.\n\n수정:\n- export const dynamic = \"force-dynamic\" + revalidate = 0 추가\n  - /app/dashboard\n  - /app/health\n  - /app/admin/users\n- 권한 체크가 필요한 페이지는 의도적으로 동적 렌더\n\n디버그 endpoint:\n- GET /api/debug/me — 현재 사용자의 user.id + profile + is_admin\n  상태 정확히 표시. 문제 진단용."
+  },
+  {
+    "sha": "dfdfc6a",
+    "date": "2026-05-16T15:58:28+09:00",
+    "type": "feat",
+    "scope": "admin",
+    "breaking": false,
+    "title": "is_admin 권한 + /app/health 분기 + 사용자 관리 UI",
+    "description": "## DB 마이그레이션 (20260516000001_admin_role.sql)\n- profiles.is_admin BOOLEAN NOT NULL DEFAULT false 추가\n- 부트스트랩: rms6654@gmail.com을 첫 관리자로 자동 지정\n- RLS 정책:\n  - profiles_admin_update: admin이 다른 사용자의 profile 업데이트 가능\n  - profiles_admin_select_all: admin은 모든 profile 조회 가능\n  - 일반 사용자는 본인 행만 select/update (기존 정책 유지)\n\n## /app/health 분기 (lib/auth-admin.ts)\n- 일반 사용자: 단순 \"서비스 정상/지연\" 카드만 표시\n- 관리자: 전체 진단 + 데이터 신선도 + 활동 사용자 수 등\n- 헤더에 ADMIN 뱃지 + \"사용자 관리\" 링크\n\n## 관리자 페이지 (/app/admin/users)\n- 모든 가입자 리스트 표시\n- 각 행: 이름, ADMIN 뱃지, 가입일\n- \"관리자 지정\" / \"권한 회수\" 버튼 (실시간 토글)\n- 본인 권한 회수 시 confirm 경고\n- 긴급 시 SQL 직접 실행 안내\n\n## API: PATCH /api/admin/users?id=<userId>\n- 서버에서 한 번 더 admin 체크 (이중 보호)\n- RLS도 정책으로 막혀있음 → 안전\n- Body: { is_admin: boolean }\n\n## Dashboard 통합\n- 관리자에게만 이름 옆 ADMIN 뱃지 표시\n- 우측 상단에 \"시스템 상태\" 링크 (admin only)"
+  },
+  {
     "sha": "89a28d5",
     "date": "2026-05-16T11:37:50+09:00",
     "type": "feat",
