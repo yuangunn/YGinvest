@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ThemeFavoriteButton } from "@/components/theme-favorite-button";
 import { ThemeRelationsSection } from "@/components/theme-relations-section";
+import { ThemeEtfSection } from "@/components/theme-etf-section";
 
 type Theme = {
   id: string;
@@ -197,6 +198,9 @@ export default async function ThemeDetailPage({
           </CardContent>
         </Card>
       )}
+
+      {/* Plan #32: 이 테마 관련 ETF (있을 때만 표시) */}
+      <ThemeEtfSection themeSlug={t.slug} />
 
       {/* Plan #30: 관련주 섹션 — 이 테마가 견인하는 후속 / 견인받는 상위 테마 */}
       <ThemeRelationsSection slug={t.slug} themeMetas={themeMetas} />
