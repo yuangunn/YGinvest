@@ -1,0 +1,56 @@
+name: Try ARM Capacity
+
+# Oracle Cloud Always Free ARM 인스턴스 자동 시도.
+# 매 15분마다 launch 시도 → 성공 시 알림 + workflow 자동 비활성화 추천.
+
+on:
+  schedule:
+    # 매 15분 (GitHub Actions 최소 5분이지만 capacity 시도엔 15-30분 권장)
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {} # 수동 실행 가능
+
+concurrency:
+  group: try-arm-capacity
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  try:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: pip install -r scripts/oci-arm-retry/requirements.txt
+
+      - name: Try launch ARM instance
+        env:
+          # OCI auth
+          OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
+          OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
+          OCI_REGION: ${{ secrets.OCI_REGION }}
+          OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+          OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+          # Instance config
+          OCI_COMPARTMENT_ID: ${{ secrets.OCI_COMPARTMENT_ID }}
+          OCI_SUBNET_ID: ${{ secrets.OCI_SUBNET_ID }}
+          OCI_IMAGE_OCID: ${{ secrets.OCI_IMAGE_OCID }}
+          OCI_SSH_PUBLIC_KEY: ${{ secrets.OCI_SSH_PUBLIC_KEY }}
+          OCI_INSTANCE_NAME: ${{ secrets.OCI_INSTANCE_NAME }}
+          OCI_ARM_OCPUS: ${{ vars.OCI_ARM_OCPUS }}
+          OCI_ARM_MEMORY_GB: ${{ vars.OCI_ARM_MEMORY_GB }}
+          OCI_ARM_BOOT_GB: ${{ vars.OCI_ARM_BOOT_GB }}
+          # Notification (optional)
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python scripts/oci-arm-retry/try_arm_instance.py
