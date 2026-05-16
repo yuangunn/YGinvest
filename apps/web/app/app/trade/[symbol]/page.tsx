@@ -40,7 +40,7 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
   if (!stock) notFound();
 
   const portfolioId = await getSelectedPortfolioId(supabase, user.id);
-  const [{ data: portfolio }, { data: bars }, { data: watch }, { data: alerts }] =
+  const [{ data: portfolio }, { data: bars }, { data: watch }, { data: alerts }, { data: holding }] =
     await Promise.all([
       portfolioId
         ? supabase
@@ -73,6 +73,15 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
         .eq("symbol", decodedSymbol)
         .neq("status", "cancelled")
         .order("created_at", { ascending: false }),
+      // Plan #31: 매수/매도 UI에 현재 보유 수량 + 평단가 표시
+      portfolioId
+        ? supabase
+            .from("holdings")
+            .select("quantity, avg_cost")
+            .eq("portfolio_id", portfolioId)
+            .eq("symbol", decodedSymbol)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
     ]);
 
   const fmt = stock.currency === "KRW" ? KRW : USD;
@@ -169,6 +178,13 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
               currency={stock.currency}
               market={stock.market}
               lastPrice={stock.last_price ? Number(stock.last_price) : null}
+              cashBalance={
+                stock.currency === "KRW"
+                  ? Number(portfolio.krw_balance ?? 0)
+                  : Number(portfolio.usd_balance ?? 0)
+              }
+              currentQty={holding ? Number(holding.quantity) : 0}
+              avgCost={holding ? Number(holding.avg_cost) : null}
             />
           ) : (
             <div className="text-sm text-muted-foreground">포트폴리오 로딩 실패</div>
