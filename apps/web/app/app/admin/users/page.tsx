@@ -2,6 +2,10 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, ShieldCheck, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getIsAdmin } from "@/lib/auth-admin";
 import { AdminUserRow } from "@/components/admin-user-row";

@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
+
+// Plan #29.1: 정적 캐시 방지 — admin 뱃지가 사용자별로 달라야 하므로 동적 렌더.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 import {
   Activity,
   ArrowLeftRight,
