@@ -1,5 +1,14 @@
 [
   {
+    "sha": "d1ebbdc",
+    "date": "2026-05-16T00:23:08+09:00",
+    "type": "fix",
+    "scope": "dashboard",
+    "breaking": false,
+    "title": "VolumeLeaders stuck + Term popover 클립 + 메뉴 재구성",
+    "description": "## 1. VolumeLeaders 스켈레톤 stuck 수정 (30분+ 멈춤 원인)\n- 기존: stock_bars pagination이 전체 row(547K+)를 페치하려고 무한 루프\n  - `.in(\"symbol\", symbols.slice(0, 1500))` IN limit 버그 + 날짜 미제한\n- 수정: 최근 7일 범위(`gte(\"ts\", sevenDaysAgo)`)로 제한 + 심볼 chunk 800씩\n  - 거래대금은 가장 최근 일봉만 필요. 7일이면 휴장/주말도 cover.\n- 결과: 응답 시간 30분+ → ~1-2초\n\n## 2. Term popover 잘림 수정\n이전: `position: absolute` + Card의 `overflow-hidden`이 popover 클립.\n수정: React Portal로 document.body에 렌더 (StockPicker와 같은 패턴)\n- `position: fixed` + getBoundingClientRect 기반 좌표 계산\n- viewport 우측 초과 시 자동 좌측 정렬\n- max-height 70vh + overflow-y-auto (긴 글 스크롤)\n- scroll/resize 시 좌표 동적 재계산\n- 모든 카드/메뉴 안에서 정상 표시\n\n## 3. Dashboard 재구성\n- '학습' 중복 제거 (빠른작업 + 경제학습 양쪽에 있던 학습)\n- 빠른작업을 4개 카테고리로 그룹화 (한 카드 안에 sub-header로):\n  - 💼 거래: 검색, 큐레이션, 테마주, 섹터, 실적, 유명 전략\n  - 📊 분석 도구: 백테스트, 상관관계, 매매분석, 시나리오, 행동분석,\n    vs 인덱스, 가상 매수, 자산배분, 배당시뮬\n  - 📚 경제 학습: 학습 글, 용어사전, 거시경제, 경제 캘린더, 경제 사건\n  - 🛠️ 기타: 환전, 친구방, 알림 설정, 앱 설치\n- 잔고 카드를 '내 자산' 단일 카드로 통합 + \"전체 보기\" 링크\n- **보유 종목 N개** 와 **거래 내역** 버튼을 잔고 카드 하단에 prominent하게\n  - 보유 종목 수 표시 (실시간)\n- 미체결 주문 카드(PendingOrdersCard) 추가\n  - 잔고 카드 바로 아래 표시 (pending 1+ 일 때만)\n  - 매수/매도 색상 뱃지 + 종목명 + 수량 + 지정가 + 만료일\n  - 각 행에 취소 버튼"
+  },
+  {
     "sha": "3913e9b",
     "date": "2026-05-16T00:11:32+09:00",
     "type": "fix",

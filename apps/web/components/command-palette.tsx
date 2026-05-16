@@ -59,6 +59,7 @@ const NAV_LINKS: NavLink[] = [
   { label: "백테스트", href: "/app/backtest", group: "분석", Icon: LineChart },
   { label: "상관관계", href: "/app/correlation", group: "분석", Icon: Grid3x3 },
   { label: "거시경제", href: "/app/macro", group: "경제 학습", Icon: Activity },
+  { label: "지표 읽는 법", href: "/app/macro/guide", group: "경제 학습", Icon: Activity },
   { label: "경제 캘린더", href: "/app/macro/calendar", group: "경제 학습", Icon: Calendar },
   { label: "경제 사건", href: "/app/macro/history", group: "경제 학습", Icon: BookOpen },
   { label: "학습", href: "/app/learn", group: "학습", Icon: BookOpen },

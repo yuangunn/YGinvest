@@ -97,6 +97,7 @@ const ACTION_GROUPS = [
       { href: "/app/learn", label: "학습 글", Icon: BookOpen },
       { href: "/app/learn/glossary", label: "용어사전", Icon: BookOpen },
       { href: "/app/macro", label: "거시경제", Icon: Activity },
+      { href: "/app/macro/guide", label: "지표 읽기", Icon: Activity },
       { href: "/app/macro/calendar", label: "경제 캘린더", Icon: Calendar },
       { href: "/app/macro/history", label: "경제 사건", Icon: BookOpen },
     ],

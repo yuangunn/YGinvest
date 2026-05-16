@@ -96,6 +96,13 @@ export default async function MacroPage() {
 
       <div className="flex gap-2 flex-wrap">
         <Link
+          href="/app/macro/guide"
+          className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md border border-primary/40 bg-primary/5 hover:bg-primary/10 text-primary font-medium"
+        >
+          📖 지표 읽는 법
+          <ArrowRight className="h-3 w-3 opacity-50" />
+        </Link>
+        <Link
           href="/app/macro/calendar"
           className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md border hover:bg-accent"
         >
