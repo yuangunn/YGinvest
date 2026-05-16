@@ -1,5 +1,14 @@
 [
   {
+    "sha": "e57118b",
+    "date": "2026-05-16T17:24:28+09:00",
+    "type": "fix",
+    "scope": null,
+    "breaking": false,
+    "title": "GHA OCI secrets graceful skip + Health 휴장 인식",
+    "description": "## GitHub Actions try-arm-capacity 워크플로\nOCI_USER_OCID secret이 미설정이면 매 15분 fail하던 문제 수정.\n- check_secrets step에서 OCI_USER_OCID 존재 확인\n- 없으면: notice 메시지 + 후속 step 모두 skip → workflow가 success로 종료\n- 있으면: 정상 진행 (ARM launch 시도)\n\n사용자가 docs/ARM_AUTO_RETRY.md 따라 secrets 등록할 때까지 spam-free.\n\n## /app/health 시장 휴장 인식\n주말/휴장 시 fetch_prices가 gated → last_price_at이 시간 지나가는 게 정상.\n이전엔 \"지연\" 상태로 표시되어 오해 소지 있었음.\n\n수정:\n- lib/market-hours-client의 getKrMarketStatus/getUsMarketStatus로 현재 시장 상태 체크\n- KR/US 모두 휴장이면:\n  - 임계값을 60분 → 72시간(3일)로 완화\n  - detail 메시지를 \"5분 cron — 현재 KR/US 모두 휴장 (주말 휴장)\"로 변경\n- 시장 열림 시엔 기존 60분 임계값 유지"
+  },
+  {
     "sha": "a055869",
     "date": "2026-05-16T17:16:15+09:00",
     "type": "fix",

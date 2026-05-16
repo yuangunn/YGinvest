@@ -4,6 +4,7 @@ import { ChevronLeft, Tags } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ThemeFavoriteButton } from "@/components/theme-favorite-button";
+import { ThemeRelationsSection } from "@/components/theme-relations-section";
 
 type Theme = {
   id: string;
@@ -123,6 +124,13 @@ export default async function ThemeDetailPage({
   themeNameById.set(t.id, t.name);
   for (const c of childList) themeNameById.set(c.id, c.name);
 
+  // Plan #30: 관련주 섹션용 — 전체 테마 메타 (slug → name)
+  const { data: allThemesRaw } = await supabase
+    .from("themes")
+    .select("slug, name");
+  const themeMetas =
+    (allThemesRaw as { slug: string; name: string }[] | null) ?? [];
+
   return (
     <div className="max-w-3xl mx-auto p-4 space-y-4">
       {/* Breadcrumb */}
@@ -189,6 +197,9 @@ export default async function ThemeDetailPage({
           </CardContent>
         </Card>
       )}
+
+      {/* Plan #30: 관련주 섹션 — 이 테마가 견인하는 후속 / 견인받는 상위 테마 */}
+      <ThemeRelationsSection slug={t.slug} themeMetas={themeMetas} />
 
       {/* Stocks in this theme + descendants */}
       <Card>
