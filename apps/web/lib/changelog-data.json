@@ -1,5 +1,14 @@
 [
   {
+    "sha": "ca502dc",
+    "date": "2026-05-16T17:56:21+09:00",
+    "type": "feat",
+    "scope": "themes",
+    "breaking": false,
+    "title": "테마 관련주 네트워크 (upstream/downstream + 강도)",
+    "description": "테마 상세 페이지에 \"이 테마가 띄우는 후속 테마\" + \"이 테마를 견인하는\n상위 테마\" 섹션 추가. AI boom → 데이터센터 → 전력/냉각 식의 supply chain\n파급 효과를 사용자가 시각적으로 탐색 가능.\n\n## lib/theme-relations.ts (신규)\n하드코딩된 ~60개 테마 관계 매핑. 각 관계마다:\n- parent / child: 견인 테마 → 후속 테마 slug\n- strength: strong (직접 수요/공급) / medium (시점 lag) / weak (간접 파급)\n- order: 1차 / 2차 / 3차 수혜\n- reasoning: 왜 연결되는지 한 줄 설명\n\n커버리지:\n- AI/LLM 체인 (llm-ai → hbm-ai-semi/cloud/foundry/saas/...)\n- 클라우드 → 전력 인프라 / 원전 (데이터센터 전력 밀도 ↑)\n- EV 체인 (auto-oem → battery-cell → 양극재/음극재/전해질/분리막)\n- 반도체 사이클 (memory/foundry → 장비/소재)\n- 자율주행, 로보틱스, 신재생, 원자력, 조선/방산\n- 바이오/의료, K-콘텐츠, 정유/화학, 물류\n\n## components/theme-relations-section.tsx (신규)\nServer Component. slug + 전체 테마 메타를 받아 두 카드 렌더:\n1) \"이 테마가 띄우는 후속 테마\" (downstream, 더 자주 관심사라 위에)\n2) \"이 테마를 견인하는 상위 테마\" (upstream)\n- 각 관계: 이름, 강도 뱃지 (강력/중간/느슨 컬러), 수혜 차수 뱃지\n- 관계 없으면 섹션 자체 비표시\n- 강도 가이드 카드 (학습용 매핑 디스클레이머 포함)\n\n## app/themes/[slug]/page.tsx (수정)\n- 전체 테마 메타 (slug + name) fetch → 컴포넌트 prop으로 주입\n- \"관련 종목\" 카드 위에 관련주 섹션 배치 (테마 탐색 동선 개선)"
+  },
+  {
     "sha": "e57118b",
     "date": "2026-05-16T17:24:28+09:00",
     "type": "fix",

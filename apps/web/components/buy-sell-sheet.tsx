@@ -18,7 +18,18 @@ type Props = {
   currency: string;
   market: string;
   lastPrice: number | null;
+  /** Plan #31: 매수/매도 UI에 현금 잔고 + 보유 수량 표시 */
+  cashBalance: number;
+  currentQty: number;
+  avgCost: number | null;
 };
+
+const KRW = new Intl.NumberFormat("ko-KR", {
+  style: "currency",
+  currency: "KRW",
+  maximumFractionDigits: 0,
+});
+const USD = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
 export function BuySellSheet({
   portfolioId,
@@ -27,8 +38,13 @@ export function BuySellSheet({
   currency,
   market,
   lastPrice,
+  cashBalance,
+  currentQty,
+  avgCost,
 }: Props) {
   const [openSide, setOpenSide] = useState<"buy" | "sell" | null>(null);
+  const fmt = currency === "KRW" ? KRW : USD;
+  const priceText = lastPrice ? fmt.format(lastPrice) : "—";
 
   return (
     <div className="grid grid-cols-2 gap-2">
@@ -40,7 +56,7 @@ export function BuySellSheet({
           <SheetHeader>
             <SheetTitle>{symbolName} 매수</SheetTitle>
             <SheetDescription>
-              {symbol} · 현재가 {lastPrice ? `${lastPrice} ${currency}` : "—"}
+              {symbol} · 현재가 {priceText}
             </SheetDescription>
           </SheetHeader>
           <div className="p-4">
@@ -50,6 +66,9 @@ export function BuySellSheet({
               currency={currency}
               market={market}
               lastPrice={lastPrice}
+              cashBalance={cashBalance}
+              currentQty={currentQty}
+              avgCost={avgCost}
               forceSide="buy"
             />
           </div>
@@ -64,7 +83,7 @@ export function BuySellSheet({
           <SheetHeader>
             <SheetTitle>{symbolName} 매도</SheetTitle>
             <SheetDescription>
-              {symbol} · 현재가 {lastPrice ? `${lastPrice} ${currency}` : "—"}
+              {symbol} · 현재가 {priceText}
             </SheetDescription>
           </SheetHeader>
           <div className="p-4">
@@ -74,6 +93,9 @@ export function BuySellSheet({
               currency={currency}
               market={market}
               lastPrice={lastPrice}
+              cashBalance={cashBalance}
+              currentQty={currentQty}
+              avgCost={avgCost}
               forceSide="sell"
             />
           </div>

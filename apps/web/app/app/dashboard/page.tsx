@@ -14,6 +14,7 @@ import {
   BookOpen,
   Brain,
   Calendar,
+  ChevronDown,
   Coins,
   GitCompare,
   Grid3x3,
@@ -71,9 +72,12 @@ const KRW = new Intl.NumberFormat("ko-KR", {
 const USD = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
 // Plan #27.5: 카테고리별 그룹화 — 학습 중복 제거.
+// Plan #31: 대주제 클릭 시 펼쳐지는 collapsible (<details>) — 메뉴 번잡 해소.
+//   defaultOpen: true = 페이지 첫 진입 시 펼쳐진 상태
 const ACTION_GROUPS = [
   {
     title: "💼 거래",
+    defaultOpen: true, // 가장 자주 쓰는 카테고리 — 기본 펼침
     items: [
       { href: "/app/trade/search", label: "검색", Icon: Search },
       { href: "/app/curation", label: "큐레이션", Icon: Sparkles },
@@ -85,6 +89,7 @@ const ACTION_GROUPS = [
   },
   {
     title: "📊 분석 도구",
+    defaultOpen: false,
     items: [
       { href: "/app/backtest", label: "백테스트", Icon: LineChart },
       { href: "/app/correlation", label: "상관관계", Icon: Grid3x3 },
@@ -99,6 +104,7 @@ const ACTION_GROUPS = [
   },
   {
     title: "📚 경제 학습",
+    defaultOpen: false,
     items: [
       { href: "/app/learn", label: "학습 글", Icon: BookOpen },
       { href: "/app/learn/glossary", label: "용어사전", Icon: BookOpen },
@@ -110,6 +116,7 @@ const ACTION_GROUPS = [
   },
   {
     title: "🛠️ 기타",
+    defaultOpen: false,
     items: [
       { href: "/app/fx", label: "환전", Icon: ArrowLeftRight },
       { href: "/app/rooms", label: "친구방", Icon: Users },
@@ -266,13 +273,23 @@ export default async function DashboardPage() {
         <CardHeader>
           <CardTitle className="text-base">빠른 작업</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-5">
+        <CardContent className="space-y-2">
           {ACTION_GROUPS.map((group) => (
-            <div key={group.title}>
-              <h3 className="text-xs font-semibold text-muted-foreground mb-2">
-                {group.title}
-              </h3>
-              <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+            <details
+              key={group.title}
+              open={group.defaultOpen}
+              className="group rounded-lg border bg-card/50 [&_summary::-webkit-details-marker]:hidden"
+            >
+              <summary className="flex items-center justify-between cursor-pointer select-none px-3 py-2.5 rounded-lg hover:bg-accent/50 transition-colors">
+                <span className="text-sm font-semibold">
+                  {group.title}
+                  <span className="ml-1.5 text-[10px] text-muted-foreground font-normal">
+                    ({group.items.length})
+                  </span>
+                </span>
+                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3 px-3 pb-3 pt-1">
                 {group.items.map(({ href, label, Icon }) => (
                   <Link
                     key={href}
@@ -286,7 +303,7 @@ export default async function DashboardPage() {
                   </Link>
                 ))}
               </div>
-            </div>
+            </details>
           ))}
         </CardContent>
       </Card>
