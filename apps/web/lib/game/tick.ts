@@ -17,6 +17,7 @@ import {
   FATIGUE_PRODUCTIVITY_DROP,
   FATIGUE_FIRE_RISK,
   FATIGUE_HOSPITAL,
+  HOURS_PER_GAME_DAY,
 } from "./constants";
 
 export type GameCharacter = {
@@ -46,11 +47,13 @@ export type ScheduleRow = {
 
 export type Unlocks = Record<string, number>;
 
-/** 두 날짜 사이 일수 (시간/분 무시) */
+/** 두 시각 사이 게임 일수 — HOURS_PER_GAME_DAY 배율 적용.
+ *  Plan #35: 실제 2시간 = 게임 1일 (기본). 너무 느린 1:1을 1:12로. */
 function daysBetween(startIso: string, endIso: string): number {
   const start = new Date(startIso).getTime();
   const end = new Date(endIso).getTime();
-  return Math.floor((end - start) / 86_400_000);
+  const realHours = (end - start) / 3_600_000;
+  return Math.floor(realHours / HOURS_PER_GAME_DAY);
 }
 
 /** 평일 공휴일 (월~금 + 공휴일) → 공휴수당 적용 */
@@ -96,8 +99,10 @@ export function applyScheduleTicks(
 
   for (const schedule of sorted) {
     const activity = schedule.activity;
-    const dayDate = new Date(character.life_started_at);
-    dayDate.setDate(dayDate.getDate() + schedule.game_day);
+    // Plan #35: game_day → 실제 날짜 (시간 배율 적용)
+    const lifeStart = new Date(character.life_started_at).getTime();
+    const realMsOffset = schedule.game_day * HOURS_PER_GAME_DAY * 3_600_000;
+    const dayDate = new Date(lifeStart + realMsOffset);
     const summary: string[] = [];
 
     // 1. 비용 차감
