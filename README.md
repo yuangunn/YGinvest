@@ -8,9 +8,11 @@
 ## 디렉토리
 
 - `apps/web` — Next.js 프론트엔드 (배포: Vercel)
-- `apps/worker` — Python 시세/매칭 워커 (배포: Railway)
+- `apps/worker` — Python 시세/매칭 워커 (배포: **Oracle Cloud VM** — Plan #34에서 Railway → Oracle 이주)
 - `supabase/` — DB 마이그레이션 + 로컬 설정
 - `docs/superpowers/` — spec & plan 문서
+
+> ⚠️ **에이전트/AI 협업자**: 인프라 진실의 단일 출처는 [`AGENTS.md`](./AGENTS.md). 배포 작업 전에 먼저 읽으세요.
 
 ## 사전 요구사항
 
@@ -44,21 +46,28 @@ cd apps/web && npm run test:e2e          # Playwright 2 tests
 cd apps/worker && uv run pytest          # heartbeat unit + signup_trigger 통합
 ```
 
-## 배포 (Plan #1 범위 외, 다음 세션)
+## 배포
 
 | 컴포넌트 | 호스팅 | 환경변수 |
 |---------|--------|---------|
-| 웹 | Vercel (root: `apps/web`) | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` |
-| 워커 | Railway (root: `apps/worker`, Dockerfile) | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `LOG_LEVEL` |
-| DB | Supabase Cloud | `supabase link --project-ref <ref>` 후 `supabase db push` |
+| 웹 | Vercel (root: `apps/web`) | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `WORKER_RPC_URL`, `WORKER_RPC_SECRET` |
+| 워커 | **Oracle Cloud VM** (`168.110.114.1`, Docker on Ampere ARM) | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `LOG_LEVEL`, `WORKER_RPC_SECRET`, `VAPID_PRIVATE_KEY` |
+| DB | Supabase Cloud | `supabase link --project-ref <ref>` 후 `supabase db push --linked` |
 
-배포 단계:
-1. `supabase link --project-ref <YOUR_REF>` — 비밀번호 입력
-2. `supabase db push` — 클라우드 DB에 5개 마이그레이션 적용
-3. Supabase Dashboard → Authentication → Email → **Confirm email OFF**
-4. `cd apps/web && vercel link && vercel env add ... && vercel --prod`
-5. Supabase Dashboard → Authentication → URL Configuration → Site URL/Redirect URLs를 Vercel URL로 갱신
-6. `cd apps/worker && railway init && railway variables set ... && railway up`
+### 통합 배포 (한 번에)
+```bash
+bash scripts/deploy.sh
+```
+→ git push + supabase db push + vercel --prod + Oracle worker 재배포.
+
+### 워커만 재배포
+```bash
+ssh -i ~/.ssh/oracle-yginvest.key ubuntu@168.110.114.1 'bash ~/redeploy.sh'
+```
+
+### 상세 가이드
+- [`docs/ORACLE_MIGRATION.md`](./docs/ORACLE_MIGRATION.md) — Oracle Cloud 셋업 단계별 가이드 (Plan #34 이주 완료, Railway 종료됨)
+- [`docs/ARM_AUTO_RETRY.md`](./docs/ARM_AUTO_RETRY.md) — Oracle ARM "Out of capacity" 자동 재시도
 
 ## 진행 상태
 
@@ -70,7 +79,7 @@ cd apps/worker && uv run pytest          # heartbeat unit + signup_trigger 통�
 - [x] 이메일 가입/로그인 (Google OAuth는 v1.5)
 - [x] 인증 셸 + 빈 대시보드 (포트폴리오 잔고 표시)
 - [x] Python 워커 heartbeat (1분 주기 APScheduler, JSON 로그)
-- [x] Dockerfile (Railway 배포용)
+- [x] Dockerfile (현재 Oracle VM에서 사용 — 초기엔 Railway용으로 작성)
 - [x] GitHub Actions CI (web, worker)
 - [x] 테스트: 통합 3, 단위 2, E2E 2 — **7/7 PASS**
 
@@ -172,8 +181,10 @@ npx web-push generate-vapid-keys
 vercel env add NEXT_PUBLIC_VAPID_PUBLIC_KEY production
 # (raw base64url public 키 입력)
 
-# Railway env vars
-railway variables set VAPID_PRIVATE_KEY=... VAPID_SUBJECT=mailto:rms6654@gmail.com
+# Worker env vars (Oracle VM: ~/yginvest/.env.worker)
+# VAPID_PRIVATE_KEY=...
+# VAPID_SUBJECT=mailto:rms6654@gmail.com
+# 수정 후 ssh ubuntu@168.110.114.1 'bash ~/redeploy.sh'
 ```
 
 iOS Safari는 16.4+ + 홈 화면 추가 후에만 푸시 동작. 데스크톱 Chrome/Firefox/Edge는 즉시 동작.
@@ -515,7 +526,7 @@ rating            = upside 밴드 → Strong Buy/Buy/Hold/Sell/Strong Sell
 - **Vercel 가입 후 redirect 안 됨**: Site URL/Redirect URLs 재확인
 - **`.env.local` 변경 후 반영 안됨**: `npm run dev` 재시작
 - **Playwright "browser not found"**: `npx playwright install chromium` 재실행
-- **Railway 워커 즉시 종료**: `BlockingScheduler.start()`가 main의 마지막 라인이어야
+- **Oracle 워커 즉시 종료**: `BlockingScheduler.start()`가 main의 마지막 라인이어야 (Docker 컨테이너 keepalive)
 - **방 가입 시 `room_not_found_or_ended`**: invite_code 잘못됐거나 방이 ended. 호스트가 새 방 만들거나 ends_at 확인
 - **리더보드가 비어있음**: 워커 부팅 후 5분 대기 (첫 portfolio_snapshot). `select * from portfolio_snapshots limit 5` 확인
 - **PortfolioSwitcher 없음 / 빈 드롭다운**: 사용자가 글로벌 포트폴리오 없는 신규 가입 직후일 수 있음. `supabase db reset` 후 가입부터 다시
