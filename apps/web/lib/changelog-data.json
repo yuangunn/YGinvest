@@ -1,5 +1,23 @@
 [
   {
+    "sha": "1997438",
+    "date": "2026-05-18T01:11:21+09:00",
+    "type": "fix",
+    "scope": "theme,prices",
+    "breaking": false,
+    "title": "라이트 모드 강제 + ETF 가격 fetch fallback",
+    "description": "## Theme\n- defaultTheme=\"light\" + forcedTheme=\"light\" + enableSystem=false\n- YG 다크 디자인 완성 전까지 파르지 많은 그렉이 일관성 잘 나오도록\n- OS 다크모드여도 라이트로 강제\n\n## ETF 가격 (원인 분석)\n75개 ETF 전부 last_price=null. 이유:\n- fetch_prices.py의 KR 가격 fetch가 fdr.StockListing('KOSPI'/'KOSDAQ')만 사용\n- FDR의 일반 listing에는 ETF가 포함 X (069500.KS 등 영원히 null)\n- 미국 ETF도 null인 이유: 주말이라 market gate에 멉혀 fetch 안 돌음\n\n## Fix\nfetch_prices.py: FDR가 못 찾은 KR 심볼(대부분 ETF) → yfinance batch fallback.\n다음 월요일 장 열릴 때 자동으로 채워질 것.\n(다른 해결: 배포 후 docker exec로 수동 실행 가능)"
+  },
+  {
+    "sha": "b485de4",
+    "date": "2026-05-18T01:03:27+09:00",
+    "type": "feat",
+    "scope": "design",
+    "breaking": false,
+    "title": "Plan #41 — YG Design System (Claude Design 핸드오프 적용)",
+    "description": "Claude Design (claude.ai/design)에서 받은 핸드오프 번들 적용.\nAnthropic Frontend Design plugin SKILL.md 가이드라인 따름.\n\n## Design tokens (globals.css)\n한국 핀테크 (Toss-inspired) Deep ink brand 시스템:\n- bg-app #F4F5F7 / bg-card #FFFFFF / bg-sub #F8F9FB\n- fg-primary #0F1115 / fg-secondary #4A5160 / fg-tertiary #8A93A1\n- brand #0F1115 (deep ink — competitor blue X)\n- KR 주식 관례: up=#E84B5A (red ↑) / down=#2563EB (blue ↓)\n- 라인 거의 안 보임 (border 대신 spacing으로 분리)\n- r-card 18px / r-btn 12px / r-chip 9999px\n- shadow-card 미니멀\n- Pretendard variable font (이미 임포트)\n\n## 새 컴포넌트\n- lib/yg-fmt.ts: 한국식 숫자 포맷터 (krw / usd / pct / krwShort 만/억/조)\n- components/yg/icon.tsx: YGLogo + 14개 icon (Anthropic 지침대로 Lucide 대신 custom geometry)\n- components/yg/delta-text.tsx: KR convention DeltaText (▲ red / ▼ blue)\n- components/yg/ticker-badge.tsx: 종목 해시 → 팔레트 색 원형 뱃지\n- components/yg/sparkline.tsx: SVG sparkline (no chart lib)\n- components/yg/section-head.tsx: 외부 카드 섹션 헤딩\n\n## Dashboard 컴포넌트 (Plan #41 — 새 시스템)\n- yg-top-bar: logo + brand + bell + settings + admin badge\n- yg-asset-hero: 큰 자산 카드 (KRW + USD + 변동률)\n- yg-game-cta: 다크 그라데이션 게임 진입 카드 (PixelAvatar 포함)\n- yg-holdings-preview: 2컬럼 보유 / 거래내역 진입\n- yg-action-menu: collapsible 5 카테고리 (거래/분석/학습/기타/게임)\n\n## Dashboard 재작성 (app/dashboard/page.tsx)\n- yg-surface 배경\n- 모든 기존 데이터 fetch 유지 (PendingOrders, DailyQuiz, ETF curation,\n  VolumeLeaders, 5 RecommendationsSection, PersonalizedRecommendations)\n- 게임 progress 계산 추가 (character.cash 기반 환생 진행도)\n- holdings count 쿼리 fix: qty → quantity (실제 컬럼명)\n- 인사 + greeting line\n- Suspense로 모든 server-fetch 컴포넌트 wrapping\n- Admin shortcuts 하단 (users / etfs / health)\n\n## Anti-patterns (Frontend Design plugin 지침대로)\n- Inter / Roboto / Arial / system stack 사용 X (Pretendard only)\n- Western green-up red-down X (KR convention 준수)\n- 카드 내부 border X (spacing으로 분리)\n- text-[10px] 같은 너무 작은 폰트 X"
+  },
+  {
     "sha": "5d0f3a5",
     "date": "2026-05-17T16:25:31+09:00",
     "type": "feat",
@@ -1321,23 +1339,5 @@
     "breaking": false,
     "title": "add config, supabase client, heartbeat job, APScheduler, Dockerfile",
     "description": "- config.py: Settings dataclass loads SUPABASE_URL/KEY from env via dotenv\n- supabase_client.py: thin wrapper for service_role client\n- jobs/heartbeat.py: TDD-built heartbeat (mocked unit tests pass)\n- main.py: BlockingScheduler with KST timezone, signal handlers, immediate first heartbeat\n- Dockerfile: python:3.12-slim + uv with PYTHONPATH=/app/src\n- pyproject.toml: pytest pythonpath includes src\n\nTests: 5/5 (3 trigger integration + 2 heartbeat unit)\nBoot test: worker.starting → scheduler_started → heartbeat OK"
-  },
-  {
-    "sha": "a6db12b",
-    "date": "2026-05-10T15:49:11+09:00",
-    "type": "feat",
-    "scope": "web",
-    "breaking": false,
-    "title": "add Supabase SSR clients, auth pages, app shell, dashboard",
-    "description": "- lib/supabase/{client,server,middleware}.ts for Supabase SSR pattern\n- proxy.ts (Next 16 renamed middleware) for auth gating\n- /auth/login + LoginForm (email password, Google deferred)\n- /auth/callback for OAuth code exchange\n- /app/layout.tsx with header showing display_name + logout\n- /app/dashboard showing portfolio KRW/USD balances\n- Landing page with login redirect for authed users\n- Dark mode default, Korean lang"
-  },
-  {
-    "sha": "3c9c56b",
-    "date": "2026-05-10T15:44:19+09:00",
-    "type": "feat",
-    "scope": "web",
-    "breaking": false,
-    "title": "initialize Next.js 15 with Tailwind v4, Supabase SSR, Vitest, Playwright",
-    "description": null
   }
 ]
