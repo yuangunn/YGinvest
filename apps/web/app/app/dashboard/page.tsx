@@ -1,138 +1,49 @@
+// Plan #41: 대시보드 — YG Design System (Claude Design handoff) 적용.
+//
+// 디자인: Pretendard, KR convention (red↑ blue↓), deep ink brand.
+// 데이터 fetch는 기존 유지. 렌더링만 YG 시스템으로.
+
 import Link from "next/link";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 
-// Plan #29.1: 정적 캐시 방지 — admin 뱃지가 사용자별로 달라야 하므로 동적 렌더.
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-import {
-  Activity,
-  ArrowLeftRight,
-  ArrowRight,
-  Award,
-  Bell,
-  BookOpen,
-  Brain,
-  Calendar,
-  ChevronDown,
-  Coins,
-  GitCompare,
-  Grid3x3,
-  LineChart,
-  ListChecks,
-  PieChart,
-  Search,
-  Smartphone,
-  Sparkles,
-  Tags,
-  Users,
-  Wallet,
-} from "lucide-react";
+
 import { createClient } from "@/lib/supabase/server";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { getSelectedPortfolioId } from "@/lib/portfolio-context";
-import { RecommendationsSection } from "@/components/recommendations-section";
-import { PersonalizedRecommendations } from "@/components/personalized-recommendations";
-import { VolumeLeaders } from "@/components/volume-leaders";
-import { DailyQuizCard } from "@/components/daily-quiz-card";
-import { ChangelogLink } from "@/components/changelog-link";
-import { PendingOrdersCard } from "@/components/pending-orders-card";
-import { EtfCurationSection } from "@/components/etf-curation-section";
 import { getIsAdmin } from "@/lib/auth-admin";
-import { ShieldCheck } from "lucide-react";
 import changelogData from "@/lib/changelog-data.json";
 
-function RecommendationsSkeleton() {
+import { YGTopBar } from "@/components/dashboard/yg-top-bar";
+import { YGAssetHero } from "@/components/dashboard/yg-asset-hero";
+import { YGGameCTA } from "@/components/dashboard/yg-game-cta";
+import { YGHoldingsPreview } from "@/components/dashboard/yg-holdings-preview";
+import { YGActionMenu } from "@/components/dashboard/yg-action-menu";
+import { SectionHead } from "@/components/yg/section-head";
+
+import { PersonalizedRecommendations } from "@/components/personalized-recommendations";
+import { RecommendationsSection } from "@/components/recommendations-section";
+import { VolumeLeaders } from "@/components/volume-leaders";
+import { DailyQuizCard } from "@/components/daily-quiz-card";
+import { PendingOrdersCard } from "@/components/pending-orders-card";
+import { EtfCurationSection } from "@/components/etf-curation-section";
+import { REBIRTH_THRESHOLD_PCT } from "@/lib/game/constants";
+
+function CardSkeleton() {
   return (
-    <Card>
-      <CardHeader>
-        <Skeleton className="h-5 w-32" />
-      </CardHeader>
-      <CardContent>
-        <div className="flex gap-2 overflow-x-auto pb-2">
-          {[0, 1, 2, 3, 4].map((i) => (
-            <div key={i} className="flex-shrink-0 w-40 border rounded-lg p-3 space-y-2">
-              <Skeleton className="h-3 w-8" />
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-3 w-16" />
-              <Skeleton className="h-4 w-20" />
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+    <div className="yg-card" style={{ padding: 18, minHeight: 140 }}>
+      <div
+        className="yg-skeleton"
+        style={{ height: 16, width: "40%", marginBottom: 12, borderRadius: 6 }}
+      />
+      <div
+        className="yg-skeleton"
+        style={{ height: 24, width: "100%", borderRadius: 6 }}
+      />
+    </div>
   );
 }
-
-const KRW = new Intl.NumberFormat("ko-KR", {
-  style: "currency",
-  currency: "KRW",
-  maximumFractionDigits: 0,
-});
-const USD = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
-
-// Plan #27.5: 카테고리별 그룹화 — 학습 중복 제거.
-// Plan #31: 대주제 클릭 시 펼쳐지는 collapsible (<details>) — 메뉴 번잡 해소.
-//   defaultOpen: true = 페이지 첫 진입 시 펼쳐진 상태
-const ACTION_GROUPS = [
-  {
-    title: "💼 거래",
-    defaultOpen: true, // 가장 자주 쓰는 카테고리 — 기본 펼침
-    items: [
-      { href: "/app/trade/search", label: "검색", Icon: Search },
-      { href: "/app/curation", label: "큐레이션", Icon: Sparkles },
-      { href: "/app/themes", label: "테마주", Icon: Tags },
-      { href: "/app/sectors", label: "섹터", Icon: Grid3x3 },
-      { href: "/app/earnings", label: "실적", Icon: Calendar },
-      { href: "/app/strategies", label: "유명 전략", Icon: Award },
-    ],
-  },
-  {
-    title: "📊 분석 도구",
-    defaultOpen: false,
-    items: [
-      { href: "/app/backtest", label: "백테스트", Icon: LineChart },
-      { href: "/app/correlation", label: "상관관계", Icon: Grid3x3 },
-      { href: "/app/portfolio/analysis", label: "매매분석", Icon: LineChart },
-      { href: "/app/portfolio/scenarios", label: "시나리오", Icon: Activity },
-      { href: "/app/portfolio/behavior", label: "행동분석", Icon: Brain },
-      { href: "/app/portfolio/what-if", label: "vs 인덱스", Icon: GitCompare },
-      { href: "/app/whatif", label: "가상 매수", Icon: GitCompare },
-      { href: "/app/portfolio/allocation", label: "자산배분", Icon: PieChart },
-      { href: "/app/portfolio/dividend-sim", label: "배당시뮬", Icon: Coins },
-    ],
-  },
-  {
-    title: "📚 경제 학습",
-    defaultOpen: false,
-    items: [
-      { href: "/app/learn", label: "학습 글", Icon: BookOpen },
-      { href: "/app/learn/glossary", label: "용어사전", Icon: BookOpen },
-      { href: "/app/macro", label: "거시경제", Icon: Activity },
-      { href: "/app/macro/guide", label: "지표 읽기", Icon: Activity },
-      { href: "/app/macro/calendar", label: "경제 캘린더", Icon: Calendar },
-      { href: "/app/macro/history", label: "경제 사건", Icon: BookOpen },
-    ],
-  },
-  {
-    title: "🛠️ 기타",
-    defaultOpen: false,
-    items: [
-      { href: "/app/fx", label: "환전", Icon: ArrowLeftRight },
-      { href: "/app/rooms", label: "친구방", Icon: Users },
-      { href: "/app/settings", label: "알림 설정", Icon: Bell },
-      { href: "/app/help/install", label: "앱 설치", Icon: Smartphone },
-    ],
-  },
-  {
-    title: "🎮 게임 (베타)",
-    defaultOpen: false,
-    items: [
-      { href: "/app/roguelike", label: "인생 시뮬", Icon: Sparkles },
-    ],
-  },
-] as const;
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -151,7 +62,7 @@ export default async function DashboardPage() {
     getIsAdmin(supabase, user.id),
   ]);
 
-  const [{ data: portfolio }, holdingsRes] = portfolioId
+  const [{ data: portfolio }, holdingsRes, { data: character }] = portfolioId
     ? await Promise.all([
         supabase
           .from("portfolios")
@@ -160,201 +71,208 @@ export default async function DashboardPage() {
           )
           .eq("id", portfolioId)
           .maybeSingle(),
+        // Plan #41 fix: 컬럼명은 `quantity` (기존 코드에 qty 오류 있었음)
         supabase
           .from("holdings")
           .select("symbol", { count: "exact", head: true })
           .eq("portfolio_id", portfolioId)
-          .gt("qty", 0),
+          .gt("quantity", 0),
+        supabase
+          .from("game_characters")
+          .select(
+            "name, gender, education_level, job_type, job_title, cash, starting_cash, current_day",
+          )
+          .eq("user_id", user.id)
+          .maybeSingle(),
       ])
-    : [{ data: null }, { count: null }];
-  const holdingsCount = (holdingsRes?.count as number | null) ?? 0;
+    : [{ data: null }, { count: null }, { data: null }];
 
-  const greetingName = profile?.display_name ?? user.email?.split("@")[0] ?? "투자자";
+  const holdingsCount = (holdingsRes?.count as number | null) ?? 0;
+  const greetingName =
+    profile?.display_name ?? user.email?.split("@")[0] ?? "투자자";
   const latestChangelogSha =
     (changelogData as { sha: string }[])[0]?.sha ?? null;
 
+  // 게임 환생 진행도 계산
+  let gameProgress: number | null = null;
+  if (character) {
+    const startingCash = Number(character.starting_cash);
+    const cash = Number(character.cash);
+    if (startingCash > 0) {
+      const pct = (cash - startingCash) / startingCash;
+      gameProgress = Math.max(
+        0,
+        Math.min(100, (pct / REBIRTH_THRESHOLD_PCT) * 100),
+      );
+    }
+  }
+
   return (
-    <div className="max-w-3xl mx-auto p-6 space-y-6">
-      <div className="flex items-start justify-between gap-2 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            안녕하세요, {greetingName}님 👋
-            {isAdmin && (
-              <span
-                className="inline-flex items-center gap-0.5 text-[10px] rounded-md border border-purple-500/40 bg-purple-500/10 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 font-semibold"
-                title="관리자 권한 있음"
-              >
-                <ShieldCheck className="h-3 w-3" />
-                ADMIN
-              </span>
-            )}
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            오늘의 시장을 확인해보세요.
-          </p>
+    <div className="yg-surface" style={{ paddingBottom: 32 }}>
+      <YGTopBar isAdmin={isAdmin} latestChangelogSha={latestChangelogSha} />
+
+      {/* Greeting */}
+      <div style={{ padding: "10px 20px 4px" }}>
+        <div
+          style={{
+            fontSize: 22,
+            fontWeight: 800,
+            letterSpacing: "-0.025em",
+            lineHeight: 1.2,
+            color: "var(--yg-fg-primary)",
+          }}
+        >
+          안녕하세요, {greetingName}님
         </div>
-        <div className="flex flex-col items-end gap-1">
-          <ChangelogLink latestSha={latestChangelogSha} />
-          {isAdmin && (
-            <>
-              <Link
-                href="/app/health"
-                className="inline-flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400 hover:underline"
-              >
-                <ShieldCheck className="h-3 w-3" />
-                시스템 상태
-              </Link>
-              <Link
-                href="/app/admin/etfs"
-                className="inline-flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400 hover:underline"
-              >
-                <ShieldCheck className="h-3 w-3" />
-                ETF 관리
-              </Link>
-            </>
-          )}
+        <div
+          style={{
+            marginTop: 4,
+            fontSize: 13,
+            color: "var(--yg-fg-tertiary)",
+          }}
+        >
+          오늘의 시장을 확인해보세요
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center justify-between">
-            <span className="inline-flex items-center gap-2">
-              <Wallet className="h-4 w-4 text-primary" />
-              내 자산
-            </span>
-            <Link
-              href="/app/portfolio/overview"
-              className="text-xs text-primary hover:underline inline-flex items-center gap-0.5"
-            >
-              전체 보기 <ArrowRight className="h-3 w-3" />
-            </Link>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <div className="text-xs text-muted-foreground">KRW</div>
-              <div className="text-xl font-bold tabular-nums">
-                {portfolio ? KRW.format(Number(portfolio.krw_balance)) : "—"}
-              </div>
-              <div className="text-[10px] text-muted-foreground">
-                시작:{" "}
-                {portfolio ? KRW.format(Number(portfolio.starting_krw)) : "—"}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">USD</div>
-              <div className="text-xl font-bold tabular-nums">
-                {portfolio ? USD.format(Number(portfolio.usd_balance)) : "—"}
-              </div>
-              <div className="text-[10px] text-muted-foreground">
-                시작:{" "}
-                {portfolio ? USD.format(Number(portfolio.starting_usd)) : "—"}
-              </div>
-            </div>
-          </div>
-          {/* 직접 진입 버튼 — 보유 종목 / 거래 내역 */}
-          <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t">
-            <Link
-              href="/app/portfolio/holdings"
-              className="flex items-center justify-between rounded-md border px-3 py-2 hover:bg-accent hover:border-primary/40 text-sm transition-colors"
-            >
-              <span className="inline-flex items-center gap-1.5">
-                <ListChecks className="h-3.5 w-3.5 text-primary" />
-                보유 종목
-              </span>
-              <span className="text-xs text-muted-foreground tabular-nums">
-                {holdingsCount > 0 ? `${holdingsCount}개` : "—"}
-              </span>
-            </Link>
-            <Link
-              href="/app/portfolio/transactions"
-              className="flex items-center justify-between rounded-md border px-3 py-2 hover:bg-accent hover:border-primary/40 text-sm transition-colors"
-            >
-              <span className="inline-flex items-center gap-1.5">
-                <LineChart className="h-3.5 w-3.5 text-primary" />
-                거래 내역
-              </span>
-              <ArrowRight className="h-3 w-3 text-muted-foreground" />
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
-
-      {portfolioId && <PendingOrdersCard portfolioId={portfolioId} />}
-
-      <DailyQuizCard />
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">빠른 작업</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {ACTION_GROUPS.map((group) => (
-            <details
-              key={group.title}
-              open={group.defaultOpen}
-              className="group rounded-lg border bg-card/50 [&_summary::-webkit-details-marker]:hidden"
-            >
-              <summary className="flex items-center justify-between cursor-pointer select-none px-3 py-2.5 rounded-lg hover:bg-accent/50 transition-colors">
-                <span className="text-sm font-semibold">
-                  {group.title}
-                  <span className="ml-1.5 text-[10px] text-muted-foreground font-normal">
-                    ({group.items.length})
-                  </span>
-                </span>
-                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
-              </summary>
-              <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3 px-3 pb-3 pt-1">
-                {group.items.map(({ href, label, Icon }) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    className="flex flex-col items-center gap-2 p-3 rounded-lg border hover:bg-accent hover:border-primary/40 transition-colors"
-                  >
-                    <Icon className="h-5 w-5 text-primary" />
-                    <span className="text-xs font-medium text-center">
-                      {label}
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            </details>
-          ))}
-        </CardContent>
-      </Card>
-
-      {portfolioId && (
-        <Suspense fallback={<RecommendationsSkeleton />}>
-          <PersonalizedRecommendations portfolioId={portfolioId} />
-        </Suspense>
+      {/* Asset hero */}
+      {portfolio && (
+        <div style={{ padding: "14px 20px 0" }}>
+          <YGAssetHero
+            krwBalance={Number(portfolio.krw_balance)}
+            usdBalance={Number(portfolio.usd_balance)}
+            startingKrw={Number(portfolio.starting_krw)}
+            startingUsd={Number(portfolio.starting_usd)}
+          />
+        </div>
       )}
 
-      {/* Plan #32: ETF 카테고리별 추천 */}
-      <Suspense fallback={<RecommendationsSkeleton />}>
-        <EtfCurationSection />
-      </Suspense>
+      {/* Game CTA — equal billing */}
+      <div style={{ padding: "12px 20px 0" }}>
+        <YGGameCTA
+          hasCharacter={!!character}
+          characterName={character?.name ?? null}
+          gender={character?.gender ?? null}
+          jobType={character?.job_type ?? null}
+          jobTitle={character?.job_title ?? null}
+          educationLevel={character?.education_level ?? null}
+          currentDay={character?.current_day ?? null}
+          progressPct={gameProgress}
+        />
+      </div>
 
-      <Suspense fallback={<RecommendationsSkeleton />}>
-        <VolumeLeaders scope="KR" limit={5} />
-      </Suspense>
+      {/* Holdings preview row */}
+      <div style={{ padding: "12px 20px 0" }}>
+        <YGHoldingsPreview holdingsCount={holdingsCount} />
+      </div>
 
-      <Suspense fallback={<RecommendationsSkeleton />}>
-        <RecommendationsSection category="top_gainers" scope="KR" />
-      </Suspense>
-      <Suspense fallback={<RecommendationsSkeleton />}>
-        <RecommendationsSection category="volume_surge" scope="KR" />
-      </Suspense>
-      <Suspense fallback={<RecommendationsSkeleton />}>
-        <RecommendationsSection category="low_per_value" scope="KR" />
-      </Suspense>
-      <Suspense fallback={<RecommendationsSkeleton />}>
-        <RecommendationsSection category="top_gainers" scope="US" />
-      </Suspense>
-      <Suspense fallback={<RecommendationsSkeleton />}>
-        <RecommendationsSection category="near_52w_high" scope="US" />
-      </Suspense>
+      {/* Pending orders (conditional) */}
+      {portfolioId && (
+        <div style={{ padding: "12px 20px 0" }}>
+          <PendingOrdersCard portfolioId={portfolioId} />
+        </div>
+      )}
+
+      {/* Daily quiz */}
+      <div style={{ padding: "12px 20px 0" }}>
+        <DailyQuizCard />
+      </div>
+
+      {/* Action menu */}
+      <div style={{ padding: "24px 20px 0" }}>
+        <YGActionMenu defaultOpenId="trade" />
+      </div>
+
+      {/* Personalized recommendations */}
+      {portfolioId && (
+        <div style={{ marginTop: 28 }}>
+          <SectionHead
+            title="추천 종목"
+            sub="관심 테마와 보유 종목 기반"
+            href="/app/curation"
+            linkLabel="더 보기"
+          />
+          <div style={{ padding: "0 20px" }}>
+            <Suspense fallback={<CardSkeleton />}>
+              <PersonalizedRecommendations portfolioId={portfolioId} />
+            </Suspense>
+          </div>
+        </div>
+      )}
+
+      {/* ETF curation */}
+      <div style={{ padding: "24px 20px 0" }}>
+        <Suspense fallback={<CardSkeleton />}>
+          <EtfCurationSection />
+        </Suspense>
+      </div>
+
+      {/* Volume leaders KR */}
+      <div style={{ padding: "12px 20px 0" }}>
+        <Suspense fallback={<CardSkeleton />}>
+          <VolumeLeaders scope="KR" limit={5} />
+        </Suspense>
+      </div>
+
+      {/* 5 recommendation grids */}
+      <div style={{ padding: "12px 20px 0", display: "flex", flexDirection: "column", gap: 12 }}>
+        <Suspense fallback={<CardSkeleton />}>
+          <RecommendationsSection category="top_gainers" scope="KR" />
+        </Suspense>
+        <Suspense fallback={<CardSkeleton />}>
+          <RecommendationsSection category="volume_surge" scope="KR" />
+        </Suspense>
+        <Suspense fallback={<CardSkeleton />}>
+          <RecommendationsSection category="low_per_value" scope="KR" />
+        </Suspense>
+        <Suspense fallback={<CardSkeleton />}>
+          <RecommendationsSection category="top_gainers" scope="US" />
+        </Suspense>
+        <Suspense fallback={<CardSkeleton />}>
+          <RecommendationsSection category="near_52w_high" scope="US" />
+        </Suspense>
+      </div>
+
+      {/* Admin shortcuts */}
+      {isAdmin && (
+        <div style={{ padding: "24px 20px 0", display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Link
+            href="/app/admin/users"
+            style={{
+              fontSize: 12,
+              color: "var(--yg-fg-tertiary)",
+              fontWeight: 600,
+              textDecoration: "none",
+            }}
+          >
+            👥 사용자 관리 ›
+          </Link>
+          <Link
+            href="/app/admin/etfs"
+            style={{
+              fontSize: 12,
+              color: "var(--yg-fg-tertiary)",
+              fontWeight: 600,
+              textDecoration: "none",
+            }}
+          >
+            📊 ETF 관리 ›
+          </Link>
+          <Link
+            href="/app/health"
+            style={{
+              fontSize: 12,
+              color: "var(--yg-fg-tertiary)",
+              fontWeight: 600,
+              textDecoration: "none",
+            }}
+          >
+            🛡️ 시스템 상태 ›
+          </Link>
+        </div>
+      )}
+
+      <div style={{ height: 24 }} />
     </div>
   );
 }

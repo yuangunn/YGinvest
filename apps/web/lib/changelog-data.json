@@ -1,5 +1,14 @@
 [
   {
+    "sha": "5d0f3a5",
+    "date": "2026-05-17T16:25:31+09:00",
+    "type": "feat",
+    "scope": "game",
+    "breaking": false,
+    "title": "Plan #40 — 업적/미션/차트/AI/인생단계/매도분석 통합",
+    "description": "## DB Migration (20260517000004_game_phase3)\n- game_achievements: 업적 unlock 기록\n- game_daily_missions: 일일 미션 진행 (한국 시간 자정 갱신)\n- game_characters: is_married/married_at/children_count/is_retired 추가\n- game_pension_info: 노후 연금 (정규직 누적 일수 + 월 연금액)\n\n## 1. 업적 시스템 (30개)\n교육 4 + 커리어 6 + 자산 4 + 환생 5 + 트레이딩 6 + 인생 3 + 재미 2\n자동 체크 (지력/직업/자산/환생수/매도수익률/이벤트경험) → unlock + 포인트 적립\n환생 탭에 카테고리별 표시, 신규 unlock 시 toast\n\n## 2. 일일 미션 (7개 풀에서 매일 3개 회전)\n미션: 매수/매도/수익매도/지력+50/현금50만/이벤트3개/일기확인\n한국 시간 date_key로 결정적 셔플 → 자정마다 새 미션\n완료 시 자동 포인트 적립\n\n## 3. 자산 추이 차트 (recharts)\ngame_diary cash_delta 누적 → LineChart\n환생 5% 임계 점선, 시작/현재/수익률 하단 표시\n\n## 4. AI 인생 어드바이저\n캐릭터 + 일기 30 + 환생 기록 → callAI() (사용자 등록된 provider)\n조언: 모드 적정성, 환생 페이스, 다음 우선순위, 매도 평가\n\n## 5. 매도 패턴 분석 (본 앱 trades)\ntrades 테이블 FIFO 페어링 → 매수→매도 분석\n평균 수익률/승률/평균 보유일/최고/최악\n인사이트 자동 생성 (\"너무 빨리 팔아\", \"승률 50% 미만\" 등)\n\n## 6. 인생 단계 (결혼/자녀/은퇴)\n- 결혼: 지력 300+ 자산 3천만+\n- 자녀: 결혼 60일 후 + 지력 500+ 자산 5천만+ (최대 3명)\n- 자녀당 매일 양육비 5천원 자동 차감\n- 은퇴: 정규직 누적 3년+ → 월 연금 (직급별 보너스)\n- 은퇴 후 매 30일 연금 입금 (tick에서 자동)\n- 일기 마일스톤 자동 기록\n\n## 7. 빠른 wins\n- HelpModal: 게임 메커니즘 1페이지 가이드 (footer 링크)\n- 미션 카드: dashboard 상단 항상 표시 (탭 무관)\n\n## Dashboard 재구성\n일기 탭: 자산차트 → 일기 → 인생단계\n환생 탭: 환생패널 → 매도패턴 → 업적 → AI어드바이저"
+  },
+  {
     "sha": "fde200e",
     "date": "2026-05-17T15:46:19+09:00",
     "type": "feat",
