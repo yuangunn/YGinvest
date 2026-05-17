@@ -1,5 +1,14 @@
 [
   {
+    "sha": "f2195d2",
+    "date": "2026-05-17T00:33:56+09:00",
+    "type": "feat",
+    "scope": "etf",
+    "breaking": false,
+    "title": "풀 ETF 시스템 — 큐레이션 50 + Yahoo 검색 + holdings + 테마 매핑",
+    "description": "## DB (Migration 20260516000003)\n- stocks.instrument_type ('stock' | 'etf') 추가\n- stocks.expense_ratio / aum / underlying_index / etf_category /\n  fund_family / inception_date 신규\n- etf_holdings 테이블 (etf_symbol, rank, holding_symbol, holding_name, weight)\n\n## Worker (apps/worker)\n- data_sources/etf_master.py: 큐레이션 50개 ETF (KR 30 + US 20)\n  - broad market: KODEX 200, TIGER 200, SPY, VOO, QQQ\n  - 미국지수: TIGER 미국S&P500, KODEX 미국나스닥100\n  - 반도체/AI: KODEX 반도체, SOXX, KODEX 미국AI테크TOP10\n  - 2차전지: TIGER 2차전지, KODEX 2차전지산업\n  - 배당: KODEX 배당성장, SCHD, VYM\n  - 채권: KODEX 국고채10년, AGG, TLT\n  - 원자재: KODEX 골드선물, GLD\n  - 레버리지/인버스: KODEX 레버리지, TQQQ, SOXL\n  - 해외: TIGER 차이나/일본, VEA, VWO, EWJ\n- jobs/bootstrap_etfs.py\n  - Step 1: 큐레이션 50개 upsert (instrument_type='etf' + 메타)\n  - Step 2: FDR StockListing('ETF/KR') → 거래량/시가총액 상위 50개 자동 추가\n  - 부팅 시 1회 + 매일 02:30 KST 정기 실행\n- jobs/enrich_etfs.py\n  - yfinance에서 expense_ratio / totalAssets (AUM) / fundInceptionDate fetch\n  - ticker.funds_data.top_holdings → etf_holdings 테이블에 Top 20 저장\n  - 매일 05:45 KST (enrich_stock_info 직후) 실행\n\n## Web (apps/web)\n\n### Admin\n- /app/admin/etfs — 등록 ETF 관리 페이지 (admin only)\n- /api/admin/etf-search — Yahoo Finance v1/finance/search 프록시,\n  quoteType='ETF'만 필터, 이미 추가된 심볼 표시\n- /api/admin/etf-add — Yahoo v7/finance/quote 메타 + stocks 테이블 upsert\n\n### 사용자 UI\n- 검색 페이지: \"전체 / 주식 / ETF\" 토글, ETF 뱃지, 카테고리/운용사 표시\n- 상세 페이지 (/app/trade/[symbol]):\n  - 현재가 카드에 \"ETF\" 뱃지\n  - 차트 아래 EtfInfoCard (운용보수/AUM/추종지수/카테고리/설정일)\n  - EtfHoldingsList — 보유 종목 Top 10 (DB에 있는 종목은 클릭 가능)\n  - ETF는 단일 종목 재무지표(매출/영업이익 등) skip\n- 대시보드: ETF 카테고리별 추천 섹션 (broad/dividend/sector/thematic)\n- 테마 페이지 ([slug]):\n  - ThemeEtfSection — 테마별 관련 ETF 표시\n  - lib/theme-etf-map.ts: llm-ai→SOXX/469150.KS, EV→305540.KS 등\n\n### Helper\n- lib/etf-labels.ts: 카테고리 라벨/컬러, 운용보수/AUM 포맷터,\n  rateExpenseRatio (낮음/높음 평가)\n\n## 사용 흐름\n1. 부팅 시 큐레이션 50 + KR 자동 50 = 100 ETF 즉시 사용 가능\n2. 매일 05:45 enrich job이 운용보수/AUM/holdings 자동 채움\n3. admin이 /app/admin/etfs에서 Yahoo로 검색 → 즉시 추가\n4. 사용자는 검색에서 ETF 토글 → 카테고리 보기, 테마 페이지에서\n   관련 ETF 클릭 → 분산 투자"
+  },
+  {
     "sha": "7a96c46",
     "date": "2026-05-16T21:28:52+09:00",
     "type": "feat",
