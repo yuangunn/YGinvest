@@ -319,6 +319,47 @@ export function computeDailyResult(
   };
 }
 
+// ──────────── 인생 단계 ──────────────────────────────
+export const MARRIAGE_INTELLIGENCE_REQ = 300;
+export const MARRIAGE_CASH_REQ = 30_000_000; // 결혼 자금 3000만원
+
+export const CHILD_INTELLIGENCE_REQ = 500;
+export const CHILD_CASH_REQ = 50_000_000;
+export const CHILD_DAYS_AFTER_MARRIAGE = 60; // 결혼 후 60게임일 지나야
+
+export const RETIREMENT_AGE_DAYS = 365 * 60; // 60세 = 게임 60년 = 21,900 game days
+// 단순화: 실제 게임에서 60년은 너무 길어. 정규직 누적 N일이면 은퇴 자격.
+export const RETIREMENT_FULLTIME_DAYS = 365 * 3; // 정규직 누적 3년 (game days)
+export const PENSION_BASE = 50_000; // 기본 연금 (월)
+export const PENSION_PER_RANK_BONUS = 30_000; // 직급별 보너스
+
+/** 결혼 가능 여부 */
+export function canMarry(intelligence: number, cash: number, isMarried: boolean): boolean {
+  return (
+    !isMarried &&
+    intelligence >= MARRIAGE_INTELLIGENCE_REQ &&
+    cash >= MARRIAGE_CASH_REQ
+  );
+}
+
+/** 자녀 가능 여부 */
+export function canHaveChild(
+  intelligence: number,
+  cash: number,
+  isMarried: boolean,
+  marriedDay: number,
+  currentDay: number,
+  childrenCount: number,
+): boolean {
+  return (
+    isMarried &&
+    intelligence >= CHILD_INTELLIGENCE_REQ &&
+    cash >= CHILD_CASH_REQ &&
+    currentDay - marriedDay >= CHILD_DAYS_AFTER_MARRIAGE &&
+    childrenCount < 3 // 최대 3명
+  );
+}
+
 // ──────────── 학력/직업 진행 자동 체크 ──────────────────
 export type MilestoneResult = {
   type: "ged" | "university" | "fulltime_offer" | "promotion";

@@ -1,5 +1,14 @@
 [
   {
+    "sha": "fde200e",
+    "date": "2026-05-17T15:46:19+09:00",
+    "type": "feat",
+    "scope": "game",
+    "breaking": false,
+    "title": "확률 → 시간 할당 비율 (매일 결정적 수입+지력)",
+    "description": "기존: 매 day 확률로 work/study/rest 중 하나만 실행\n새: 매 day work_weight 비율로 일하고 study_weight 비율로 공부 (둘 다)\n\n학습 중심 (30/70):\n- 매일 알바 일급 30% (예: 8.2만 × 30% = 2.5만원)\n- 매일 지력 5 × 70% = +4\n\n수입 중심 (100/0): 매일 일급 100%, 지력 0\n균형 (50/50): 매일 일급 50% + 지력 +3\n\n장점: 매일 결정적 cash flow + 지력. 확률 변동성 없음.\n정규직도 동일 적용 (학습 중심 정규직 = 일급 30% + 공부 70%, 재택+자기계발 해석).\n\nUI 라벨: '출근 시' → '매일', 주간 평균 → 주간 누적."
+  },
+  {
     "sha": "de3e8c1",
     "date": "2026-05-17T15:12:17+09:00",
     "type": "feat",
@@ -1321,14 +1330,5 @@
     "breaking": false,
     "title": "initialize Next.js 15 with Tailwind v4, Supabase SSR, Vitest, Playwright",
     "description": null
-  },
-  {
-    "sha": "f273ca2",
-    "date": "2026-05-10T15:40:34+09:00",
-    "type": "feat",
-    "scope": "db",
-    "breaking": false,
-    "title": "add foundation schema (profiles, portfolios, notification_settings, RLS, signup trigger)",
-    "description": "5 migrations applied + verified locally:\n- profiles linked to auth.users\n- portfolios with partial unique indexes (global vs room)\n- notification_settings with all push toggles\n- RLS for SELECT/UPDATE/DELETE per spec §4.3\n- handle_new_user trigger auto-creates profile + global portfolio + notification_settings"
   }
 ]

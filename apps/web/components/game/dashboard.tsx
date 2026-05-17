@@ -17,6 +17,13 @@ import { StockTrader } from "./stock-trader";
 import { RealEstateTrader } from "./real-estate-trader";
 import { RebirthPanel } from "./rebirth-panel";
 import { PixelAvatar } from "./pixel-avatar";
+import { MissionsCard } from "./missions-card";
+import { AssetChart } from "./asset-chart";
+import { AchievementsSection } from "./achievements-section";
+import { AiAdvisorCard } from "./ai-advisor-card";
+import { SellPatternCard } from "./sell-pattern-card";
+import { LifeStageCard } from "./life-stage-card";
+import { HelpModal } from "./help-modal";
 import {
   REBIRTH_THRESHOLD_PCT,
   PLAY_MODES,
@@ -45,6 +52,10 @@ type Character = {
   current_day: number;
   starting_cash: number;
   play_mode: PlayMode;
+  is_married?: boolean;
+  married_at?: string | null;
+  children_count?: number;
+  is_retired?: boolean;
 };
 
 type Props = {
@@ -225,29 +236,59 @@ export function GameDashboard({
         </TabButton>
       </div>
 
+      {/* 일일 미션 (항상 표시) */}
+      <MissionsCard />
+
       {/* 탭 컨텐츠 */}
       {tab === "diary" && (
-        <DiaryView
-          currentMode={character.play_mode}
-          currentDay={character.current_day}
-          unlocks={unlocks}
-          onModeChange={(newMode) =>
-            setCharacter((c) => ({ ...c, play_mode: newMode }))
-          }
-        />
+        <>
+          <AssetChart
+            startingCash={Number(character.starting_cash)}
+            currentCash={Number(character.cash)}
+          />
+          <DiaryView
+            currentMode={character.play_mode}
+            currentDay={character.current_day}
+            unlocks={unlocks}
+            onModeChange={(newMode) =>
+              setCharacter((c) => ({ ...c, play_mode: newMode }))
+            }
+          />
+          <LifeStageCard
+            intelligence={character.intelligence}
+            cash={Number(character.cash)}
+            isMarried={character.is_married ?? false}
+            marriedAt={character.married_at ?? null}
+            childrenCount={character.children_count ?? 0}
+            isRetired={character.is_retired ?? false}
+            jobType={character.job_type}
+            currentDay={character.current_day}
+            lifeStartedAt={character.life_started_at}
+            onAction={() => router.refresh()}
+          />
+        </>
       )}
       {tab === "stock" && (
         <StockTrader characterCash={Number(character.cash)} onTrade={runTick} />
       )}
       {tab === "realestate" && <RealEstateTrader onTrade={runTick} />}
       {tab === "rebirth" && (
-        <RebirthPanel
-          points={initialPoints}
-          unlocks={unlocks}
-          canRebirth={canRebirth}
-          onRebirth={() => router.refresh()}
-        />
+        <>
+          <RebirthPanel
+            points={initialPoints}
+            unlocks={unlocks}
+            canRebirth={canRebirth}
+            onRebirth={() => router.refresh()}
+          />
+          <SellPatternCard />
+          <AchievementsSection />
+          <AiAdvisorCard />
+        </>
       )}
+
+      <div className="text-center pt-2">
+        <HelpModal />
+      </div>
     </div>
   );
 }
