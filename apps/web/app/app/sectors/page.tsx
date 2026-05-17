@@ -1,9 +1,10 @@
+// Plan #45: 섹터 Heatmap — YG 디자인 (KR convention: red↑ blue↓).
+
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { BarChart3 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Term } from "@/components/term";
+import { PageHeader } from "@/components/yg/page-header";
 
 type StockRow = {
   symbol: string;
@@ -24,17 +25,21 @@ function scope(market: string): "KR" | "US" | null {
   return null;
 }
 
-function heatClass(ret: number): string {
-  // ret ∈ [-0.05, 0.05] 정도 가정
-  if (ret >= 0.05) return "bg-green-600 text-white";
-  if (ret >= 0.03) return "bg-green-500 text-white";
-  if (ret >= 0.01) return "bg-green-400/70 text-white";
-  if (ret >= 0.003) return "bg-green-300/50 text-foreground";
-  if (ret >= -0.003) return "bg-muted text-foreground";
-  if (ret >= -0.01) return "bg-red-300/50 text-foreground";
-  if (ret >= -0.03) return "bg-red-400/70 text-white";
-  if (ret >= -0.05) return "bg-red-500 text-white";
-  return "bg-red-600 text-white";
+// KR convention: 빨강 = ↑, 파랑 = ↓
+function heatStyle(ret: number): {
+  background: string;
+  color: string;
+} {
+  if (ret >= 0.05) return { background: "#C7384A", color: "#fff" };
+  if (ret >= 0.03) return { background: "#E84B5A", color: "#fff" };
+  if (ret >= 0.01) return { background: "#FB7E89", color: "#fff" };
+  if (ret >= 0.003) return { background: "#FEEFEF", color: "#C7384A" };
+  if (ret >= -0.003)
+    return { background: "var(--yg-bg-tint-ink)", color: "var(--yg-fg-secondary)" };
+  if (ret >= -0.01) return { background: "#EEF3FE", color: "#1B4FC3" };
+  if (ret >= -0.03) return { background: "#6E92F5", color: "#fff" };
+  if (ret >= -0.05) return { background: "#2563EB", color: "#fff" };
+  return { background: "#1B4FC3", color: "#fff" };
 }
 
 export default async function SectorsHeatmapPage({
@@ -50,10 +55,8 @@ export default async function SectorsHeatmapPage({
 
   const params = await searchParams;
   const view: "KR" | "US" = params.scope === "US" ? "US" : "KR";
-  const markets =
-    view === "KR" ? ["KRX_KS", "KRX_KQ"] : ["NYSE", "NASDAQ"];
+  const markets = view === "KR" ? ["KRX_KS", "KRX_KQ"] : ["NYSE", "NASDAQ"];
 
-  // 모든 active stocks 가져오기 (paginated)
   const allStocks: StockRow[] = [];
   for (let offset = 0; ; offset += 1000) {
     const { data } = await supabase
@@ -68,8 +71,6 @@ export default async function SectorsHeatmapPage({
     if (data.length < 1000) break;
   }
 
-  // 최근 2 일봉 fetch — symbols를 1000개씩 chunk (PostgREST IN limit)
-  // 각 chunk마다 pagination으로 1000건씩 fetch
   const symbols = allStocks.map((s) => s.symbol);
   const closesBySymbol = new Map<string, number[]>();
   const CHUNK = 1000;
@@ -95,7 +96,6 @@ export default async function SectorsHeatmapPage({
     }
   }
 
-  // sector별 weighted average return (by market cap)
   type Agg = { totalMcap: number; weightedRet: number; count: number };
   const agg = new Map<string, Agg>();
   for (const s of allStocks) {
@@ -104,7 +104,11 @@ export default async function SectorsHeatmapPage({
     if (!closes || closes.length < 2 || closes[1] === 0) continue;
     const ret = (closes[0] - closes[1]) / closes[1];
     const mcap = s.market_cap ? Number(s.market_cap) : 1;
-    const slot = agg.get(s.sector) ?? { totalMcap: 0, weightedRet: 0, count: 0 };
+    const slot = agg.get(s.sector) ?? {
+      totalMcap: 0,
+      weightedRet: 0,
+      count: 0,
+    };
     slot.totalMcap += mcap;
     slot.weightedRet += ret * mcap;
     slot.count += 1;
@@ -121,71 +125,150 @@ export default async function SectorsHeatmapPage({
     .sort((a, b) => b.ret - a.ret);
 
   return (
-    <div className="max-w-3xl mx-auto p-4 space-y-4">
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div>
-          <h1 className="text-xl font-bold flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-primary" />
-            <Term k="sector">섹터</Term> Heatmap
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            오늘 종가 vs 어제 종가 시가총액 가중 평균 등락률
-          </p>
-        </div>
-        <div className="flex gap-1">
-          <Link
-            href="/app/sectors?scope=KR"
-            className={`text-xs rounded-md border px-2.5 py-1.5 ${view === "KR" ? "bg-primary text-primary-foreground" : "hover:bg-muted/30"}`}
-          >
-            KR
-          </Link>
-          <Link
-            href="/app/sectors?scope=US"
-            className={`text-xs rounded-md border px-2.5 py-1.5 ${view === "US" ? "bg-primary text-primary-foreground" : "hover:bg-muted/30"}`}
-          >
-            US
-          </Link>
-        </div>
-      </div>
+    <div style={{ paddingBottom: 24 }}>
+      <PageHeader
+        title={<><Term k="sector">섹터</Term> Heatmap</>}
+        sub="오늘 종가 vs 어제 종가 시가총액 가중 평균"
+        right={
+          <div style={{ display: "flex", gap: 4 }}>
+            <Link
+              href="/app/sectors?scope=KR"
+              className="yg-chip"
+              style={{
+                textDecoration: "none",
+                fontSize: 11,
+                background:
+                  view === "KR" ? "var(--yg-brand)" : "var(--yg-bg-tint-ink)",
+                color:
+                  view === "KR"
+                    ? "var(--yg-fg-on-brand)"
+                    : "var(--yg-fg-secondary)",
+              }}
+            >
+              KR
+            </Link>
+            <Link
+              href="/app/sectors?scope=US"
+              className="yg-chip"
+              style={{
+                textDecoration: "none",
+                fontSize: 11,
+                background:
+                  view === "US" ? "var(--yg-brand)" : "var(--yg-bg-tint-ink)",
+                color:
+                  view === "US"
+                    ? "var(--yg-fg-on-brand)"
+                    : "var(--yg-fg-secondary)",
+              }}
+            >
+              US
+            </Link>
+          </div>
+        }
+      />
 
-      {heat.length === 0 ? (
-        <Card>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              일봉 데이터가 부족합니다 (어제/오늘 종가 필요).
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">섹터별 등락 ({heat.length}개)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-              {heat.map((h) => (
-                <Link
-                  key={h.sector}
-                  href={`/app/sectors/${encodeURIComponent(h.sector)}?scope=${view}`}
-                  className={`block rounded-lg p-3 text-center lift ${heatClass(h.ret)}`}
-                >
-                  <div className="text-xs font-medium truncate">{h.sector}</div>
-                  <div className="text-base font-bold mt-1 tabular-nums">
-                    {h.ret >= 0 ? "+" : ""}
-                    {(h.ret * 100).toFixed(2)}%
-                  </div>
-                  <div className="text-[10px] opacity-75 mt-1">
-                    {h.count}개 종목
-                  </div>
-                </Link>
-              ))}
+      <div style={{ padding: "8px 20px 0" }}>
+        {heat.length === 0 ? (
+          <div
+            className="yg-card"
+            style={{
+              padding: 36,
+              textAlign: "center",
+              fontSize: 13,
+              color: "var(--yg-fg-tertiary)",
+              fontWeight: 700,
+            }}
+          >
+            일봉 데이터가 부족합니다 (어제/오늘 종가 필요)
+          </div>
+        ) : (
+          <div className="yg-card" style={{ padding: 18 }}>
+            <div
+              style={{
+                fontSize: 16,
+                fontWeight: 800,
+                letterSpacing: "-0.02em",
+                marginBottom: 12,
+              }}
+            >
+              섹터별 등락 ({heat.length}개)
             </div>
-            <p className="text-xs text-muted-foreground mt-4 text-center">
-              ⬛ 색이 진할수록 큰 등락. 클릭 시 해당 섹터 종목 리스트로.
-            </p>
-          </CardContent>
-        </Card>
-      )}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 8,
+              }}
+            >
+              {heat.map((h) => {
+                const s = heatStyle(h.ret);
+                return (
+                  <Link
+                    key={h.sector}
+                    href={`/app/sectors/${encodeURIComponent(
+                      h.sector,
+                    )}?scope=${view}`}
+                    className="yg-tap"
+                    style={{
+                      padding: "12px 10px",
+                      borderRadius: 12,
+                      textAlign: "center",
+                      textDecoration: "none",
+                      background: s.background,
+                      color: s.color,
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 800,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {h.sector}
+                    </div>
+                    <div
+                      className="yg-num"
+                      style={{
+                        fontSize: 16,
+                        fontWeight: 800,
+                        marginTop: 4,
+                        letterSpacing: "-0.02em",
+                      }}
+                    >
+                      {h.ret >= 0 ? "+" : ""}
+                      {(h.ret * 100).toFixed(2)}%
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 10,
+                        opacity: 0.75,
+                        marginTop: 2,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {h.count}개 종목
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+            <div
+              style={{
+                fontSize: 11,
+                color: "var(--yg-fg-tertiary)",
+                fontWeight: 600,
+                marginTop: 14,
+                textAlign: "center",
+              }}
+            >
+              ⬛ 색이 진할수록 큰 등락 · 빨강↑ 파랑↓ (KR 관례)
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

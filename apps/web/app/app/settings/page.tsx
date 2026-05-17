@@ -1,8 +1,10 @@
+// Plan #45: 설정 — YG 디자인.
+
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Sparkles, ChevronRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/yg/page-header";
 import { PushToggle } from "@/components/push-toggle";
 import { NotificationTypeToggle } from "@/components/notification-type-toggle";
 
@@ -29,52 +31,182 @@ export default async function SettingsPage() {
     .maybeSingle();
 
   return (
-    <div className="max-w-3xl mx-auto p-6 space-y-4">
-      <h1 className="text-2xl font-bold">설정</h1>
+    <div style={{ paddingBottom: 24 }}>
+      <PageHeader title="설정" sub="알림 · AI · 푸시" />
 
-      <Link href="/app/settings/ai">
-        <Card className="hover:border-primary/40 transition-colors lift">
-          <CardContent className="flex items-center justify-between py-4">
-            <div className="flex items-center gap-3">
-              <Sparkles className="h-5 w-5 text-primary" />
-              <div>
-                <div className="font-medium">AI 분석 키 (BYOK)</div>
-                <div className="text-xs text-muted-foreground">
-                  Claude / OpenAI / Gemini 본인 키 등록
-                </div>
+      <div
+        style={{
+          padding: "8px 20px 0",
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+        }}
+      >
+        {/* AI 키 BYOK */}
+        <Link
+          href="/app/settings/ai"
+          className="yg-card yg-tap"
+          style={{
+            padding: 18,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            textDecoration: "none",
+            color: "var(--yg-fg-primary)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+            }}
+          >
+            <div
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 12,
+                background: "var(--yg-bg-tint-red)",
+                color: "var(--yg-up-deep)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div>
+              <div
+                style={{
+                  fontSize: 14,
+                  fontWeight: 800,
+                  letterSpacing: "-0.01em",
+                }}
+              >
+                AI 분석 키 (BYOK)
+              </div>
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "var(--yg-fg-tertiary)",
+                  fontWeight: 600,
+                  marginTop: 2,
+                }}
+              >
+                Claude / OpenAI / Gemini 본인 키 등록
               </div>
             </div>
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          </CardContent>
-        </Card>
-      </Link>
+          </div>
+          <ChevronRight
+            className="h-4 w-4"
+            style={{ color: "var(--yg-fg-tertiary)" }}
+          />
+        </Link>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">푸시 알림</CardTitle>
-        </CardHeader>
-        <CardContent>
+        {/* 푸시 알림 */}
+        <div className="yg-card" style={{ padding: 18 }}>
+          <h3
+            style={{
+              margin: "0 0 12px",
+              fontSize: 16,
+              fontWeight: 800,
+              letterSpacing: "-0.02em",
+            }}
+          >
+            푸시 알림
+          </h3>
           <PushToggle />
-        </CardContent>
-      </Card>
+        </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">알림 종류</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-0">
-          {TYPES.map(([key, label]) => (
-            <NotificationTypeToggle
-              key={key}
-              type={key}
-              label={label}
-              defaultChecked={
-                settings ? Boolean(settings[key as keyof typeof settings]) : true
-              }
-            />
-          ))}
-        </CardContent>
-      </Card>
+        {/* 알림 종류 */}
+        <div className="yg-card" style={{ padding: 18 }}>
+          <h3
+            style={{
+              margin: "0 0 4px",
+              fontSize: 16,
+              fontWeight: 800,
+              letterSpacing: "-0.02em",
+            }}
+          >
+            알림 종류
+          </h3>
+          <div>
+            {TYPES.map(([key, label]) => (
+              <NotificationTypeToggle
+                key={key}
+                type={key}
+                label={label}
+                defaultChecked={
+                  settings ? Boolean(settings[key as keyof typeof settings]) : true
+                }
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* 외부 링크 */}
+        <Link
+          href="/app/changelog"
+          className="yg-card yg-tap"
+          style={{
+            padding: 18,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            textDecoration: "none",
+            color: "var(--yg-fg-primary)",
+          }}
+        >
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 800 }}>변경 기록</div>
+            <div
+              style={{
+                fontSize: 11,
+                color: "var(--yg-fg-tertiary)",
+                fontWeight: 600,
+                marginTop: 2,
+              }}
+            >
+              최근 업데이트 및 새 기능
+            </div>
+          </div>
+          <ChevronRight
+            className="h-4 w-4"
+            style={{ color: "var(--yg-fg-tertiary)" }}
+          />
+        </Link>
+        <Link
+          href="/app/help"
+          className="yg-card yg-tap"
+          style={{
+            padding: 18,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            textDecoration: "none",
+            color: "var(--yg-fg-primary)",
+          }}
+        >
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 800 }}>도움말 / FAQ</div>
+            <div
+              style={{
+                fontSize: 11,
+                color: "var(--yg-fg-tertiary)",
+                fontWeight: 600,
+                marginTop: 2,
+              }}
+            >
+              자주 묻는 질문 · 사용법
+            </div>
+          </div>
+          <ChevronRight
+            className="h-4 w-4"
+            style={{ color: "var(--yg-fg-tertiary)" }}
+          />
+        </Link>
+      </div>
     </div>
   );
 }

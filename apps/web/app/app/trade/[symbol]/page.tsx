@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartArea } from "@/components/chart-area";
 import { StockNews } from "@/components/stock-news";
 import { StockFinancials } from "@/components/stock-financials";
@@ -9,6 +8,8 @@ import Link from "next/link";
 import { GitCompare } from "lucide-react";
 import { YGPriceCard } from "@/components/trade/yg-price-card";
 import { YGTradeButtons } from "@/components/trade/yg-trade-buttons";
+import { YGChartCard } from "@/components/trade/yg-chart-card";
+import { YGSectionCard } from "@/components/yg/section-card";
 import { WatchlistButton } from "@/components/watchlist-button";
 import { KrSessionBadge } from "@/components/kr-session-badge";
 import { NxtSpreadBadge } from "@/components/nxt-spread-badge";
@@ -195,45 +196,11 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
         isEtf={stock.instrument_type === "etf"}
       />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">차트</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ChartArea
-            symbol={stock.symbol}
-            initialBars={(bars ?? []).map((b) => ({ ...b, ts: String(b.ts) }))}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Plan #32: ETF 메타 정보 + 구성 종목 */}
-      {stock.instrument_type === "etf" && (
-        <>
-          <EtfInfoCard
-            category={stock.etf_category ?? null}
-            fundFamily={stock.fund_family ?? null}
-            underlyingIndex={stock.underlying_index ?? null}
-            expenseRatio={
-              stock.expense_ratio ? Number(stock.expense_ratio) : null
-            }
-            aum={stock.aum ? Number(stock.aum) : null}
-            inceptionDate={stock.inception_date ?? null}
-            currency={stock.currency}
-          />
-          <Suspense
-            fallback={
-              <Card>
-                <CardContent className="py-6 text-sm text-muted-foreground">
-                  구성 종목 로딩…
-                </CardContent>
-              </Card>
-            }
-          >
-            <EtfHoldingsList etfSymbol={stock.symbol} />
-          </Suspense>
-        </>
-      )}
+      {/* Plan #45: YG 차트 카드 — 일관된 margin 0 20px */}
+      <YGChartCard
+        symbol={stock.symbol}
+        initialBars={(bars ?? []).map((b) => ({ ...b, ts: String(b.ts) }))}
+      />
 
       {/* Plan #44: YG 매수/매도 카드 (잔고+보유+평단+버튼) */}
       {portfolio && (
@@ -254,163 +221,194 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
         />
       )}
 
-      {stock.market.startsWith("KRX_") && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">호가창</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <OrderBook
-              market={stock.market}
-              lastPrice={stock.last_price ? Number(stock.last_price) : null}
-              marketCap={stock.market_cap ? Number(stock.market_cap) : null}
-            />
-          </CardContent>
-        </Card>
-      )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">가격 알림</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <PriceAlertForm
-            symbol={stock.symbol}
-            currentPrice={stock.last_price ? Number(stock.last_price) : null}
-            currency={stock.currency}
-            initialAlerts={alerts ?? []}
-          />
-        </CardContent>
-      </Card>
-
-      <TradeNotes symbol={stock.symbol} />
-
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">기본 정보</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm">
-          <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-            <InfoRow
-              labelNode={<Term k="sector">섹터</Term>}
-              value={stock.sector}
-            />
-            <InfoRow
-              labelNode={<Term k="market-cap">시가총액</Term>}
-              value={
-                stock.market_cap
-                  ? formatMarketCap(Number(stock.market_cap), stock.currency)
-                  : null
+      {/* Plan #32: ETF 메타 정보 + 구성 종목 */}
+      {stock.instrument_type === "etf" && (
+        <>
+          <div style={{ margin: "12px 20px 0" }}>
+            <EtfInfoCard
+              category={stock.etf_category ?? null}
+              fundFamily={stock.fund_family ?? null}
+              underlyingIndex={stock.underlying_index ?? null}
+              expenseRatio={
+                stock.expense_ratio ? Number(stock.expense_ratio) : null
               }
-            />
-            <InfoRow
-              labelNode={
-                <>
-                  <Term k="per">PER</Term> (주가수익비율)
-                </>
-              }
-              value={stock.per ? Number(stock.per).toFixed(2) : null}
-              hint={
-                stock.per && stock.last_price
-                  ? `EPS ≈ ${fmt.format(Number(stock.last_price) / Number(stock.per))}`
-                  : undefined
-              }
-            />
-            <InfoRow
-              labelNode={<Term k="52w-high">52주 최고</Term>}
-              value={
-                stock.fifty_two_week_high
-                  ? fmt.format(Number(stock.fifty_two_week_high))
-                  : null
-              }
-              hint={
-                stock.fifty_two_week_high && stock.last_price
-                  ? `현재 대비 ${(
-                      ((Number(stock.last_price) - Number(stock.fifty_two_week_high)) /
-                        Number(stock.fifty_two_week_high)) *
-                      100
-                    ).toFixed(1)}%`
-                  : undefined
-              }
-            />
-            <InfoRow
-              labelNode={<Term k="52w-low">52주 최저</Term>}
-              value={
-                stock.fifty_two_week_low
-                  ? fmt.format(Number(stock.fifty_two_week_low))
-                  : null
-              }
-              hint={
-                stock.fifty_two_week_low && stock.last_price
-                  ? `현재 대비 +${(
-                      ((Number(stock.last_price) - Number(stock.fifty_two_week_low)) /
-                        Number(stock.fifty_two_week_low)) *
-                      100
-                    ).toFixed(1)}%`
-                  : undefined
-              }
-            />
-            <InfoRow
-              label="52주 범위 내 위치"
-              value={
-                stock.fifty_two_week_high &&
-                stock.fifty_two_week_low &&
-                stock.last_price &&
-                Number(stock.fifty_two_week_high) > Number(stock.fifty_two_week_low)
-                  ? `${(
-                      ((Number(stock.last_price) - Number(stock.fifty_two_week_low)) /
-                        (Number(stock.fifty_two_week_high) -
-                          Number(stock.fifty_two_week_low))) *
-                      100
-                    ).toFixed(0)}%`
-                  : null
-              }
-              hint="0% = 52w 저점, 100% = 52w 고점"
-            />
-            <InfoRow
-              label="시장"
-              value={
-                stock.market === "KRX_KS"
-                  ? "KOSPI"
-                  : stock.market === "KRX_KQ"
-                    ? "KOSDAQ"
-                    : stock.market
-              }
-            />
-            <InfoRow
-              label="통화"
-              value={stock.currency}
+              aum={stock.aum ? Number(stock.aum) : null}
+              inceptionDate={stock.inception_date ?? null}
+              currency={stock.currency}
             />
           </div>
-          {(!stock.sector || !stock.per || !stock.fifty_two_week_high) && (
-            <div className="text-[10px] text-muted-foreground mt-3 pt-2 border-t">
-              ⚠️ 일부 데이터 미수집 — 매일 05:30 KST에 yfinance에서 갱신 (관리자 트리거 가능: POST `/api/admin/enrich-stocks`)
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          <div style={{ margin: "12px 20px 0" }}>
+            <Suspense
+              fallback={
+                <div
+                  className="yg-card"
+                  style={{
+                    padding: 18,
+                    fontSize: 13,
+                    color: "var(--yg-fg-tertiary)",
+                  }}
+                >
+                  구성 종목 로딩…
+                </div>
+              }
+            >
+              <EtfHoldingsList etfSymbol={stock.symbol} />
+            </Suspense>
+          </div>
+        </>
+      )}
+
+      {stock.market.startsWith("KRX_") && (
+        <YGSectionCard title="호가창">
+          <OrderBook
+            market={stock.market}
+            lastPrice={stock.last_price ? Number(stock.last_price) : null}
+            marketCap={stock.market_cap ? Number(stock.market_cap) : null}
+          />
+        </YGSectionCard>
+      )}
+
+      <YGSectionCard title="가격 알림">
+        <PriceAlertForm
+          symbol={stock.symbol}
+          currentPrice={stock.last_price ? Number(stock.last_price) : null}
+          currency={stock.currency}
+          initialAlerts={alerts ?? []}
+        />
+      </YGSectionCard>
+
+      <div style={{ margin: "12px 20px 0" }}>
+        <TradeNotes symbol={stock.symbol} />
+      </div>
+
+      <YGSectionCard title="종목 정보">
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            rowGap: 10,
+            columnGap: 16,
+          }}
+        >
+          <InfoRow
+            labelNode={<Term k="sector">섹터</Term>}
+            value={stock.sector}
+          />
+          <InfoRow
+            labelNode={<Term k="market-cap">시가총액</Term>}
+            value={
+              stock.market_cap
+                ? formatMarketCap(Number(stock.market_cap), stock.currency)
+                : null
+            }
+          />
+          <InfoRow
+            labelNode={
+              <>
+                <Term k="per">PER</Term>
+              </>
+            }
+            value={stock.per ? Number(stock.per).toFixed(2) : null}
+            hint={
+              stock.per && stock.last_price
+                ? `EPS ≈ ${fmt.format(Number(stock.last_price) / Number(stock.per))}`
+                : undefined
+            }
+          />
+          <InfoRow
+            labelNode={<Term k="52w-high">52주 최고</Term>}
+            value={
+              stock.fifty_two_week_high
+                ? fmt.format(Number(stock.fifty_two_week_high))
+                : null
+            }
+            hint={
+              stock.fifty_two_week_high && stock.last_price
+                ? `현재 대비 ${(
+                    ((Number(stock.last_price) -
+                      Number(stock.fifty_two_week_high)) /
+                      Number(stock.fifty_two_week_high)) *
+                    100
+                  ).toFixed(1)}%`
+                : undefined
+            }
+          />
+          <InfoRow
+            labelNode={<Term k="52w-low">52주 최저</Term>}
+            value={
+              stock.fifty_two_week_low
+                ? fmt.format(Number(stock.fifty_two_week_low))
+                : null
+            }
+            hint={
+              stock.fifty_two_week_low && stock.last_price
+                ? `현재 대비 +${(
+                    ((Number(stock.last_price) -
+                      Number(stock.fifty_two_week_low)) /
+                      Number(stock.fifty_two_week_low)) *
+                    100
+                  ).toFixed(1)}%`
+                : undefined
+            }
+          />
+          <InfoRow
+            label="52주 위치"
+            value={
+              stock.fifty_two_week_high &&
+              stock.fifty_two_week_low &&
+              stock.last_price &&
+              Number(stock.fifty_two_week_high) >
+                Number(stock.fifty_two_week_low)
+                ? `${(
+                    ((Number(stock.last_price) -
+                      Number(stock.fifty_two_week_low)) /
+                      (Number(stock.fifty_two_week_high) -
+                        Number(stock.fifty_two_week_low))) *
+                    100
+                  ).toFixed(0)}%`
+                : null
+            }
+            hint="0% = 52w 저점, 100% = 52w 고점"
+          />
+          <InfoRow
+            label="시장"
+            value={
+              stock.market === "KRX_KS"
+                ? "KOSPI"
+                : stock.market === "KRX_KQ"
+                  ? "KOSDAQ"
+                  : stock.market
+            }
+          />
+          <InfoRow label="통화" value={stock.currency} />
+        </div>
+        {(!stock.sector || !stock.per || !stock.fifty_two_week_high) && (
+          <div
+            style={{
+              fontSize: 10,
+              color: "var(--yg-fg-tertiary)",
+              marginTop: 12,
+              paddingTop: 8,
+              borderTop: "1px solid var(--yg-line-faint)",
+            }}
+          >
+            ⚠️ 일부 데이터 미수집 — 매일 05:30 KST에 yfinance에서 갱신
+          </div>
+        )}
+      </YGSectionCard>
 
       {/* Plan #32: ETF는 단일 종목 재무지표가 의미 없음 — skip */}
       {stock.instrument_type !== "etf" && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">재무 지표</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <StockFinancials symbol={stock.symbol} />
-          </CardContent>
-        </Card>
+        <YGSectionCard title="재무 지표">
+          <StockFinancials symbol={stock.symbol} />
+        </YGSectionCard>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">뉴스</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <StockNews symbol={stock.symbol} />
-        </CardContent>
-      </Card>
+      <YGSectionCard title="뉴스">
+        <StockNews symbol={stock.symbol} />
+      </YGSectionCard>
+
+      <div style={{ height: 24 }} />
     </div>
   );
 }
@@ -427,16 +425,48 @@ function InfoRow({
   hint?: string;
 }) {
   return (
-    <div>
-      <div className="text-xs text-muted-foreground">{labelNode ?? label}</div>
-      <div
-        className={`font-medium tabular-nums ${value ? "" : "text-muted-foreground"}`}
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        borderBottom: "1px solid var(--yg-line-faint)",
+        paddingBottom: 8,
+        alignItems: "flex-start",
+        gap: 8,
+      }}
+    >
+      <span
+        style={{
+          fontSize: 12,
+          color: "var(--yg-fg-tertiary)",
+          fontWeight: 700,
+        }}
       >
-        {value ?? "—"}
+        {labelNode ?? label}
+      </span>
+      <div style={{ textAlign: "right" }}>
+        <div
+          className="yg-num"
+          style={{
+            fontSize: 13,
+            fontWeight: 800,
+            color: value ? "var(--yg-fg-primary)" : "var(--yg-fg-tertiary)",
+          }}
+        >
+          {value ?? "—"}
+        </div>
+        {hint && value && (
+          <div
+            style={{
+              fontSize: 10,
+              color: "var(--yg-fg-tertiary)",
+              marginTop: 2,
+            }}
+          >
+            {hint}
+          </div>
+        )}
       </div>
-      {hint && value && (
-        <div className="text-[10px] text-muted-foreground mt-0.5">{hint}</div>
-      )}
     </div>
   );
 }

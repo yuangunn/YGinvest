@@ -1,6 +1,8 @@
+// Plan #45: 글로벌 리더보드 — YG 디자인.
+
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/yg/page-header";
 import { LeaderboardTable } from "@/components/leaderboard-table";
 
 export default async function GlobalLeaderboardPage() {
@@ -10,9 +12,6 @@ export default async function GlobalLeaderboardPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
-  // RLS: portfolios "본인 읽기" + "같은 방 멤버 읽기"가 적용됨.
-  // 따라서 본 페이지에서 보이는 portfolios는 본인 글로벌 + 본인이 속한 방의 멤버 글로벌(room_id IS NULL이지만 같은 사용자가 아닐 수 있음 — 룸 가입자라 보이는 row)
-  // v1 한계: 진정한 글로벌 랭킹은 v1.5 material view에서 service_role API로 제공.
   const { data: portfolios } = await supabase
     .from("portfolios")
     .select("id, user_id, profiles(display_name)")
@@ -58,28 +57,40 @@ export default async function GlobalLeaderboardPage() {
     )
     .slice(0, 100);
 
-  // 내 portfolio 찾기 (entries에 있을 수도/없을 수도)
   const myPortfolio = (portfolios ?? []).find((p) => p.user_id === user.id);
   const myEntry = myPortfolio
     ? entries.find((e) => e.portfolio_id === myPortfolio.id)
     : null;
 
   return (
-    <div className="max-w-3xl mx-auto p-6 space-y-4">
-      <h1 className="text-2xl font-bold">글로벌 리더보드</h1>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">
-            상위 100명 (누적 수익률)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <LeaderboardTable
-            entries={entries}
-            currentUserPortfolioId={myEntry?.portfolio_id}
-          />
-        </CardContent>
-      </Card>
+    <div style={{ paddingBottom: 24 }}>
+      <PageHeader
+        title="글로벌 리더보드"
+        sub={`상위 ${entries.length}명 · 누적 수익률`}
+      />
+
+      <div style={{ padding: "8px 20px 0" }}>
+        <div className="yg-card" style={{ padding: 18 }}>
+          {entries.length === 0 ? (
+            <div
+              style={{
+                fontSize: 13,
+                color: "var(--yg-fg-tertiary)",
+                fontWeight: 600,
+                textAlign: "center",
+                padding: 20,
+              }}
+            >
+              아직 랭킹 데이터가 없어요
+            </div>
+          ) : (
+            <LeaderboardTable
+              entries={entries}
+              currentUserPortfolioId={myEntry?.portfolio_id}
+            />
+          )}
+        </div>
+      </div>
     </div>
   );
 }

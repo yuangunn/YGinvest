@@ -1,6 +1,7 @@
+// Plan #45: 변경 기록 — YG 디자인 wrapping.
+
 import { redirect } from "next/navigation";
 import {
-  Megaphone,
   Sparkles,
   Wrench,
   Zap,
@@ -12,6 +13,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent } from "@/components/ui/card";
 import changelogData from "@/lib/changelog-data.json";
 import { ChangelogMarker } from "@/components/changelog-marker";
+import { PageHeader } from "@/components/yg/page-header";
 
 type ChangelogEntry = {
   sha: string;
@@ -106,17 +108,13 @@ export default async function ChangelogPage() {
   const grouped = groupByMonth(entries);
 
   return (
-    <div className="max-w-3xl mx-auto p-4 space-y-4">
+    <div style={{ paddingBottom: 24 }}>
       <ChangelogMarker latestSha={latestSha} />
-      <div>
-        <h1 className="text-xl font-bold flex items-center gap-2">
-          <Megaphone className="h-5 w-5 text-primary" />
-          업데이트 소식
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          최근 적용된 변경사항. 신규 기능 / 버그 수정 / 성능 개선 위주.
-        </p>
-      </div>
+      <PageHeader
+        title="업데이트 소식"
+        sub="신규 기능 · 버그 수정 · 성능 개선"
+      />
+      <div style={{ padding: "8px 20px 0", display: "flex", flexDirection: "column", gap: 16 }}>
 
       {entries.length === 0 ? (
         <Card>
@@ -143,6 +141,7 @@ export default async function ChangelogPage() {
         Git commit log 기반 자동 생성. 사소한 chore / docs 변경은 표시되지
         않습니다.
       </p>
+      </div>
     </div>
   );
 }

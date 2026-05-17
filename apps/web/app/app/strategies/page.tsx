@@ -1,8 +1,11 @@
+// Plan #45: 유명 투자 전략 — YG 디자인.
+
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Award, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/yg/page-header";
 import { STRATEGIES, type StrategyFilter } from "@/lib/strategies";
 
 type Stock = {
@@ -76,16 +79,12 @@ export default async function StrategiesPage() {
   const stocks = (stocksRaw as Stock[] | null) ?? [];
 
   return (
-    <div className="max-w-3xl mx-auto p-4 space-y-4">
-      <div>
-        <h1 className="text-xl font-bold flex items-center gap-2">
-          <Award className="h-5 w-5 text-primary" />
-          유명 투자 전략
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          버핏·린치·역발상·모멘텀 — 각 스타일이 어떤 종목을 선호하는지 학습.
-        </p>
-      </div>
+    <div style={{ paddingBottom: 24 }}>
+      <PageHeader
+        title="유명 투자 전략"
+        sub="버핏 · 린치 · 역발상 · 모멘텀"
+      />
+      <div style={{ padding: "8px 20px 0", display: "flex", flexDirection: "column", gap: 12 }}>
 
       {STRATEGIES.map((strat) => {
         const matched = applyFilter(stocks, strat.filters);
@@ -194,6 +193,7 @@ export default async function StrategiesPage() {
           </ul>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

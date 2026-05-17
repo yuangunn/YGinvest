@@ -39,12 +39,12 @@ export default function RootLayout({
   return (
     <html lang="ko" className="h-full antialiased" suppressHydrationWarning>
       <body className="min-h-full flex flex-col bg-background text-foreground">
-        {/* Plan #42: 라이트 모드 강제 (OS 다크모드 무시). 추후 YG 다크 디자인 완성 시 해제. */}
+        {/* Plan #45: YG handoff v2 다크 모드 활성화. system → manual 토글 가능. */}
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
-          enableSystem={false}
-          forcedTheme="light"
+          enableSystem
+          disableTransitionOnChange
         >
           {children}
           <Toaster position="top-center" richColors closeButton />

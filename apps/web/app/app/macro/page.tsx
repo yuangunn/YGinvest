@@ -1,8 +1,11 @@
+// Plan #45: 거시경제 — YG 디자인 wrapping.
+
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Activity, ArrowRight, BookOpen, Calendar } from "lucide-react";
+import { ArrowRight, BookOpen, Calendar } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/yg/page-header";
 
 type MacroMeta = {
   symbol: string;
@@ -83,18 +86,13 @@ export default async function MacroPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto p-4 space-y-4">
-      <div>
-        <h1 className="text-xl font-bold flex items-center gap-2">
-          <Activity className="h-5 w-5 text-primary" />
-          거시경제 대시보드
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          금리·환율·원자재·지수 한눈에. 주식시장에 영향을 미치는 거시 변수.
-        </p>
-      </div>
-
-      <div className="flex gap-2 flex-wrap">
+    <div style={{ paddingBottom: 24 }}>
+      <PageHeader
+        title="거시경제 대시보드"
+        sub="금리 · 환율 · 원자재 · 지수"
+      />
+      <div style={{ padding: "8px 20px 0", display: "flex", flexDirection: "column", gap: 12 }}>
+        <div className="flex gap-2 flex-wrap">
         <Link
           href="/app/macro/guide"
           className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md border border-primary/40 bg-primary/5 hover:bg-primary/10 text-primary font-medium"
@@ -160,6 +158,7 @@ export default async function MacroPage() {
       <p className="text-xs text-muted-foreground text-center mt-4">
         📚 데이터는 매일 03:30 KST에 yfinance에서 자동 수집됩니다. 한국 기준금리는 한은 결정에 따라 별도 업데이트됩니다.
       </p>
+      </div>
     </div>
   );
 }

@@ -49,7 +49,7 @@ export function YGTradeButtons({
   return (
     <div
       className="yg-card"
-      style={{ padding: 18, margin: "12px 20px 0" }}
+      style={{ padding: 18, margin: "12px 20px 0", width: "auto" }}
     >
       <div
         style={{

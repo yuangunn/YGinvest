@@ -1,5 +1,8 @@
+// Plan #45: 차트 비교 — YG 디자인.
+
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { PageHeader } from "@/components/yg/page-header";
 import { CompareChartClient } from "@/components/compare-chart-client";
 
 export default async function ComparePage({
@@ -18,14 +21,16 @@ export default async function ComparePage({
   const b = params.b ?? "";
 
   return (
-    <div className="max-w-4xl mx-auto p-4 space-y-4">
-      <div>
-        <h1 className="text-xl font-bold">차트 비교</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          두 종목의 시작가 기준 정규화(100 = 시작) 수익률을 비교합니다.
-        </p>
+    <div style={{ paddingBottom: 24 }}>
+      <PageHeader
+        title="차트 비교"
+        sub="두 종목의 시작가 기준 정규화"
+      />
+      <div style={{ padding: "8px 20px 0" }}>
+        <div className="yg-card" style={{ padding: 18 }}>
+          <CompareChartClient initialA={a} initialB={b} />
+        </div>
       </div>
-      <CompareChartClient initialA={a} initialB={b} />
     </div>
   );
 }

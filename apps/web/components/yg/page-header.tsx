@@ -6,8 +6,8 @@ import { useRouter } from "next/navigation";
 import { YGIcon } from "@/components/yg/icon";
 
 type Props = {
-  title: string;
-  sub?: string;
+  title: React.ReactNode;
+  sub?: React.ReactNode;
   right?: React.ReactNode;
   /** override the back behavior (default: router.back()) */
   onBack?: () => void;

@@ -1,3 +1,5 @@
+// Plan #45: 금융 학습 — YG 디자인.
+
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
@@ -15,7 +17,7 @@ import {
   History,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/yg/page-header";
 
 const ARTICLES = [
   {
@@ -119,62 +121,166 @@ export default async function LearnPage() {
   if (!user) redirect("/auth/login");
 
   return (
-    <div className="max-w-3xl mx-auto p-4 space-y-4">
-      <div>
-        <h1 className="text-xl font-bold flex items-center gap-2">
-          <BookOpen className="h-5 w-5 text-primary" />
-          금융 학습
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          모의투자로 익히는 경제 원리. 짧은 글로 핵심만.
-        </p>
+    <div style={{ paddingBottom: 24 }}>
+      <PageHeader
+        title="금융 학습"
+        sub={`${ARTICLES.length}개 글 · 짧은 글로 핵심`}
+      />
+
+      {/* 용어 사전 CTA */}
+      <div style={{ padding: "8px 20px 0" }}>
+        <Link
+          href="/app/learn/glossary"
+          className="yg-card yg-tap"
+          style={{
+            padding: 18,
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            textDecoration: "none",
+            color: "var(--yg-fg-primary)",
+          }}
+        >
+          <div
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 12,
+              background: "var(--yg-bg-tint-red)",
+              color: "var(--yg-up-deep)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 18,
+            }}
+          >
+            📖
+          </div>
+          <div style={{ flex: 1 }}>
+            <div
+              style={{
+                fontSize: 14,
+                fontWeight: 800,
+                letterSpacing: "-0.01em",
+              }}
+            >
+              용어 사전
+            </div>
+            <div
+              style={{
+                fontSize: 11,
+                color: "var(--yg-fg-tertiary)",
+                fontWeight: 600,
+                marginTop: 2,
+              }}
+            >
+              PER · ROE · RSI · MACD 등 50+ 용어
+            </div>
+          </div>
+          <span style={{ color: "var(--yg-fg-tertiary)", fontWeight: 700 }}>
+            ›
+          </span>
+        </Link>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">📖 용어 사전</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground mb-2">
-            PER, ROE, 시가총액, 호가 spread, 캔들, RSI, MACD 등 50+ 용어를 검색하거나 둘러보기.
-          </p>
-          <Link
-            href="/app/learn/glossary"
-            className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
-          >
-            용어 사전 보기 →
-          </Link>
-        </CardContent>
-      </Card>
-
-      <div>
-        <h2 className="text-base font-semibold mb-2">경제 상식</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {/* Articles grid */}
+      <div style={{ padding: "16px 20px 0" }}>
+        <h3
+          style={{
+            margin: "0 4px 10px",
+            fontSize: 14,
+            fontWeight: 800,
+            color: "var(--yg-fg-tertiary)",
+            letterSpacing: "0.04em",
+          }}
+        >
+          경제 상식
+        </h3>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 10,
+          }}
+        >
           {ARTICLES.map((a) => (
-            <Link key={a.slug} href={`/app/learn/${a.slug}`}>
-              <Card className="h-full hover:border-primary/40 transition-colors cursor-pointer">
-                <CardHeader>
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <a.icon className="h-4 w-4 text-primary flex-shrink-0" />
-                    <span className="truncate">{a.title}</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-xs text-muted-foreground line-clamp-2">
-                    {a.summary}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground mt-2">
-                    {a.minutes}분
-                  </p>
-                </CardContent>
-              </Card>
+            <Link
+              key={a.slug}
+              href={`/app/learn/${a.slug}`}
+              className="yg-card yg-tap"
+              style={{
+                padding: 14,
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+                textDecoration: "none",
+                color: "var(--yg-fg-primary)",
+              }}
+            >
+              <div
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 10,
+                  background: "var(--yg-bg-tint-ink)",
+                  color: "var(--yg-fg-secondary)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <a.icon className="h-4 w-4" />
+              </div>
+              <div
+                style={{
+                  fontSize: 13,
+                  fontWeight: 800,
+                  letterSpacing: "-0.01em",
+                  lineHeight: 1.3,
+                }}
+              >
+                {a.title}
+              </div>
+              <div
+                style={{
+                  fontSize: 10,
+                  color: "var(--yg-fg-tertiary)",
+                  fontWeight: 600,
+                  lineHeight: 1.4,
+                  overflow: "hidden",
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical",
+                }}
+              >
+                {a.summary}
+              </div>
+              <div
+                style={{
+                  fontSize: 10,
+                  color: "var(--yg-fg-tertiary)",
+                  fontWeight: 700,
+                  marginTop: "auto",
+                }}
+              >
+                {a.minutes}분
+              </div>
             </Link>
           ))}
         </div>
       </div>
 
-      <p className="text-xs text-muted-foreground text-center pt-2">
-        ⚠️ 학습 콘텐츠는 시뮬레이션 + 일반 교육 목적입니다. 실제 투자 자문이 아닙니다.
+      <p
+        style={{
+          fontSize: 11,
+          color: "var(--yg-fg-tertiary)",
+          textAlign: "center",
+          fontWeight: 600,
+          paddingTop: 16,
+          margin: 0,
+        }}
+      >
+        ⚠️ 학습 콘텐츠는 시뮬레이션 + 일반 교육 목적
       </p>
     </div>
   );

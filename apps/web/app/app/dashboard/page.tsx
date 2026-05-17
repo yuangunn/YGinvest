@@ -157,7 +157,12 @@ export default async function DashboardPage() {
 
   return (
     <div style={{ paddingBottom: 16 }}>
-      {/* Greeting (헤더는 app/layout으로 옮김 → 중복 제거) */}
+      {/* Plan #45: 통일된 너비 — handoff README 기준
+          - 가로 패딩: 20px (모든 카드/섹션)
+          - 카드간 세로 간격: 12px (yg-stack에서 자동)
+          - 상단 섹션간: 24-28px */}
+
+      {/* Greeting */}
       <div style={{ padding: "16px 20px 4px" }}>
         <div
           style={{
@@ -201,9 +206,9 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Asset hero */}
-      {portfolio && (
-        <div style={{ padding: "14px 20px 0" }}>
+      {/* Top stack: hero + game CTA + holdings + pending + quiz (12px gap) */}
+      <div className="yg-stack" style={{ padding: "12px 20px 0" }}>
+        {portfolio && (
           <YGAssetHero
             krwBalance={Number(portfolio.krw_balance)}
             usdBalance={Number(portfolio.usd_balance)}
@@ -213,11 +218,8 @@ export default async function DashboardPage() {
             fxRate={fxRate}
             startingFxRate={startingFxRate}
           />
-        </div>
-      )}
+        )}
 
-      {/* Game CTA — equal billing */}
-      <div style={{ padding: "12px 20px 0" }}>
         <YGGameCTA
           hasCharacter={!!character}
           characterName={character?.name ?? null}
@@ -228,27 +230,16 @@ export default async function DashboardPage() {
           currentDay={character?.current_day ?? null}
           progressPct={gameProgress}
         />
-      </div>
 
-      {/* Holdings preview row */}
-      <div style={{ padding: "12px 20px 0" }}>
         <YGHoldingsPreview holdingsCount={holdingsCount} />
-      </div>
 
-      {/* Pending orders (conditional) */}
-      {portfolioId && (
-        <div style={{ padding: "12px 20px 0" }}>
-          <PendingOrdersCard portfolioId={portfolioId} />
-        </div>
-      )}
+        {portfolioId && <PendingOrdersCard portfolioId={portfolioId} />}
 
-      {/* Daily quiz */}
-      <div style={{ padding: "12px 20px 0" }}>
         <DailyQuizCard />
       </div>
 
-      {/* Action menu */}
-      <div style={{ padding: "24px 20px 0" }}>
+      {/* Action menu — 28px section gap */}
+      <div style={{ padding: "28px 20px 0" }}>
         <YGActionMenu defaultOpenId="trade" />
       </div>
 
@@ -269,22 +260,14 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {/* ETF curation */}
-      <div style={{ padding: "24px 20px 0" }}>
+      {/* ETF curation + volume leaders + recs (stacked, 12px gap) */}
+      <div className="yg-stack" style={{ padding: "28px 20px 0" }}>
         <Suspense fallback={<CardSkeleton />}>
           <EtfCurationSection />
         </Suspense>
-      </div>
-
-      {/* Volume leaders KR */}
-      <div style={{ padding: "12px 20px 0" }}>
         <Suspense fallback={<CardSkeleton />}>
           <VolumeLeaders scope="KR" limit={5} />
         </Suspense>
-      </div>
-
-      {/* 5 recommendation grids */}
-      <div style={{ padding: "12px 20px 0", display: "flex", flexDirection: "column", gap: 12 }}>
         <Suspense fallback={<CardSkeleton />}>
           <RecommendationsSection category="top_gainers" scope="KR" />
         </Suspense>

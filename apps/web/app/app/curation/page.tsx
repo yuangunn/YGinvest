@@ -1,3 +1,5 @@
+// Plan #45: 큐레이션 — YG 디자인 wrapping.
+
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
@@ -9,6 +11,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/yg/page-header";
 import { loadSectorStats, getSectorStats } from "@/lib/sector-stats";
 import {
   computeValuation,
@@ -147,17 +150,13 @@ export default async function CurationPage() {
   const valuedCount = valued.length;
 
   return (
-    <div className="max-w-3xl mx-auto p-4 space-y-4">
-      <div>
-        <h1 className="text-xl font-bold flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-primary" />
-          큐레이션
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Sector-relative PER 기반 rule-based 분석. Strong Buy ↔ Strong Sell rating, 적정 주가
-          + 목표주가, 기대 수익률.
-        </p>
-      </div>
+    <div style={{ paddingBottom: 24 }}>
+      <PageHeader
+        title="큐레이션"
+        sub="Sector-relative PER · Strong Buy ↔ Sell"
+        right={<Sparkles className="h-5 w-5" style={{ color: "var(--yg-fg-secondary)" }} />}
+      />
+      <div style={{ padding: "8px 20px 0", display: "flex", flexDirection: "column", gap: 12 }}>
 
       {valuedCount === 0 && (
         <Card className="border-yellow-500/40 bg-yellow-500/5">
@@ -267,11 +266,18 @@ export default async function CurationPage() {
         </CardContent>
       </Card>
 
-      <div className="text-xs text-muted-foreground border-t pt-3">
-        <p>
-          ⚠️ Sector-relative PER 기반 자동 분석. 모멘텀·재무·뉴스를 종합 판단하세요. 시뮬레이션
-          용도의 추천이며 금융 자문 아님.
-        </p>
+        <div
+          style={{
+            fontSize: 11,
+            color: "var(--yg-fg-tertiary)",
+            fontWeight: 600,
+            paddingTop: 12,
+            borderTop: "1px solid var(--yg-line-faint)",
+            marginTop: 8,
+          }}
+        >
+          ⚠️ Sector-relative PER 기반 자동 분석. 종합 판단하세요. 시뮬레이션 추천이며 금융 자문 아님.
+        </div>
       </div>
     </div>
   );

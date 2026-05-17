@@ -6,6 +6,7 @@
 import Link from "next/link";
 import { YGLogo, YGIcon } from "@/components/yg/icon";
 import { ChangelogLink } from "@/components/changelog-link";
+import { ThemeToggleYG } from "@/components/yg/theme-toggle-yg";
 
 type Props = {
   isAdmin: boolean;
@@ -80,6 +81,7 @@ export function YGAppHeader({ isAdmin, latestChangelogSha }: Props) {
           }}
         >
           <ChangelogLink latestSha={latestChangelogSha} />
+          <ThemeToggleYG />
           {isAdmin && (
             <Link
               href="/app/health"

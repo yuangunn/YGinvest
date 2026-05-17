@@ -87,38 +87,40 @@
   --sidebar-ring: #0F1115;
 }
 
+/* Plan #45: 다크 모드 — shadcn `.dark` 클래스 사용.
+   YG handoff v2 (YGinvest Light+Dark) 다크 톤 적용. */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.65 0.20 264);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.30 0.05 264);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.65 0.20 264);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.65 0.20 264);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.30 0.05 264);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.65 0.20 264);
+  --background: #0A0C10;          /* yg-bg-app (dark) */
+  --foreground: #F1F4F8;          /* yg-fg-primary (dark) */
+  --card: #14181F;                /* yg-bg-card (dark) */
+  --card-foreground: #F1F4F8;
+  --popover: #14181F;
+  --popover-foreground: #F1F4F8;
+  --primary: #F1F4F8;             /* yg-brand (dark: white) */
+  --primary-foreground: #0A0C10;
+  --secondary: #1F2430;           /* yg-bg-tint-ink (dark) */
+  --secondary-foreground: #F1F4F8;
+  --muted: #1B1F28;               /* yg-bg-sub (dark) */
+  --muted-foreground: #B4BCC9;    /* yg-fg-secondary (dark) */
+  --accent: #1F2430;
+  --accent-foreground: #F1F4F8;
+  --destructive: #FF6470;         /* yg-up (KR 관례, dark) */
+  --border: #242A35;              /* yg-line (dark) */
+  --input: #242A35;
+  --ring: #F1F4F8;
+  --chart-1: #F1F4F8;
+  --chart-2: #8A82FF;
+  --chart-3: #4DC8AB;
+  --chart-4: #F5A742;
+  --chart-5: #6A8FFF;
+  --sidebar: #14181F;
+  --sidebar-foreground: #F1F4F8;
+  --sidebar-primary: #F1F4F8;
+  --sidebar-primary-foreground: #0A0C10;
+  --sidebar-accent: #1F2430;
+  --sidebar-accent-foreground: #F1F4F8;
+  --sidebar-border: #242A35;
+  --sidebar-ring: #F1F4F8;
 }
 
 @layer base {
@@ -285,6 +287,67 @@
   --yg-shadow-card:   0 1px 2px rgba(15, 17, 21, 0.04), 0 0 0 1px rgba(15, 17, 21, 0.03);
   --yg-shadow-sheet:  0 -8px 32px rgba(15, 17, 21, 0.12);
   --yg-shadow-pop:    0 8px 24px rgba(15, 17, 21, 0.10), 0 0 0 1px rgba(15, 17, 21, 0.04);
+
+  /* Gradient pairs — Plan #45 handoff v2 */
+  --yg-grad-red-start:   #FEEFEF;
+  --yg-grad-red-end:     #FFFFFF;
+  --yg-grad-green-start: #F0F8F4;
+  --yg-grad-green-end:   #FFFFFF;
+  --yg-grad-elev-start:  #FFFFFF;
+  --yg-grad-elev-end:    #F8F9FB;
+  --yg-grad-dark-start:  #15171D;
+  --yg-grad-dark-end:    #0F1115;
+}
+
+/* Plan #45: 다크 모드 YG 토큰 — shadcn `.dark` AND data-theme="dark" 모두 지원. */
+.dark,
+[data-theme="dark"] {
+  /* Surfaces */
+  --yg-bg-app:        #0A0C10;
+  --yg-bg-card:       #14181F;
+  --yg-bg-sub:        #1B1F28;
+  --yg-bg-pressed:    #232833;
+  --yg-bg-tint-blue:  #1A2542;
+  --yg-bg-tint-red:   #3A1A20;
+  --yg-bg-tint-ink:   #1F2430;
+
+  /* Foreground */
+  --yg-fg-primary:    #F1F4F8;
+  --yg-fg-secondary:  #B4BCC9;
+  --yg-fg-tertiary:   #7C8593;
+  --yg-fg-quaternary: #4E5663;
+  --yg-fg-on-brand:   #0A0C10;
+
+  /* Brand (dark: white-ish on dark surface) */
+  --yg-brand:         #F1F4F8;
+  --yg-brand-press:   #D2D8E0;
+  --yg-brand-soft:    #1F2430;
+
+  /* Korean stock convention — dark mode "deep" colors are LIGHTER for contrast on tint bg */
+  --yg-up:            #FF6470;
+  --yg-up-deep:       #FF8A92;
+  --yg-down:          #5A8AFF;
+  --yg-down-deep:     #8AA8FF;
+
+  /* Lines */
+  --yg-line:          #242A35;
+  --yg-line-strong:   #303744;
+  --yg-line-faint:    #1B1F28;
+
+  /* Shadows */
+  --yg-shadow-card:   0 1px 2px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --yg-shadow-sheet:  0 -8px 32px rgba(0, 0, 0, 0.55);
+  --yg-shadow-pop:    0 8px 24px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+
+  /* Gradient pairs (dark) */
+  --yg-grad-red-start:   #2A1418;
+  --yg-grad-red-end:     #14181F;
+  --yg-grad-green-start: #112520;
+  --yg-grad-green-end:   #14181F;
+  --yg-grad-elev-start:  #181C24;
+  --yg-grad-elev-end:    #14181F;
+  --yg-grad-dark-start:  #1E232E;
+  --yg-grad-dark-end:    #14181F;
 }
 
 /* App surface — the gray that lets white cards stack visibly */
@@ -307,6 +370,15 @@
   box-shadow: var(--yg-shadow-card);
 }
 .yg-card-lg { border-radius: var(--yg-r-card-lg); }
+
+/* Stack — uniform 12px gap between cards in a section (handoff README) */
+.yg-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.yg-stack-lg { gap: 16px; }
+.yg-stack-sm { gap: 8px; }
 
 /* Tap state — subtle scale + bg shift on press */
 .yg-tap {

@@ -7,10 +7,9 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  Wallet, Brain, BookOpen, TrendingUp,
+  BookOpen, TrendingUp,
   Home as HomeIcon, Sparkles, Trophy,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { DiaryView } from "./diary-view";
 import { StockTrader } from "./stock-trader";
@@ -130,191 +129,409 @@ export function GameDashboard({
   const modeDef = PLAY_MODES[character.play_mode];
 
   return (
-    <div className="max-w-3xl mx-auto p-4 space-y-3">
-      {/* 캐릭터 상태 헤더 (간소화) */}
-      <Card>
-        <CardContent className="py-3 space-y-2">
-          <div className="flex items-center justify-between flex-wrap gap-1">
-            <div className="flex items-center gap-3">
-              {/* Plan #37: 픽셀 아바타 */}
-              <div className="flex-shrink-0 rounded-md border bg-background p-1">
-                <PixelAvatar
-                  gender={character.gender}
-                  jobType={character.job_type}
-                  jobTitle={character.job_title}
-                  educationLevel={character.education_level}
-                  size={56}
-                />
-              </div>
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-lg font-bold">{character.name}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {character.education_level === "bachelor" ? "🎓 대졸" : "🎒 고졸"}
-                  </span>
-                </div>
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  {career} · D+{character.current_day}일차
-                </div>
-                <div className="text-xs mt-0.5">
-                  <span className="text-primary font-semibold">
-                    {modeDef.emoji} {modeDef.label}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="text-[10px] text-muted-foreground">환생 누적</div>
-              <div className="text-xs">
-                🌅 {rebirthCount}회 · 💎 {initialPoints}pt
-              </div>
-              <Link
-                href="/app/roguelike/stats"
-                className="inline-flex items-center gap-0.5 text-[10px] text-primary hover:underline mt-0.5"
-              >
-                <Trophy className="h-2.5 w-2.5" /> 통계/리더보드
-              </Link>
-            </div>
+    <div style={{ paddingBottom: 24 }}>
+      {/* Plan #45: YG 게임 헤더 */}
+      <header
+        style={{
+          padding: "12px 20px 8px",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <div
+            style={{
+              fontSize: 18,
+              fontWeight: 800,
+              letterSpacing: "-0.02em",
+              color: "var(--yg-fg-primary)",
+            }}
+          >
+            {character.name}
           </div>
+          <div
+            className="yg-num"
+            style={{
+              fontSize: 11,
+              color: "var(--yg-fg-tertiary)",
+              fontWeight: 700,
+              marginTop: 2,
+            }}
+          >
+            D+{character.current_day} ·{" "}
+            {character.education_level === "bachelor" ? "🎓 대졸" : "🎒 고졸"} ·{" "}
+            {modeDef.emoji} {modeDef.label}
+          </div>
+        </div>
+        <Link
+          href="/app/roguelike/stats"
+          style={{
+            fontSize: 10,
+            fontWeight: 800,
+            background: "var(--yg-bg-tint-ink)",
+            color: "var(--yg-fg-secondary)",
+            padding: "5px 9px",
+            borderRadius: 6,
+            textDecoration: "none",
+            letterSpacing: "0.04em",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+          }}
+        >
+          <Trophy className="h-3 w-3" />
+          STATS
+        </Link>
+      </header>
 
-          {/* 자원 2개로 단순화 */}
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="rounded-md border bg-muted/30 px-2 py-1.5">
-              <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                <Wallet className="h-3 w-3" />
-                현금
+      {/* Asset hero with avatar */}
+      <div style={{ padding: "0 20px" }}>
+        <div
+          className="yg-card yg-card-lg"
+          style={{
+            padding: 22,
+            display: "flex",
+            flexDirection: "column",
+            gap: 14,
+            background:
+              "linear-gradient(180deg, var(--yg-grad-elev-start) 0%, var(--yg-grad-elev-end) 100%)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div
+              style={{
+                background: "var(--yg-bg-tint-ink)",
+                borderRadius: 14,
+                padding: 10,
+              }}
+            >
+              <PixelAvatar
+                gender={character.gender}
+                jobType={character.job_type}
+                jobTitle={character.job_title}
+                educationLevel={character.education_level}
+                size={56}
+              />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "var(--yg-fg-tertiary)",
+                  fontWeight: 700,
+                }}
+              >
+                현재 자산
               </div>
-              <div className="font-mono text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+              <div
+                className="yg-num"
+                style={{
+                  fontSize: 28,
+                  fontWeight: 800,
+                  letterSpacing: "-0.025em",
+                  color: "var(--yg-fg-primary)",
+                }}
+              >
                 {KRW.format(Number(character.cash))}
               </div>
             </div>
-            <div className="rounded-md border bg-muted/30 px-2 py-1.5">
-              <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                <Brain className="h-3 w-3" />
-                지력
-              </div>
-              <div className="font-mono text-sm font-semibold text-purple-500">
-                {character.intelligence}
-              </div>
-            </div>
           </div>
 
-          {/* 환생 진행도 — Plan #43: 금융수익(매도 차익)만 카운트, 알바 제외 */}
-          <div className="pt-1">
-            <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-              <span>환생까지 (금융수익)</span>
-              <span>
-                {(investedReturn * 100).toFixed(2)}% / {(threshold * 100).toFixed(0)}%
+          {/* 환생 진행도 */}
+          <div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginBottom: 6,
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 11,
+                  color: "var(--yg-fg-tertiary)",
+                  fontWeight: 700,
+                }}
+              >
+                환생까지 (금융수익)
+              </span>
+              <span
+                className="yg-num"
+                style={{
+                  fontSize: 11,
+                  fontWeight: 800,
+                  color: canRebirth
+                    ? "var(--yg-up-deep)"
+                    : "var(--yg-fg-secondary)",
+                }}
+              >
+                {(investedReturn * 100).toFixed(2)}% /{" "}
+                {(threshold * 100).toFixed(0)}%
               </span>
             </div>
-            <div className="mt-1 h-1.5 rounded-full bg-muted overflow-hidden">
+            <div
+              style={{
+                height: 6,
+                background: "var(--yg-bg-tint-ink)",
+                borderRadius: 99,
+                overflow: "hidden",
+              }}
+            >
               <div
-                className={`h-full transition-all ${canRebirth ? "bg-emerald-500" : "bg-primary"}`}
-                style={{ width: `${progress * 100}%` }}
+                style={{
+                  width: `${progress * 100}%`,
+                  height: "100%",
+                  background: canRebirth ? "var(--yg-up)" : "var(--yg-brand)",
+                  borderRadius: 99,
+                  transition: "width 200ms",
+                }}
               />
             </div>
             {canRebirth && (
-              <div className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1">
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "var(--yg-up-deep)",
+                  fontWeight: 700,
+                  marginTop: 6,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+              >
                 <Sparkles className="h-3 w-3" /> 환생 가능! 환생 탭으로 이동
               </div>
             )}
           </div>
-        </CardContent>
-      </Card>
 
-      {/* 탭 네비 */}
-      <div className="flex gap-1.5 overflow-x-auto pb-1">
-        <TabButton active={tab === "diary"} onClick={() => setTab("diary")} icon={<BookOpen className="h-3.5 w-3.5" />}>
-          일기
-        </TabButton>
-        <TabButton active={tab === "stock"} onClick={() => setTab("stock")} icon={<TrendingUp className="h-3.5 w-3.5" />}>
-          주식
-        </TabButton>
-        <TabButton active={tab === "realestate"} onClick={() => setTab("realestate")} icon={<HomeIcon className="h-3.5 w-3.5" />}>
-          부동산
-        </TabButton>
-        <TabButton active={tab === "rebirth"} onClick={() => setTab("rebirth")} icon={<Sparkles className="h-3.5 w-3.5" />}>
-          환생
-        </TabButton>
+          {/* 지력/직업 */}
+          <div
+            style={{
+              display: "flex",
+              gap: 14,
+              paddingTop: 8,
+              borderTop: "1px solid var(--yg-line-faint)",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "var(--yg-fg-tertiary)",
+                  fontWeight: 700,
+                }}
+              >
+                지능
+              </div>
+              <div
+                className="yg-num"
+                style={{
+                  fontSize: 17,
+                  fontWeight: 800,
+                  color: "var(--yg-fg-primary)",
+                }}
+              >
+                {character.intelligence}
+              </div>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "var(--yg-fg-tertiary)",
+                  fontWeight: 700,
+                }}
+              >
+                직업
+              </div>
+              <div
+                style={{
+                  fontSize: 14,
+                  fontWeight: 800,
+                  color: "var(--yg-fg-primary)",
+                  marginTop: 2,
+                }}
+              >
+                {career}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 환생 누적 + 포인트 */}
+      <div style={{ padding: "12px 20px 0" }}>
+        <div
+          className="yg-card"
+          style={{
+            padding: 14,
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+          }}
+        >
+          <div
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 10,
+              background: "var(--yg-bg-tint-ink)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 18,
+            }}
+          >
+            🌅
+          </div>
+          <div style={{ flex: 1 }}>
+            <div
+              style={{
+                fontSize: 11,
+                color: "var(--yg-fg-tertiary)",
+                fontWeight: 700,
+              }}
+            >
+              환생 누적
+            </div>
+            <div
+              style={{
+                fontSize: 14,
+                fontWeight: 800,
+                color: "var(--yg-fg-primary)",
+              }}
+            >
+              {rebirthCount}회 · 💎 {initialPoints}pt
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Pill tab bar */}
+      <div style={{ padding: "16px 20px 0" }}>
+        <div
+          style={{
+            display: "flex",
+            background: "var(--yg-bg-tint-ink)",
+            borderRadius: 14,
+            padding: 4,
+          }}
+        >
+          {(
+            [
+              { k: "diary", l: "일기", I: BookOpen },
+              { k: "stock", l: "주식", I: TrendingUp },
+              { k: "realestate", l: "부동산", I: HomeIcon },
+              { k: "rebirth", l: "환생", I: Sparkles },
+            ] as const
+          ).map((t) => {
+            const active = tab === t.k;
+            const Icon = t.I;
+            return (
+              <button
+                key={t.k}
+                type="button"
+                onClick={() => setTab(t.k as Tab)}
+                style={{
+                  all: "unset",
+                  cursor: "pointer",
+                  flex: 1,
+                  textAlign: "center",
+                  padding: "10px 0",
+                  borderRadius: 10,
+                  background: active
+                    ? "var(--yg-bg-card)"
+                    : "transparent",
+                  color: active
+                    ? "var(--yg-fg-primary)"
+                    : "var(--yg-fg-tertiary)",
+                  fontSize: 13,
+                  fontWeight: 800,
+                  boxShadow: active
+                    ? "0 1px 2px rgba(15,17,21,0.08)"
+                    : "none",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 5,
+                }}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {t.l}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* 일일 미션 (항상 표시) */}
-      <MissionsCard />
+      <div style={{ padding: "12px 20px 0" }}>
+        <MissionsCard />
+      </div>
 
       {/* 탭 컨텐츠 */}
-      {tab === "diary" && (
-        <>
-          <AssetChart
-            startingCash={Number(character.starting_cash)}
-            currentCash={Number(character.cash)}
+      <div
+        style={{
+          padding: "12px 20px 0",
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+        }}
+      >
+        {tab === "diary" && (
+          <>
+            <AssetChart
+              startingCash={Number(character.starting_cash)}
+              currentCash={Number(character.cash)}
+            />
+            <DiaryView
+              currentMode={character.play_mode}
+              currentDay={character.current_day}
+              unlocks={unlocks}
+              onModeChange={(newMode) =>
+                setCharacter((c) => ({ ...c, play_mode: newMode }))
+              }
+            />
+            <LifeStageCard
+              intelligence={character.intelligence}
+              cash={Number(character.cash)}
+              isMarried={character.is_married ?? false}
+              marriedAt={character.married_at ?? null}
+              childrenCount={character.children_count ?? 0}
+              isRetired={character.is_retired ?? false}
+              jobType={character.job_type}
+              currentDay={character.current_day}
+              lifeStartedAt={character.life_started_at}
+              onAction={() => router.refresh()}
+            />
+          </>
+        )}
+        {tab === "stock" && (
+          <StockTrader
+            characterCash={Number(character.cash)}
+            onTrade={runTick}
           />
-          <DiaryView
-            currentMode={character.play_mode}
-            currentDay={character.current_day}
-            unlocks={unlocks}
-            onModeChange={(newMode) =>
-              setCharacter((c) => ({ ...c, play_mode: newMode }))
-            }
-          />
-          <LifeStageCard
-            intelligence={character.intelligence}
-            cash={Number(character.cash)}
-            isMarried={character.is_married ?? false}
-            marriedAt={character.married_at ?? null}
-            childrenCount={character.children_count ?? 0}
-            isRetired={character.is_retired ?? false}
-            jobType={character.job_type}
-            currentDay={character.current_day}
-            lifeStartedAt={character.life_started_at}
-            onAction={() => router.refresh()}
-          />
-        </>
-      )}
-      {tab === "stock" && (
-        <StockTrader characterCash={Number(character.cash)} onTrade={runTick} />
-      )}
-      {tab === "realestate" && <RealEstateTrader onTrade={runTick} />}
-      {tab === "rebirth" && (
-        <>
-          <RebirthPanel
-            points={initialPoints}
-            unlocks={unlocks}
-            canRebirth={canRebirth}
-            onRebirth={() => router.refresh()}
-          />
-          <SellPatternCard />
-          <AchievementsSection />
-          <AiAdvisorCard />
-        </>
-      )}
+        )}
+        {tab === "realestate" && <RealEstateTrader onTrade={runTick} />}
+        {tab === "rebirth" && (
+          <>
+            <RebirthPanel
+              points={initialPoints}
+              unlocks={unlocks}
+              canRebirth={canRebirth}
+              onRebirth={() => router.refresh()}
+            />
+            <SellPatternCard />
+            <AchievementsSection />
+            <AiAdvisorCard />
+          </>
+        )}
+      </div>
 
-      <div className="text-center pt-2">
+      <div style={{ textAlign: "center", paddingTop: 14 }}>
         <HelpModal />
       </div>
     </div>
-  );
-}
-
-function TabButton({
-  active, onClick, icon, children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex-1 inline-flex items-center justify-center gap-1.5 text-xs rounded-md border px-3 py-1.5 transition-colors whitespace-nowrap ${
-        active
-          ? "border-primary bg-primary/10 text-primary font-semibold"
-          : "hover:bg-accent"
-      }`}
-    >
-      {icon}
-      {children}
-    </button>
   );
 }
