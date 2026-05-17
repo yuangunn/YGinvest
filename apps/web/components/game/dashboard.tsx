@@ -5,9 +5,10 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Wallet, Brain, BookOpen, TrendingUp,
-  Home as HomeIcon, Sparkles,
+  Home as HomeIcon, Sparkles, Trophy,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -15,6 +16,7 @@ import { DiaryView } from "./diary-view";
 import { StockTrader } from "./stock-trader";
 import { RealEstateTrader } from "./real-estate-trader";
 import { RebirthPanel } from "./rebirth-panel";
+import { PixelAvatar } from "./pixel-avatar";
 import {
   REBIRTH_THRESHOLD_PCT,
   PLAY_MODES,
@@ -120,22 +122,32 @@ export function GameDashboard({
       <Card>
         <CardContent className="py-3 space-y-2">
           <div className="flex items-center justify-between flex-wrap gap-1">
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-lg font-bold">
-                  {character.gender === "female" ? "👩" : character.gender === "male" ? "👨" : "🧑"}
-                  {" "}
-                  {character.name}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {character.education_level === "bachelor" ? "🎓 대졸" : "🎒 고졸"}
-                </span>
+            <div className="flex items-center gap-3">
+              {/* Plan #37: 픽셀 아바타 */}
+              <div className="flex-shrink-0 rounded-md border bg-background p-1">
+                <PixelAvatar
+                  gender={character.gender}
+                  jobType={character.job_type}
+                  jobTitle={character.job_title}
+                  educationLevel={character.education_level}
+                  size={56}
+                />
               </div>
-              <div className="text-xs text-muted-foreground mt-0.5">
-                {career} · D+{character.current_day}일차 ·{" "}
-                <span className="text-primary font-semibold">
-                  {modeDef.emoji} {modeDef.label}
-                </span>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-lg font-bold">{character.name}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {character.education_level === "bachelor" ? "🎓 대졸" : "🎒 고졸"}
+                  </span>
+                </div>
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  {career} · D+{character.current_day}일차
+                </div>
+                <div className="text-xs mt-0.5">
+                  <span className="text-primary font-semibold">
+                    {modeDef.emoji} {modeDef.label}
+                  </span>
+                </div>
               </div>
             </div>
             <div className="text-right">
@@ -143,6 +155,12 @@ export function GameDashboard({
               <div className="text-xs">
                 🌅 {rebirthCount}회 · 💎 {initialPoints}pt
               </div>
+              <Link
+                href="/app/roguelike/stats"
+                className="inline-flex items-center gap-0.5 text-[10px] text-primary hover:underline mt-0.5"
+              >
+                <Trophy className="h-2.5 w-2.5" /> 통계/리더보드
+              </Link>
             </div>
           </div>
 
@@ -209,7 +227,14 @@ export function GameDashboard({
 
       {/* 탭 컨텐츠 */}
       {tab === "diary" && (
-        <DiaryView currentMode={character.play_mode} currentDay={character.current_day} />
+        <DiaryView
+          currentMode={character.play_mode}
+          currentDay={character.current_day}
+          unlocks={unlocks}
+          onModeChange={(newMode) =>
+            setCharacter((c) => ({ ...c, play_mode: newMode }))
+          }
+        />
       )}
       {tab === "stock" && (
         <StockTrader characterCash={Number(character.cash)} onTrade={runTick} />

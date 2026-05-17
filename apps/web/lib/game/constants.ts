@@ -191,6 +191,40 @@ export const RANDOM_EVENTS: RandomEventDef[] = [
   },
 ];
 
+// ──────────── 모드별 예상 수입 (UI 표시용) ────────────
+export type ModeEstimate = {
+  parttimeDaily: number;     // 알바 출근 시 받는 일급
+  fulltimeDaily: number;     // 사원 출근 시
+  fulltimeManager: number;   // 대리
+  /** 주간 평균 (주 5일 × work weight × 평균 일급) */
+  weeklyAverageParttime: number;
+  weeklyAverageFulltime: number;
+};
+
+export function modeIncomeEstimate(
+  mode: PlayMode,
+  unlocks: Record<string, number>,
+): ModeEstimate {
+  const parttimeBonus = 1 + (unlocks["parttime_bonus"] ?? 0) * 0.1;
+  const fulltimeBonus = 1 + (unlocks["fulltime_bonus"] ?? 0) * 0.1;
+  const weights = PLAY_MODES[mode].weights;
+
+  const parttimeDaily = Math.floor(PARTTIME_DAILY_WAGE * parttimeBonus);
+  const fulltimeDaily = Math.floor(FULLTIME_DAILY_BY_RANK["사원"] * fulltimeBonus);
+  const fulltimeManager = Math.floor(FULLTIME_DAILY_BY_RANK["대리"] * fulltimeBonus);
+
+  // 주 5일 중 work weight만큼 일함
+  const workDaysPerWeek = 5 * weights.work;
+
+  return {
+    parttimeDaily,
+    fulltimeDaily,
+    fulltimeManager,
+    weeklyAverageParttime: Math.floor(parttimeDaily * workDaysPerWeek),
+    weeklyAverageFulltime: Math.floor(fulltimeDaily * workDaysPerWeek),
+  };
+}
+
 // ──────────── 모드별 day당 cash/intel 계산 ──────────────
 export type DailyResult = {
   cashDelta: number;
