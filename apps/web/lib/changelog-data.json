@@ -1,5 +1,14 @@
 [
   {
+    "sha": "d41114d",
+    "date": "2026-05-17T10:29:55+09:00",
+    "type": "feat",
+    "scope": "search",
+    "breaking": false,
+    "title": "비검색 시 거래대금 상위 카테고리별 표시",
+    "description": "요청: 종목 검색 페이지에서 빈 검색일 때 카테고리별 거래대금 상위 노출.\n\n- 전체 탭: KR주식/US주식/KR ETF/US ETF 각 3개\n- 주식 탭: KR주식 5 + US주식 5\n- ETF 탭: KR ETF 5 + US ETF 5\n\n## 구현\n- lib/trading-leaders.ts: scope/instrument/limit 받아 거래대금 상위 반환\n  거래대금 = 최근 7일 내 가장 최신 일봉의 close × volume\n  VolumeLeaders 컴포넌트 로직을 함수형으로 재사용\n- /app/trade/search 페이지: SSR에서 8번 fetch 병렬 (3개×4 + 5개×4),\n  StockSearch에 trending prop으로 전달\n- StockSearch: q 비어있으면 trending 영역, 있으면 검색 결과 렌더\n  instrument 토글 시 props 안에서 필터 → 추가 fetch 없음\n- ESLint react-hooks/set-state-in-effect 회피 — 빈 q에서는\n  setState 안 하고 cancelled flag로 cleanup"
+  },
+  {
     "sha": "f2195d2",
     "date": "2026-05-17T00:33:56+09:00",
     "type": "feat",

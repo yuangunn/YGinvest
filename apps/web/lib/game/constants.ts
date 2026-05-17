@@ -1,0 +1,193 @@
+// Plan #33: 게임 상수 — 활동 효과 / 직급 / 해금 등.
+//
+// 모든 수치는 한 곳에 집약. 밸런싱 시 여기만 수정.
+
+// 시작 자원
+export const STARTING_CASH = 10_000_000; // 1,000만원
+export const REBIRTH_THRESHOLD_PCT = 0.05; // 5% 수익 → 환생 가능
+
+// 한국 최저시급 (2026년 추정) × 8시간 × 주 5일
+export const MIN_HOURLY_WAGE = 10_300; // 원/시간 (2026년 예상)
+export const PARTTIME_HOURS_PER_DAY = 8;
+export const PARTTIME_DAILY_WAGE = MIN_HOURLY_WAGE * PARTTIME_HOURS_PER_DAY; // 82,400원
+export const HOLIDAY_BONUS_MULT = 1.5; // 공휴수당 1.5배
+
+// 직급별 일급 (정규직, 월급 ÷ 22)
+export const FULLTIME_DAILY_BY_RANK: Record<string, number> = {
+  사원: 130_000,    // 월 약 286만원
+  대리: 170_000,    // 월 약 374만원
+  과장: 220_000,    // 월 약 484만원
+  차장: 280_000,    // 월 약 616만원
+  부장: 350_000,    // 월 약 770만원
+};
+export const FULLTIME_RANKS = ["사원", "대리", "과장", "차장", "부장"] as const;
+export type FulltimeRank = (typeof FULLTIME_RANKS)[number];
+
+// 활동 비용 (행복도 ↑ 활동은 돈 -)
+export const ACTIVITY_COST: Record<string, number> = {
+  shopping: 50_000,
+  dining: 30_000,
+  healing: 100_000,
+  study: 0,
+  rest: 0,
+  exercise: 0,
+  parttime: 0,
+  fulltime: 0,
+  job_search: 0,
+  free: 0,
+};
+
+// 피로도 변화 (양수 = 누적, 음수 = 회복)
+export const FATIGUE_DELTA: Record<string, number> = {
+  parttime: 15,
+  fulltime: 18,
+  study: 8,
+  job_search: 10,
+  rest: -20,
+  shopping: -10,
+  dining: -10,
+  healing: -25,
+  exercise: -15, // 체력 단련 효과
+  free: -5,
+};
+
+// 행복도 변화
+export const HAPPINESS_DELTA: Record<string, number> = {
+  parttime: -2,
+  fulltime: -3,
+  study: -1,
+  job_search: -3,
+  rest: 3,
+  shopping: 8,
+  dining: 10,
+  healing: 15,
+  exercise: 5,
+  free: 1,
+};
+
+// 지력 (자기계발) 변화 — study만 +5
+export const INTELLIGENCE_DELTA: Record<string, number> = {
+  study: 5,
+};
+
+// 피로도 임계점
+export const FATIGUE_PRODUCTIVITY_DROP = 70; // 이상 시 수입 -10%
+export const FATIGUE_FIRE_RISK = 90;          // 이상 시 5% 해고
+export const FATIGUE_HOSPITAL = 100;          // 이상 시 강제 1주 입원
+
+// 학력 / 직업 unlock 조건
+export const INTELLIGENCE_FOR_GED = 200;       // 검정고시 (자기계발 누적 200시간)
+export const INTELLIGENCE_FOR_UNIVERSITY = 600; // 대학 진학
+export const INTELLIGENCE_FOR_FULLTIME = 1500;  // 사무직 취업
+
+// 승진 조건 (직장 N일 + 피로도 평균 < X)
+export const PROMOTION_DAYS_PER_RANK = 180; // 약 6개월마다 승진 기회
+
+// 환생 포인트 계산
+// points = 수익률(%) × 10 + 시간 효율 보너스 (빠를수록 ↑)
+// 예: 5% 수익, 30일 = 50 + 보너스 = ~60pt
+export function calculateRebirthPoints(
+  returnPct: number,
+  daysPlayed: number,
+): number {
+  const returnPoints = Math.floor(returnPct * 100 * 10); // 5% → 50pt
+  // 시간 보너스: 100일 안에 클리어하면 +20, 200일 +10, 그 이상 0
+  const timeBonus = daysPlayed <= 100 ? 20 : daysPlayed <= 200 ? 10 : 0;
+  return returnPoints + timeBonus;
+}
+
+// 영구 업그레이드 메뉴 (해금 가능 항목)
+export type UnlockDef = {
+  key: string;
+  label: string;
+  description: string;
+  cost: number;
+  maxLevel: number;
+};
+
+export const UNLOCK_CATALOG: UnlockDef[] = [
+  {
+    key: "starting_cash_boost",
+    label: "🪙 시작 자본 +100만원",
+    description: "환생 시 시작 cash +1,000,000원 (누적)",
+    cost: 30,
+    maxLevel: 10,
+  },
+  {
+    key: "parttime_bonus",
+    label: "💪 알바 보너스 +10%",
+    description: "알바 일당 영구 +10% (누적)",
+    cost: 25,
+    maxLevel: 5,
+  },
+  {
+    key: "fulltime_bonus",
+    label: "💼 정규직 보너스 +10%",
+    description: "정규직 일급 영구 +10% (누적)",
+    cost: 40,
+    maxLevel: 5,
+  },
+  {
+    key: "bachelor_unlock",
+    label: "🎓 대졸 시작 unlock",
+    description: "환생 시 학력 시작점을 대졸로 선택 가능. 시작 시 자기계발 +500",
+    cost: 100,
+    maxLevel: 1,
+  },
+  {
+    key: "fatigue_resistance",
+    label: "🛌 피로 저항 +10",
+    description: "피로도 임계점이 모두 +10 (누적)",
+    cost: 35,
+    maxLevel: 3,
+  },
+  {
+    key: "real_estate_starter",
+    label: "🏠 부동산 시작 자금",
+    description: "환생 시 +5,000만원 (부동산 진입 가속)",
+    cost: 150,
+    maxLevel: 1,
+  },
+  {
+    key: "mentor_effect",
+    label: "👨‍🏫 멘토 효과",
+    description: "study 활동 시 지력 +50% (5 → 7.5)",
+    cost: 60,
+    maxLevel: 1,
+  },
+  {
+    key: "happiness_buffer",
+    label: "😊 행복도 버퍼 +20",
+    description: "행복도가 0이 되어도 디버프 없음 (-20 까지 보호)",
+    cost: 45,
+    maxLevel: 1,
+  },
+];
+
+// 활동 라벨 (한글)
+export const ACTIVITY_LABEL: Record<string, string> = {
+  parttime: "💪 알바",
+  fulltime: "💼 출근",
+  study: "📚 공부",
+  rest: "🛌 휴식",
+  shopping: "🛍️ 쇼핑",
+  dining: "🍔 외식",
+  healing: "🧘 힐링",
+  exercise: "🏃 운동",
+  job_search: "📝 구직",
+  free: "⚪ 미정",
+};
+
+// 활동 색상 (UI)
+export const ACTIVITY_COLOR: Record<string, string> = {
+  parttime: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/40",
+  fulltime: "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/40",
+  study: "bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/40",
+  rest: "bg-slate-500/15 text-slate-600 dark:text-slate-400 border-slate-500/40",
+  shopping: "bg-pink-500/15 text-pink-600 dark:text-pink-400 border-pink-500/40",
+  dining: "bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/40",
+  healing: "bg-teal-500/15 text-teal-600 dark:text-teal-400 border-teal-500/40",
+  exercise: "bg-green-500/15 text-green-600 dark:text-green-400 border-green-500/40",
+  job_search: "bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border-cyan-500/40",
+  free: "bg-muted text-muted-foreground border",
+};
