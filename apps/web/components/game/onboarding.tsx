@@ -208,7 +208,7 @@ export function GameOnboarding({
           </Button>
 
           <p className="text-[11px] text-muted-foreground text-center">
-            실제 2시간 = 게임 1일. 가끔 들어와서 일기만 확인하세요.
+            실제 1시간 = 게임 1일. 가끔 들어와서 일기만 확인하세요.
           </p>
         </CardContent>
       </Card>

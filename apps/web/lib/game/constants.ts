@@ -3,8 +3,9 @@
 // 30일 스케줄 → 3가지 모드로 대체.
 // 피로도/행복도 제거. 자원은 cash + intelligence + (job 정보).
 
-// Plan #35: 시간 배율 — 실제 2시간 = 게임 1일.
-export const HOURS_PER_GAME_DAY = 2;
+// Plan #38: 시간 배율 — 실제 1시간 = 게임 1일 (1:24).
+// 더 빠른 페이스. 환생 사이클이 4~7일 게임 시간 안에 가능.
+export const HOURS_PER_GAME_DAY = 1;
 
 // 시작 자원
 export const STARTING_CASH = 10_000_000;
@@ -213,8 +214,8 @@ export function modeIncomeEstimate(
   const fulltimeDaily = Math.floor(FULLTIME_DAILY_BY_RANK["사원"] * fulltimeBonus);
   const fulltimeManager = Math.floor(FULLTIME_DAILY_BY_RANK["대리"] * fulltimeBonus);
 
-  // 주 5일 중 work weight만큼 일함
-  const workDaysPerWeek = 5 * weights.work;
+  // Plan #38: 주 7일 (주말도 일함) × work weight
+  const workDaysPerWeek = 7 * weights.work;
 
   return {
     parttimeDaily,
@@ -237,7 +238,7 @@ export function computeDailyResult(
   mode: PlayMode,
   jobType: "unemployed" | "parttime" | "fulltime",
   jobTitle: string | null,
-  dayOfWeek: number, // 0-6 (월=0 ... 일=6)
+  _dayOfWeek: number, // Plan #38: 주말도 동일 (그냥 게임 단순화)
   unlocks: Record<string, number>,
 ): DailyResult {
   const modeWeights = PLAY_MODES[mode].weights;
@@ -245,16 +246,7 @@ export function computeDailyResult(
   const fulltimeBonus = 1 + (unlocks["fulltime_bonus"] ?? 0) * 0.1;
   const mentorEffect = (unlocks["mentor_effect"] ?? 0) > 0;
 
-  // 주말은 강제 휴식 (현실감 — 주 5일 근무제)
-  const isWeekend = dayOfWeek === 5 || dayOfWeek === 6;
-  if (isWeekend) {
-    return {
-      cashDelta: 0,
-      intelligenceDelta: 0,
-      summary: "주말 — 휴식",
-      emoji: "🛌",
-    };
-  }
+  // Plan #38: 주말 강제 휴식 제거 — 그냥 게임처럼 매일 활동.
 
   // 모드 weight 기반 활동 결정
   const r = Math.random();

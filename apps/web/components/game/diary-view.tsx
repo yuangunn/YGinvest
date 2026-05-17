@@ -180,7 +180,7 @@ export function DiaryView({ currentMode, currentDay, unlocks, onModeChange }: Pr
             );
           })}
           <p className="text-[10px] text-muted-foreground pt-1">
-            💡 주말은 강제 휴식. 주 5일 × work weight = 실제 출근일.
+            💡 주 7일 × work weight = 실제 출근일 (게임이라 주말도 활동).
           </p>
         </CardContent>
       </Card>
@@ -201,7 +201,7 @@ export function DiaryView({ currentMode, currentDay, unlocks, onModeChange }: Pr
             <p className="text-xs text-muted-foreground">로딩 중...</p>
           ) : entries.length === 0 ? (
             <p className="text-xs text-muted-foreground">
-              아직 일기가 없어요. 2시간 후 첫 일기가 작성됩니다.
+              아직 일기가 없어요. 1시간 후 첫 일기가 작성됩니다.
             </p>
           ) : (
             <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">

@@ -89,7 +89,7 @@ export function GameDashboard({
       }
     };
     tick();
-    // 1분마다 자동 tick (게임 시간 = 실제 2시간 = 1게임일이라 자주 안 변하지만,
+    // 1분마다 자동 tick (게임 시간 = 실제 1시간 = 1게임일이라 자주 안 변하지만,
     // 환생/매도 즉시 반영 위해)
     const interval = setInterval(tick, 60_000);
     return () => {
