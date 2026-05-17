@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  let body: { name?: string; gender?: string; education_level?: string };
+  let body: { name?: string; gender?: string; education_level?: string; play_mode?: string };
   try {
     body = await request.json();
   } catch {
@@ -39,6 +39,7 @@ export async function POST(request: Request) {
   const name = (body.name ?? "").trim().slice(0, 20);
   const gender = body.gender ?? "other";
   const education = body.education_level ?? "highschool";
+  const playMode = body.play_mode ?? "balanced";
 
   if (!name) {
     return NextResponse.json({ error: "name_required" }, { status: 400 });
@@ -48,6 +49,9 @@ export async function POST(request: Request) {
   }
   if (!["highschool", "bachelor"].includes(education)) {
     return NextResponse.json({ error: "invalid_education" }, { status: 400 });
+  }
+  if (!["learning", "income", "balanced"].includes(playMode)) {
+    return NextResponse.json({ error: "invalid_play_mode" }, { status: 400 });
   }
 
   // 대졸 시작은 bachelor_unlock 해금 필요
@@ -86,6 +90,7 @@ export async function POST(request: Request) {
     name,
     gender,
     education_level: education,
+    play_mode: playMode,
     cash: startingCash,
     starting_cash: startingCash,
     intelligence: startingIntelligence,
