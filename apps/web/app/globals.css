@@ -233,3 +233,173 @@
     appearance: textfield;
   }
 }
+
+/* =============================================================
+   YG Design System — Plan #41 (Claude Design handoff)
+   Korean fintech (Toss-inspired) deep-ink brand + KR stock conv.
+   Tokens scoped to root, applied via .yg-* utility classes.
+   ============================================================= */
+:root {
+  /* Surfaces */
+  --yg-bg-app:        #F4F5F7;
+  --yg-bg-card:       #FFFFFF;
+  --yg-bg-sub:        #F8F9FB;
+  --yg-bg-pressed:    #EDEFF3;
+  --yg-bg-tint-blue:  #EEF3FE;
+  --yg-bg-tint-red:   #FEEFEF;
+  --yg-bg-tint-ink:   #F2F3F5;
+
+  /* Foreground */
+  --yg-fg-primary:    #0F1115;
+  --yg-fg-secondary:  #4A5160;
+  --yg-fg-tertiary:   #8A93A1;
+  --yg-fg-quaternary: #B8BFC9;
+  --yg-fg-on-brand:   #FFFFFF;
+
+  /* Brand — deep ink, NOT blue (blue = loss in KR) */
+  --yg-brand:         #0F1115;
+  --yg-brand-press:   #2A2E36;
+  --yg-brand-soft:    #F2F3F5;
+
+  /* Korean stock convention: red ↑, blue ↓ */
+  --yg-up:            #E84B5A;
+  --yg-up-deep:       #C7384A;
+  --yg-down:          #2563EB;
+  --yg-down-deep:     #1B4FC3;
+
+  /* Lines */
+  --yg-line:          #EBEDF0;
+  --yg-line-strong:   #DCE0E6;
+  --yg-line-faint:    #F2F3F5;
+
+  /* Radii */
+  --yg-r-card:        18px;
+  --yg-r-card-lg:     20px;
+  --yg-r-btn:         12px;
+  --yg-r-chip:        9999px;
+  --yg-r-input:       14px;
+
+  /* Shadows */
+  --yg-shadow-card:   0 1px 2px rgba(15, 17, 21, 0.04), 0 0 0 1px rgba(15, 17, 21, 0.03);
+  --yg-shadow-sheet:  0 -8px 32px rgba(15, 17, 21, 0.12);
+  --yg-shadow-pop:    0 8px 24px rgba(15, 17, 21, 0.10), 0 0 0 1px rgba(15, 17, 21, 0.04);
+}
+
+/* App surface — the gray that lets white cards stack visibly */
+.yg-surface {
+  background: var(--yg-bg-app);
+  color: var(--yg-fg-primary);
+  min-height: 100vh;
+}
+
+/* Tabular numerals utility — apply to all money/percent/qty */
+.yg-num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Cards */
+.yg-card {
+  background: var(--yg-bg-card);
+  border-radius: var(--yg-r-card);
+  box-shadow: var(--yg-shadow-card);
+}
+.yg-card-lg { border-radius: var(--yg-r-card-lg); }
+
+/* Tap state — subtle scale + bg shift on press */
+.yg-tap {
+  transition: transform 120ms ease, background 120ms ease;
+  cursor: pointer;
+}
+.yg-tap:active {
+  transform: scale(.985);
+  background: var(--yg-bg-pressed);
+}
+
+/* Chips */
+.yg-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: var(--yg-r-chip);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  background: var(--yg-bg-tint-ink);
+  color: var(--yg-fg-secondary);
+  white-space: nowrap;
+}
+.yg-chip-up   { background: var(--yg-bg-tint-red);  color: var(--yg-up-deep); }
+.yg-chip-down { background: var(--yg-bg-tint-blue); color: var(--yg-down-deep); }
+.yg-chip-brand { background: var(--yg-brand); color: var(--yg-fg-on-brand); }
+.yg-chip-outline { background: transparent; border: 1px solid var(--yg-line-strong); }
+
+/* Buttons */
+.yg-btn {
+  appearance: none;
+  border: none;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  height: 52px;
+  padding: 0 20px;
+  border-radius: var(--yg-r-btn);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: transform 120ms ease, background 120ms ease;
+}
+.yg-btn-primary  { background: var(--yg-brand); color: var(--yg-fg-on-brand); }
+.yg-btn-primary:hover  { background: var(--yg-brand-press); }
+.yg-btn-primary:active { transform: scale(.99); }
+.yg-btn-secondary{ background: var(--yg-bg-tint-ink); color: var(--yg-fg-primary); }
+.yg-btn-up       { background: var(--yg-up);   color: #fff; }
+.yg-btn-down     { background: var(--yg-down); color: #fff; }
+.yg-btn-ghost    { background: transparent; color: var(--yg-fg-secondary); }
+
+/* List row separator */
+.yg-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--yg-line-faint);
+}
+.yg-row:last-child { border-bottom: 0; }
+
+/* Horizontal scroll */
+.yg-hscroll {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  padding-bottom: 4px;
+}
+.yg-hscroll::-webkit-scrollbar { display: none; }
+.yg-hscroll > * { scroll-snap-align: start; flex: 0 0 auto; }
+
+/* Number stagger count-up */
+@keyframes ygCountUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.yg-stagger > * {
+  display: inline-block;
+  animation: ygCountUp 600ms cubic-bezier(.2,.7,.2,1) backwards;
+}
+.yg-stagger > *:nth-child(2) { animation-delay: 80ms; }
+.yg-stagger > *:nth-child(3) { animation-delay: 160ms; }
+.yg-stagger > *:nth-child(4) { animation-delay: 240ms; }
+
+/* Pixel grid (for PixelAvatar 16×16) */
+.yg-pixel-grid {
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  grid-template-rows: repeat(16, 1fr);
+  image-rendering: pixelated;
+}
+.yg-pixel-grid > i { display: block; }
