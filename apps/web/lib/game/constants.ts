@@ -2,6 +2,11 @@
 //
 // 모든 수치는 한 곳에 집약. 밸런싱 시 여기만 수정.
 
+// Plan #35: 시간 배율 — 실제 2시간 = 게임 1일.
+// 너무 느려도 안 되고 (1:1=실 30일 = 1환생) 너무 빨라도 안 됨 (시세 못 따라감).
+// 2시간:1일이면 사용자가 점심/저녁/잘 때 자연스럽게 체크하면서 진행.
+export const HOURS_PER_GAME_DAY = 2;
+
 // 시작 자원
 export const STARTING_CASH = 10_000_000; // 1,000만원
 export const REBIRTH_THRESHOLD_PCT = 0.05; // 5% 수익 → 환생 가능
@@ -190,4 +195,106 @@ export const ACTIVITY_COLOR: Record<string, string> = {
   exercise: "bg-green-500/15 text-green-600 dark:text-green-400 border-green-500/40",
   job_search: "bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border-cyan-500/40",
   free: "bg-muted text-muted-foreground border",
+};
+
+// Plan #35: 활동별 효과 요약 (UI 버튼/스케줄 칸에 표시)
+// short: 한 줄 요약 ("+8만 ·피로+15")
+// effects: 자세한 effect list (모달용)
+export type ActivityEffect = {
+  delta: number;
+  emoji: string;
+  label: string;
+  isGood: boolean;
+};
+
+export function getActivityEffects(activity: string): ActivityEffect[] {
+  const effects: ActivityEffect[] = [];
+
+  // 수입 (알바/정규직)
+  if (activity === "parttime") {
+    effects.push({
+      delta: PARTTIME_DAILY_WAGE,
+      emoji: "💰",
+      label: `+${Math.round(PARTTIME_DAILY_WAGE / 10000)}만원 (최저시급×8h)`,
+      isGood: true,
+    });
+  } else if (activity === "fulltime") {
+    const base = FULLTIME_DAILY_BY_RANK["사원"];
+    effects.push({
+      delta: base,
+      emoji: "💰",
+      label: `+${Math.round(base / 10000)}만원~ (직급별)`,
+      isGood: true,
+    });
+  }
+
+  // 비용
+  const cost = ACTIVITY_COST[activity] ?? 0;
+  if (cost > 0) {
+    effects.push({
+      delta: -cost,
+      emoji: "💸",
+      label: `-${Math.round(cost / 10000)}만원`,
+      isGood: false,
+    });
+  }
+
+  // 피로도
+  const fatigueChange = FATIGUE_DELTA[activity] ?? 0;
+  if (fatigueChange !== 0) {
+    effects.push({
+      delta: fatigueChange,
+      emoji: "🔋",
+      label: fatigueChange > 0 ? `피로 +${fatigueChange}` : `피로 ${fatigueChange}`,
+      isGood: fatigueChange < 0,
+    });
+  }
+
+  // 행복도
+  const happinessChange = HAPPINESS_DELTA[activity] ?? 0;
+  if (happinessChange !== 0) {
+    effects.push({
+      delta: happinessChange,
+      emoji: "😊",
+      label: happinessChange > 0 ? `행복 +${happinessChange}` : `행복 ${happinessChange}`,
+      isGood: happinessChange > 0,
+    });
+  }
+
+  // 지력
+  const intChange = INTELLIGENCE_DELTA[activity] ?? 0;
+  if (intChange !== 0) {
+    effects.push({
+      delta: intChange,
+      emoji: "📚",
+      label: `지력 +${intChange}`,
+      isGood: true,
+    });
+  }
+
+  return effects;
+}
+
+/** 활동 효과 한 줄 요약 (버튼용) */
+export function getActivityShortSummary(activity: string): string {
+  const fx = getActivityEffects(activity);
+  if (fx.length === 0) return "변화 없음";
+  return fx
+    .slice(0, 2)
+    .map((e) => e.label.replace(/[+\-](\d+)만원/g, (_, n) => `${e.delta > 0 ? "+" : "-"}${n}만`))
+    .join(" · ");
+}
+
+/** 활동 부가 설명 (모달용) */
+export const ACTIVITY_DESCRIPTION: Record<string, string> = {
+  parttime: "최저시급×8시간. 주 5일 권장, 6일 이상이면 피로 누적으로 능률↓/해고위험↑.",
+  fulltime: "정규직 출근. 직급별 일급(사원 13만~부장 35만). 자기계발 충분히 쌓으면 승진.",
+  study: "자기계발. 지력 누적 → 200=검정고시, 600=대학진학, 1500=사무직 취업.",
+  rest: "휴식. 피로 -20, 행복 +3. 비용 0.",
+  shopping: "쇼핑. 행복 +8, 피로 -10. 비용 5만원.",
+  dining: "외식. 행복 +10, 피로 -10. 비용 3만원.",
+  healing: "힐링 (스파/마사지). 행복 +15, 피로 -25. 비용 10만원.",
+  exercise: "운동. 피로 -15, 행복 +5. 비용 0.",
+  job_search: "구직활동. (Phase 2에서 정규직 면접 시스템 추가 예정)",
+  free: "미정. 자동으로 가벼운 휴식 처리.",
 };

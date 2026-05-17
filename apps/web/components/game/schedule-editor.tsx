@@ -1,12 +1,19 @@
 "use client";
 
 // Plan #33: 30일 스케줄 캘린더 — 프린세스 메이커 스타일.
+// Plan #35: 활동 선택 시 다음날 자동 이동, 버튼에 효과 요약 표시.
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { ACTIVITY_LABEL, ACTIVITY_COLOR } from "@/lib/game/constants";
+import {
+  ACTIVITY_LABEL,
+  ACTIVITY_COLOR,
+  ACTIVITY_DESCRIPTION,
+  HOURS_PER_GAME_DAY,
+  getActivityEffects,
+} from "@/lib/game/constants";
 
 const ACTIVITIES = [
   "parttime", "fulltime", "study", "rest", "shopping",
@@ -54,7 +61,15 @@ export function ScheduleEditor({ currentDay }: Props) {
       ...prev,
       [day]: { game_day: day, activity, executed_at: null, result_summary: null },
     }));
-    setSelectedDay(null);
+    // Plan #35: 다음날로 자동 이동 (PLAN_RANGE 안 넘으면)
+    const nextDay = day + 1;
+    const endDay = currentDay + PLAN_RANGE;
+    if (nextDay < endDay) {
+      setSelectedDay(nextDay);
+    } else {
+      setSelectedDay(null);
+      toast.success("30일 스케줄 완성! 저장 누르세요");
+    }
   }
 
   async function saveAll() {
@@ -97,7 +112,12 @@ export function ScheduleEditor({ currentDay }: Props) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-sm">📅 30일 스케줄</CardTitle>
+        <CardTitle className="text-sm flex items-center justify-between">
+          <span>📅 30일 스케줄</span>
+          <span className="text-[10px] font-normal text-muted-foreground">
+            실제 {HOURS_PER_GAME_DAY}시간 = 게임 1일
+          </span>
+        </CardTitle>
         <p className="text-[11px] text-muted-foreground mt-1">
           미리 짜두면 캐릭터가 알아서 진행. 실행된 일은 잠금.
           <br />
@@ -119,7 +139,7 @@ export function ScheduleEditor({ currentDay }: Props) {
             const activity = s?.activity ?? "free";
             const executed = !!s?.executed_at;
             const isToday = day === currentDay;
-            const dow = day % 7; // 단순화 — 정확한 요일은 life_started_at 기준
+            const dow = day % 7;
             const isWeekend = dow === 5 || dow === 6;
             return (
               <button
@@ -149,32 +169,52 @@ export function ScheduleEditor({ currentDay }: Props) {
           })}
         </div>
 
-        {/* 활동 선택 모달 */}
+        {/* Plan #35: 활동 선택 — 효과 정보 포함 */}
         {selectedDay !== null && (
           <div className="border rounded-lg p-3 space-y-2 bg-muted/30">
-            <div className="text-xs font-semibold">
-              D+{selectedDay}일차 활동 선택
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-semibold">
+                D+{selectedDay}일차 활동 선택
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedDay(null)}
+                className="text-[10px] text-muted-foreground hover:text-foreground"
+              >
+                ✕
+              </button>
             </div>
-            <div className="grid grid-cols-3 gap-1.5">
-              {ACTIVITIES.map((a) => (
-                <button
-                  key={a}
-                  type="button"
-                  onClick={() => pickActivity(selectedDay, a)}
-                  className={`text-[11px] rounded border px-2 py-1.5 hover:bg-accent transition-colors ${ACTIVITY_COLOR[a] ?? ""}`}
-                >
-                  {ACTIVITY_LABEL[a]}
-                </button>
-              ))}
+            <div className="grid grid-cols-2 gap-1.5">
+              {ACTIVITIES.map((a) => {
+                const effects = getActivityEffects(a);
+                const desc = ACTIVITY_DESCRIPTION[a];
+                return (
+                  <button
+                    key={a}
+                    type="button"
+                    onClick={() => pickActivity(selectedDay, a)}
+                    title={desc}
+                    className={`text-left rounded border p-2 hover:bg-accent transition-colors ${ACTIVITY_COLOR[a] ?? ""}`}
+                  >
+                    <div className="text-xs font-semibold">{ACTIVITY_LABEL[a]}</div>
+                    <div className="flex flex-wrap gap-x-1.5 gap-y-0.5 mt-0.5">
+                      {effects.length === 0 ? (
+                        <span className="text-[9px] text-muted-foreground">변화 없음</span>
+                      ) : (
+                        effects.map((e, i) => (
+                          <span
+                            key={i}
+                            className={`text-[9px] ${e.isGood ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}
+                          >
+                            {e.emoji} {e.label}
+                          </span>
+                        ))
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSelectedDay(null)}
-              className="w-full text-xs"
-            >
-              취소
-            </Button>
           </div>
         )}
 

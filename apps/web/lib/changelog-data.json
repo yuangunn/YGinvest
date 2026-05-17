@@ -1,5 +1,32 @@
 [
   {
+    "sha": "965750a",
+    "date": "2026-05-17T13:40:37+09:00",
+    "type": "fix",
+    "scope": "migrations",
+    "breaking": false,
+    "title": "idempotent — drop policy if exists 추가",
+    "description": "이전 시도가 ERROR로 끝나면 policy가 이미 있어서 재시도 fail. 모든 create\npolicy 전에 drop if exists 추가. create table/index는 이미 if not exists.\n\n이제 같은 migration이 여러 번 push돼도 안전 (supabase db push 재시도 OK)."
+  },
+  {
+    "sha": "b8a0cc8",
+    "date": "2026-05-17T11:21:23+09:00",
+    "type": "fix",
+    "scope": "worker,deploy",
+    "breaking": false,
+    "title": "HTTP/2 GOAWAY + KODEX/TIGER 오염 + 자동 배포",
+    "description": "## 워커 fix\n\n### compute_recommendations HTTP/2 GOAWAY\n`.in_(\"symbol\", symbols)` 한 번에 1000+개 → URL 너무 길고 처리 시간 길어\nSupabase가 connection drop. 200개씩 chunk로 분할 + 실패한 chunk skip.\n\n### bootstrap_etfs KODEX/TIGER 오염\nFDR ETF/KR listing의 'Symbol' 컬럼이 가끔 운용사 prefix 반환 →\n6자리 숫자 검증 추가. 기존 오염된 row는 cleanup migration으로 삭제.\n\n### APScheduler misfire\njob_defaults에 misfire_grace_time=300, max_instances=1, coalesce=True.\n\n## DB Migration (20260517000002)\n잘못 들어간 ETF row 삭제 — symbol이 6자리 숫자.KS/KQ 패턴 아닌 것.\n\n## 자동 배포 스크립트\n\n### scripts/deploy.bat / deploy.sh\n한 번에 4단계 실행:\n1. git push origin master\n2. supabase db push (마이그레이션)\n3. vercel --prod --yes\n4. SSH로 Oracle worker 재배포 (git pull + docker build + restart)\n\nWindows에서 deploy.bat 더블 클릭 → 끝.\n\n### scripts/bootstrap-oracle-vm.sh\nOracle VM 안에서 한 번 실행 → ~/redeploy.sh 재생성 + 첫 배포.\nSSH 접속 후:\n  curl -fsSL https://raw.githubusercontent.com/yuangunn/YGinvest/master/scripts/bootstrap-oracle-vm.sh | bash"
+  },
+  {
+    "sha": "80f1350",
+    "date": "2026-05-17T11:13:17+09:00",
+    "type": "feat",
+    "scope": "game",
+    "breaking": false,
+    "title": "Plan #33 — 인생 시뮬레이션 (매도 트레이너) MVP",
+    "description": "목적: 장기투자만 하다보면 매도를 안 하게 됨. 게임으로 \"매도 타이밍\" 학습.\n컨셉: 프린세스 메이커 식 스케줄링 + 본 앱 종목 시세 공유 (잔고는 분리).\n페이스: 게임 1일 = 실제 1일 (극도로 느림).\n\n## DB (20260517000001_roguelike_game.sql)\n- game_characters: 이름/성별/학력/직업/현금/피로/지력/행복도/current_day\n- game_schedule: 30일 미리 짜둔 활동 (executed_at으로 잠금)\n- game_holdings: 게임 내 주식 보유 (본 앱 stocks symbol 참조, 시세 공유)\n- game_real_estate_holdings: 부동산 보유 (갭투자 jeonse_amount 포함)\n- game_rebirths: 환생 기록\n- game_unlocks: 영구 업그레이드 (시작자본↑/알바↑/대졸시작/...)\n- real_estate_listings: 10개 지역 base 시세 + R-ONE weekly_index + KOSPI 베타\n- profiles.game_points / game_rebirth_count\n\n## Worker (apps/worker)\n- fetch_real_estate_index.py: 매주 월 07:00 KST 한국부동산원 R-ONE\n  주간 아파트 매매가격지수 fetch (REB_API_KEY 없으면 graceful skip)\n\n## Web — API routes\n- /api/game/character (GET/POST): 캐릭터 조회/생성\n- /api/game/tick (POST): 밀린 schedule 실행 + character 갱신\n- /api/game/schedule (GET/POST): 30일 일정 배치 저장\n- /api/game/trade (POST): 게임 내 주식 매수/매도\n- /api/game/holdings (GET): 보유 + 현재 시세 평가\n- /api/game/real-estate (GET/POST/DELETE): 부동산 시세/매수/매도\n- /api/game/rebirth (POST): 5% 수익 조건 체크 → 포인트 부여 + 리셋\n- /api/game/unlock (POST): 영구 업그레이드 구매\n\n## Web — UI\n- /app/roguelike: character 없으면 onboarding, 있으면 dashboard\n- onboarding: 이름/성별/학력 선택 (대졸은 bachelor_unlock 100pt 필요)\n- dashboard: 캐릭터 헤더 + 자원 바 (현금/피로/지력/행복도) +\n  환생 진행도 + 탭 (스케줄/주식/부동산/환생)\n- schedule-editor: 30일 캘린더, 9개 활동 색상별, 실행된 일자 잠금\n- stock-trader: 보유 + 검색 + 매수/매도, +5% 매도 권장 알림\n- real-estate-trader: 10개 지역 시세, 자기자본 vs 갭투자 선택\n- rebirth-panel: 환생 실행 + 8개 영구 업그레이드 상점\n\n## 시세 시뮬레이션 (부동산)\n계산: base × weekly_index × (1 + KOSPI × β) × (1 + daily_noise)\n- weekly_index: R-ONE 주간지수 (없으면 1.0)\n- KOSPI: KODEX 200 (069500.KS)의 최근 2일 close 비교\n- daily_noise: deterministic hash(region+day) — 일별 동일 결과\n- 베타: 강남 0.8 (높은 동조성), 시골 0.1 (낮은 동조성)\n\n## 매도 동기 메커니즘 ⭐\n- 게임 잔고 vs 시작자본 비교 → +5% 도달 시 환생 가능\n- 환생 포인트 = 수익률 × 10 + 시간 보너스 (빠를수록 ↑)\n- 보유 종목 +5% 도달 시 \"매도하고 환생 점프 가능 🚀\" 권장 알림\n- 영구 업그레이드 8종: 시작자본 +100만원, 알바 +10%, 대졸 unlock,\n  부동산 시작자금, 피로 저항, 멘토 효과, 행복도 버퍼\n\n## 대시보드\n\"🎮 게임 (베타)\" 카테고리 추가 (collapsible, 기본 접힘)"
+  },
+  {
     "sha": "d41114d",
     "date": "2026-05-17T10:29:55+09:00",
     "type": "feat",
