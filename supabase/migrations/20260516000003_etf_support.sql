@@ -52,6 +52,7 @@ create index if not exists etf_holdings_holding_idx
 -- RLS: 모든 사용자 read-only
 alter table public.etf_holdings enable row level security;
 
+drop policy if exists etf_holdings_read on public.etf_holdings;
 create policy etf_holdings_read on public.etf_holdings
   for select
   to authenticated, anon

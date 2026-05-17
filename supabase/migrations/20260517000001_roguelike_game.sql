@@ -7,9 +7,10 @@
 -- - 5% 수익 시 환생 가능 → 영구 업그레이드 포인트.
 --
 -- 모든 테이블 RLS: 본인만 read/write.
+-- Idempotent: 모든 create는 if not exists, policy는 drop+create 패턴.
 
 -- ───── game_characters: 현재 라이프 캐릭터 ────────────────
-create table public.game_characters (
+create table if not exists public.game_characters (
   user_id uuid primary key references public.profiles(id) on delete cascade,
   name text not null,
   gender text not null check (gender in ('male', 'female', 'other')),
@@ -36,6 +37,7 @@ create table public.game_characters (
 );
 
 alter table public.game_characters enable row level security;
+drop policy if exists game_characters_self on public.game_characters;
 create policy game_characters_self on public.game_characters
   for all to authenticated
   using (auth.uid() = user_id)
@@ -44,44 +46,32 @@ create policy game_characters_self on public.game_characters
 comment on table public.game_characters is 'Plan #33: 현재 진행 중인 게임 라이프 캐릭터';
 
 -- ───── game_schedule: 30일 일정 ──────────────────────────────
--- 각 row = 사용자가 미리 짜둔 하루치 행동
-create table public.game_schedule (
+create table if not exists public.game_schedule (
   user_id uuid not null references public.profiles(id) on delete cascade,
-  -- character와 1:1이 아니라 user 단위. 환생 시 schedule 유지/리셋 선택.
   game_day int not null check (game_day >= 0),
   activity text not null check (activity in (
-    'parttime',     -- 알바
-    'fulltime',     -- 정규직 출근
-    'study',        -- 자기계발 / 공부
-    'rest',         -- 휴식 (피로도 ↓)
-    'shopping',     -- 쇼핑 (피로도 ↓, 돈 -)
-    'dining',       -- 외식 (행복도 ↑, 돈 -)
-    'healing',      -- 힐링 (행복도 ↑↑, 돈 -)
-    'exercise',     -- 운동 (피로도 ↓, 체력 ↑)
-    'job_search',   -- 구직활동
-    'free'          -- 미정 (자동 휴식)
+    'parttime', 'fulltime', 'study', 'rest', 'shopping',
+    'dining', 'healing', 'exercise', 'job_search', 'free'
   )),
-  -- tick 처리 여부 — 같은 day가 두 번 실행되지 않도록 보장
   executed_at timestamptz,
-  -- 결과 로그 (행동 후 변화)
   result_summary text,
   primary key (user_id, game_day)
 );
 
 alter table public.game_schedule enable row level security;
+drop policy if exists game_schedule_self on public.game_schedule;
 create policy game_schedule_self on public.game_schedule
   for all to authenticated
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
-create index game_schedule_day_idx on public.game_schedule (user_id, game_day);
+create index if not exists game_schedule_day_idx on public.game_schedule (user_id, game_day);
 
 comment on table public.game_schedule is 'Plan #33: 30일치 미리 짜둔 스케줄';
 
--- ───── game_holdings: 게임 내 주식 보유 (본 앱과 분리) ───────
-create table public.game_holdings (
+-- ───── game_holdings ──────────────────────────────────────
+create table if not exists public.game_holdings (
   user_id uuid not null references public.profiles(id) on delete cascade,
-  -- 본 앱 stocks 테이블의 symbol 참조 — 시세는 본 앱과 공유, 잔고는 분리
   symbol text not null references public.stocks(symbol),
   quantity numeric(20,4) not null check (quantity > 0),
   avg_cost numeric(20,4) not null check (avg_cost > 0),
@@ -90,6 +80,7 @@ create table public.game_holdings (
 );
 
 alter table public.game_holdings enable row level security;
+drop policy if exists game_holdings_self on public.game_holdings;
 create policy game_holdings_self on public.game_holdings
   for all to authenticated
   using (auth.uid() = user_id)
@@ -97,54 +88,53 @@ create policy game_holdings_self on public.game_holdings
 
 comment on table public.game_holdings is 'Plan #33: 게임 내 주식 보유 (본 앱 stocks 시세 공유, 잔고 분리)';
 
--- ───── game_real_estate_holdings: 게임 내 부동산 보유 ───────
-create table public.game_real_estate_holdings (
+-- ───── game_real_estate_holdings ─────────────────────────
+create table if not exists public.game_real_estate_holdings (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
-  -- 지역 코드: 'seoul_gangnam', 'busan' 등 (real_estate_listings.region_code 참조)
   region_code text not null,
   purchase_price numeric(20,2) not null,
-  -- 갭투자 시 전세금 (있으면 실투자금 = purchase_price - jeonse_amount)
   jeonse_amount numeric(20,2) not null default 0,
   acquired_at timestamptz not null default now()
 );
 
 alter table public.game_real_estate_holdings enable row level security;
+drop policy if exists game_re_holdings_self on public.game_real_estate_holdings;
 create policy game_re_holdings_self on public.game_real_estate_holdings
   for all to authenticated
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
-create index game_re_holdings_user_idx on public.game_real_estate_holdings (user_id);
+create index if not exists game_re_holdings_user_idx on public.game_real_estate_holdings (user_id);
 
--- ───── game_rebirths: 환생 히스토리 ────────────────────────
-create table public.game_rebirths (
+-- ───── game_rebirths ─────────────────────────────────────
+create table if not exists public.game_rebirths (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
   rebirth_number int not null,
   starting_cash numeric(20,2) not null,
   ending_cash numeric(20,2) not null,
-  total_assets numeric(20,2) not null,  -- 현금 + 주식 + 부동산
-  return_pct numeric(10,4) not null,    -- 0.05 = 5%
+  total_assets numeric(20,2) not null,
+  return_pct numeric(10,4) not null,
   days_played int not null,
   points_earned int not null,
   rebirthed_at timestamptz not null default now()
 );
 
 alter table public.game_rebirths enable row level security;
+drop policy if exists game_rebirths_self on public.game_rebirths;
 create policy game_rebirths_self on public.game_rebirths
   for select to authenticated
   using (auth.uid() = user_id);
+drop policy if exists game_rebirths_insert on public.game_rebirths;
 create policy game_rebirths_insert on public.game_rebirths
   for insert to authenticated
   with check (auth.uid() = user_id);
 
-create index game_rebirths_user_idx on public.game_rebirths (user_id, rebirthed_at desc);
+create index if not exists game_rebirths_user_idx on public.game_rebirths (user_id, rebirthed_at desc);
 
--- ───── game_unlocks: 영구 업그레이드/해금 ──────────────────
--- key: 'starting_cash_boost' / 'parttime_bonus' / 'bachelor_unlock' / etc.
--- level: 1, 2, 3... (누적 강화 가능)
-create table public.game_unlocks (
+-- ───── game_unlocks ──────────────────────────────────────
+create table if not exists public.game_unlocks (
   user_id uuid not null references public.profiles(id) on delete cascade,
   unlock_key text not null,
   level int not null default 1 check (level >= 1),
@@ -153,12 +143,13 @@ create table public.game_unlocks (
 );
 
 alter table public.game_unlocks enable row level security;
+drop policy if exists game_unlocks_self on public.game_unlocks;
 create policy game_unlocks_self on public.game_unlocks
   for all to authenticated
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
--- ───── profiles 확장: 누적 포인트 + 환생 카운트 ─────────────
+-- ───── profiles 확장 ────────────────────────────────────
 alter table public.profiles
   add column if not exists game_points int not null default 0,
   add column if not exists game_rebirth_count int not null default 0;
@@ -166,30 +157,26 @@ alter table public.profiles
 comment on column public.profiles.game_points is 'Plan #33: 환생 누적 포인트 (해금 화폐)';
 comment on column public.profiles.game_rebirth_count is 'Plan #33: 환생 횟수';
 
--- ───── real_estate_listings: 지역별 부동산 시세 ─────────────
--- 부동산 base 가격 + 한국부동산원 R-ONE 주간지수 변동률.
--- 일별 시세는 client side에서 base × (1 + week_change) × (1 + kospi_beta × kospi_daily)로 계산.
-create table public.real_estate_listings (
+-- ───── real_estate_listings ─────────────────────────────
+create table if not exists public.real_estate_listings (
   region_code text primary key,
   region_name text not null,
-  property_type text not null,   -- 'apartment', 'villa', 'studio'
-  base_price numeric(20,2) not null,   -- 2026년 5월 기준 base 평균 매매가
-  jeonse_ratio numeric(4,3) not null default 0.65,  -- 전세가율 (0.65 = 65%)
-  -- 시세 변동성 (일별 noise. 강남↑, 시골↓)
+  property_type text not null,
+  base_price numeric(20,2) not null,
+  jeonse_ratio numeric(4,3) not null default 0.65,
   daily_volatility numeric(4,3) not null default 0.005,
-  -- KOSPI 베타 (KOSPI 변동에 얼마나 동조하는지. 0~1)
   kospi_beta numeric(4,3) not null default 0.3,
-  -- 한국부동산원 R-ONE 주간 지수 (worker가 매주 fetch해서 갱신)
-  weekly_index numeric(6,4) not null default 1.0,  -- 1.0 = base 그대로, 1.05 = +5%
+  weekly_index numeric(6,4) not null default 1.0,
   weekly_index_updated_at timestamptz,
   is_active boolean not null default true
 );
 
 alter table public.real_estate_listings enable row level security;
+drop policy if exists real_estate_listings_read on public.real_estate_listings;
 create policy real_estate_listings_read on public.real_estate_listings
   for select to authenticated, anon using (true);
 
--- ───── seed: 10개 지역 ───────────────────────────────────
+-- ───── seed: 10개 지역 ─────────────────────────────────
 insert into public.real_estate_listings
   (region_code, region_name, property_type, base_price, jeonse_ratio, daily_volatility, kospi_beta)
 values
