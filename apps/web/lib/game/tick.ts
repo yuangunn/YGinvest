@@ -34,6 +34,10 @@ export type GameCharacter = {
   current_day: number;
   starting_cash: number;
   play_mode: PlayMode;
+  is_married?: boolean;
+  married_at?: string | null;
+  children_count?: number;
+  is_retired?: boolean;
 };
 
 export type Unlocks = Record<string, number>;
@@ -100,30 +104,70 @@ export function applyTickWithDiary(
 
   for (let day = startDay + 1; day <= today; day++) {
     const realDate = gameDayToRealDate(character.life_started_at, day);
-    const dayOfWeek = (realDate.getDay() + 6) % 7; // 월=0 ... 일=6
+    const dayOfWeek = (realDate.getDay() + 6) % 7;
 
-    // 1. 일상 활동
-    const result = computeDailyResult(
-      character.play_mode,
-      job_type,
-      job_title,
-      dayOfWeek,
-      unlocks,
-    );
-    cash += result.cashDelta;
-    intelligence += result.intelligenceDelta;
+    // 1. 일상 활동 (은퇴 후에는 연금만)
+    let dayCashDelta = 0;
+    let dayIntelDelta = 0;
+    if (!character.is_retired) {
+      const result = computeDailyResult(
+        character.play_mode,
+        job_type,
+        job_title,
+        dayOfWeek,
+        unlocks,
+      );
+      cash += result.cashDelta;
+      intelligence += result.intelligenceDelta;
+      dayCashDelta = result.cashDelta;
+      dayIntelDelta = result.intelligenceDelta;
 
-    entries.push({
-      game_day: day,
-      real_date: realDate.toISOString(),
-      entry_type: "activity",
-      emoji: result.emoji,
-      summary: result.summary,
-      cash_delta: result.cashDelta,
-      metadata: {
-        intelligence_delta: result.intelligenceDelta,
-      },
-    });
+      entries.push({
+        game_day: day,
+        real_date: realDate.toISOString(),
+        entry_type: "activity",
+        emoji: result.emoji,
+        summary: result.summary,
+        cash_delta: result.cashDelta,
+        metadata: { intelligence_delta: result.intelligenceDelta },
+      });
+    } else {
+      // 은퇴 — 매 30일마다 연금 (월 단위 단순화: 30 game days = 1달)
+      if (day % 30 === 0) {
+        // 연금액은 character_pension에서 가져와야 하지만 client 계산 — 일단 5만/월 기본
+        const pension = 50_000;
+        cash += pension;
+        dayCashDelta = pension;
+        entries.push({
+          game_day: day,
+          real_date: realDate.toISOString(),
+          entry_type: "activity",
+          emoji: "🌅",
+          summary: `연금 입금 +${(pension / 10000).toFixed(0)}만원`,
+          cash_delta: pension,
+          metadata: { is_pension: true },
+        });
+      }
+    }
+
+    // 자녀 양육비 (자녀당 매일 5천원)
+    const childCount = character.children_count ?? 0;
+    if (childCount > 0) {
+      const childCost = 5_000 * childCount;
+      cash -= childCost;
+      entries.push({
+        game_day: day,
+        real_date: realDate.toISOString(),
+        entry_type: "activity",
+        emoji: "👶",
+        summary: `자녀 ${childCount}명 양육비 -${(childCost / 1000).toFixed(0)}천원`,
+        cash_delta: -childCost,
+        metadata: { is_childcare: true },
+      });
+    }
+
+    void dayCashDelta;
+    void dayIntelDelta;
 
     // 2. 학력/승진 마일스톤 체크
     const milestone = checkMilestones(
