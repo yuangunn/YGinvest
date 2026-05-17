@@ -1,5 +1,14 @@
 [
   {
+    "sha": "67193df",
+    "date": "2026-05-17T14:19:08+09:00",
+    "type": "feat",
+    "scope": "game",
+    "breaking": false,
+    "title": "Plan #36 — 모드 + 일기 시스템 (스케줄 제거)",
+    "description": "## 컨셉 변경\n30일 스케줄 매번 짜는 부담 → 모드 선택 후 자동 진행.\n사용자는 가끔 들어와서 일기로 그동안의 변화 확인.\n피로/행복 시스템 제거 (게임 단순화).\n\n## 3가지 모드\n- 📚 학습 중심: 일 30% / 공부 70% — 지력↑, 환생 느리지만 정규직 후 가속\n- 💰 수입 중심: 일 100% — 현금↑, 환생 빠름, 학력 진보 X\n- ⚖️ 균형: 일 50% / 공부 50% — 첫 환생 추천\n\n주말은 강제 휴식 (현실감, 주 5일제).\n\n## 일기 시스템\n매 tick마다 game_diary 테이블에 entry 자동 insert:\n- activity: 일상 (정규직 출근 +13만원, 자기계발 지력 +5 등)\n- event: 랜덤 이벤트 12종 (부모님 용돈, 차사고, AI 붐, 코인 폭락 등)\n- milestone: 학력/승진 자동 이정표 (검정고시, 대학, 사무직, 승진)\n- trade/market: 매매/시세 변동 (Phase 2.B에서 자동 기록)\n\n일기 UI: game_day별 그룹, 날짜+요일 헤더, day별 합산 cash delta 표시.\nborder-l-2로 일기 시각화. 타입별 색상 차이.\n\n## 학력/승진 자동 진행\n지력 200 → 검정고시 (notification)\n지력 600 → 대학 진학 (highschool → bachelor)\n지력 1500 → 사무직 취업 (unemployed → fulltime, 사원)\n정규직 180일마다 → 자동 승진 (사원→대리→과장→차장→부장)\n\n## 랜덤 이벤트 12종\n긍정: 부모님 용돈, 복권, 회사 식대/표창, AI 붐, 책 영감, 연말정산\n부정: 병원비, 차사고, 결혼 축의금, 코인 폭락, 경제 위기\n\"good_luck\" 영구 해금: 긍정 이벤트 확률 +25%\n\"company_*\" 이벤트: 정규직만 발생\n\n## 영구 업그레이드 추가\n🍀 행운 (70pt): 긍정 이벤트 확률 +25%\n\n## DB Migration\n- 20260517000003: play_mode 컬럼 + game_diary 테이블 + game_schedule 폐기 표시\n- idempotent (drop policy if exists)\n\n## 제거된 것\n- schedule-editor.tsx (사용 X)\n- 피로/행복 자원 UI (DB 컬럼만 호환성 유지)\n- /api/game/schedule (deprecated, 호출 안 함)\n- /api/game/tick의 schedule 처리 로직 → diary 자동 생성으로 대체"
+  },
+  {
     "sha": "7b5b4af",
     "date": "2026-05-17T13:56:59+09:00",
     "type": "feat",

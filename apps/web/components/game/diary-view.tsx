@@ -1,11 +1,16 @@
 "use client";
 
-// Plan #36: 일기 뷰 — game_day별 entry를 그룹화해서 일기 형식으로.
+// Plan #36: 일기 뷰 — game_day별 entry를 일기 형식으로.
+// Plan #37: 모드 변경 시 부모에 알림 (헤더 즉시 갱신) + 모드별 예상 수입 표시.
 
 import { useEffect, useState } from "react";
 import { BookOpen, Calendar } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PLAY_MODES, type PlayMode } from "@/lib/game/constants";
+import {
+  PLAY_MODES,
+  modeIncomeEstimate,
+  type PlayMode,
+} from "@/lib/game/constants";
 import { toast } from "sonner";
 
 const KRW = new Intl.NumberFormat("ko-KR", {
@@ -13,6 +18,10 @@ const KRW = new Intl.NumberFormat("ko-KR", {
   currency: "KRW",
   maximumFractionDigits: 0,
 });
+
+function manwon(n: number): string {
+  return `${Math.round(n / 10000).toLocaleString()}만원`;
+}
 
 type DiaryEntry = {
   game_day: number;
@@ -27,12 +36,13 @@ type DiaryEntry = {
 type Props = {
   currentMode: PlayMode;
   currentDay: number;
+  unlocks: Record<string, number>;
+  onModeChange: (newMode: PlayMode) => void;
 };
 
-export function DiaryView({ currentMode, currentDay }: Props) {
+export function DiaryView({ currentMode, currentDay, unlocks, onModeChange }: Props) {
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [mode, setMode] = useState<PlayMode>(currentMode);
   const [modeChanging, setModeChanging] = useState(false);
 
   useEffect(() => {
@@ -51,6 +61,7 @@ export function DiaryView({ currentMode, currentDay }: Props) {
   }, []);
 
   async function changeMode(newMode: PlayMode) {
+    if (newMode === currentMode) return;
     setModeChanging(true);
     try {
       const res = await fetch("/api/game/mode", {
@@ -62,14 +73,15 @@ export function DiaryView({ currentMode, currentDay }: Props) {
         toast.error("모드 변경 실패");
         return;
       }
-      setMode(newMode);
+      // Plan #37: 부모(Dashboard)에 알려서 헤더 뱃지 즉시 갱신
+      onModeChange(newMode);
       toast.success(`모드 변경: ${PLAY_MODES[newMode].label}`);
     } finally {
       setModeChanging(false);
     }
   }
 
-  // day별 그룹화 (entries는 game_day desc 정렬되어 옴)
+  // day별 그룹화
   const byDay = new Map<number, DiaryEntry[]>();
   for (const e of entries) {
     const arr = byDay.get(e.game_day) ?? [];
@@ -78,32 +90,52 @@ export function DiaryView({ currentMode, currentDay }: Props) {
   }
   const sortedDays = Array.from(byDay.keys()).sort((a, b) => b - a);
 
+  // 영구 업그레이드 효과 표시 (모드 카드에 같이)
+  const upgradeNotes: string[] = [];
+  if ((unlocks["parttime_bonus"] ?? 0) > 0)
+    upgradeNotes.push(`💪 알바 +${(unlocks["parttime_bonus"] ?? 0) * 10}%`);
+  if ((unlocks["fulltime_bonus"] ?? 0) > 0)
+    upgradeNotes.push(`💼 정규직 +${(unlocks["fulltime_bonus"] ?? 0) * 10}%`);
+  if ((unlocks["mentor_effect"] ?? 0) > 0)
+    upgradeNotes.push(`👨‍🏫 멘토 (지력 +50%)`);
+  if ((unlocks["good_luck"] ?? 0) > 0)
+    upgradeNotes.push(`🍀 행운 (긍정 이벤트 +25%)`);
+
   return (
     <div className="space-y-3">
-      {/* 모드 변경 카드 */}
+      {/* 모드 변경 카드 + 예상 수입 */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">현재 모드</CardTitle>
+          <CardTitle className="text-sm flex items-center justify-between">
+            <span>플레이 모드</span>
+            {upgradeNotes.length > 0 && (
+              <span className="text-[10px] font-normal text-muted-foreground">
+                {upgradeNotes.join(" · ")}
+              </span>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-1.5">
           {(["balanced", "income", "learning"] as const).map((m) => {
             const def = PLAY_MODES[m];
+            const est = modeIncomeEstimate(m, unlocks);
+            const isCurrent = m === currentMode;
             return (
               <button
                 key={m}
                 type="button"
-                disabled={modeChanging || mode === m}
+                disabled={modeChanging || isCurrent}
                 onClick={() => changeMode(m)}
                 className={`w-full text-left rounded-md border p-2.5 transition-colors ${
-                  mode === m
+                  isCurrent
                     ? "border-primary bg-primary/10 cursor-default"
                     : "hover:bg-accent cursor-pointer"
                 }`}
               >
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-1">
                   <div className="font-semibold text-sm flex items-center gap-1.5">
                     {def.emoji} {def.label}
-                    {mode === m && (
+                    {isCurrent && (
                       <span className="text-[10px] rounded border border-primary/40 bg-primary/10 text-primary px-1 py-0.5">
                         현재
                       </span>
@@ -117,9 +149,39 @@ export function DiaryView({ currentMode, currentDay }: Props) {
                 <div className="text-[11px] text-muted-foreground mt-0.5">
                   {def.description}
                 </div>
+                {/* Plan #37: 모드별 예상 수입 */}
+                <div className="mt-1.5 pt-1.5 border-t border-border/40 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px]">
+                  <div>
+                    <span className="text-muted-foreground">알바 출근 시</span>{" "}
+                    <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                      {manwon(est.parttimeDaily)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">사원 출근 시</span>{" "}
+                    <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                      {manwon(est.fulltimeDaily)}
+                    </span>
+                  </div>
+                  {def.weights.work > 0 && (
+                    <>
+                      <div>
+                        <span className="text-muted-foreground">알바 주간 평균</span>{" "}
+                        <span className="font-mono">{manwon(est.weeklyAverageParttime)}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">사원 주간 평균</span>{" "}
+                        <span className="font-mono">{manwon(est.weeklyAverageFulltime)}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
               </button>
             );
           })}
+          <p className="text-[10px] text-muted-foreground pt-1">
+            💡 주말은 강제 휴식. 주 5일 × work weight = 실제 출근일.
+          </p>
         </CardContent>
       </Card>
 

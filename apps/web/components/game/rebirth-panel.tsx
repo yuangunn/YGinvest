@@ -1,9 +1,11 @@
 "use client";
 
 // Plan #33: 환생 패널 — 환생 실행 + 영구 업그레이드 상점.
+// Plan #37: 환생 후 본 앱 매도 권유 배너 (매도 트레이너 핵심 비전).
 
 import { useState } from "react";
-import { Sparkles, Lock, Check } from "lucide-react";
+import Link from "next/link";
+import { Sparkles, Lock, Check, ArrowRight, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -26,6 +28,12 @@ export function RebirthPanel({ points: initialPoints, unlocks: initialUnlocks, c
   const [points, setPoints] = useState(initialPoints);
   const [unlocks, setUnlocks] = useState(initialUnlocks);
   const [submitting, setSubmitting] = useState<string | null>(null);
+  // Plan #37: 환생 직후 본 앱 매도 권유 배너
+  const [justRebirthed, setJustRebirthed] = useState<{
+    rebirthNumber: number;
+    points: number;
+    returnPct: number;
+  } | null>(null);
 
   async function doRebirth() {
     if (!confirm("환생하시겠어요? 현재 캐릭터/주식/부동산/스케줄이 모두 리셋되고 포인트만 누적됩니다.")) {
@@ -40,7 +48,14 @@ export function RebirthPanel({ points: initialPoints, unlocks: initialUnlocks, c
         return;
       }
       toast.success(`🌅 환생 #${data.rebirth_number}! +${data.points_earned}pt 획득`);
-      onRebirth();
+      // Plan #37: 환생 성공 → 본 앱 매도 권유 배너 표시
+      setJustRebirthed({
+        rebirthNumber: data.rebirth_number,
+        points: data.points_earned,
+        returnPct: data.return_pct,
+      });
+      // 1초 후 refresh (배너 확인 시간 줌)
+      setTimeout(() => onRebirth(), 100);
     } finally {
       setSubmitting(null);
     }
@@ -69,6 +84,43 @@ export function RebirthPanel({ points: initialPoints, unlocks: initialUnlocks, c
 
   return (
     <div className="space-y-3">
+      {/* Plan #37: 환생 직후 본 앱 매도 권유 배너 */}
+      {justRebirthed && (
+        <Card className="border-amber-500/60 bg-gradient-to-br from-amber-500/10 to-orange-500/10">
+          <CardContent className="py-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              <span className="text-sm font-semibold">
+                🎯 게임에서 매도 감각을 익혔다면 — 본 앱에서도!
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              방금 게임에서 +{(justRebirthed.returnPct * 100).toFixed(1)}% 수익에 매도하고 환생했어요.
+              <br />
+              <strong className="text-foreground">
+                본 앱 모의투자에서도 같은 타이밍을 잡아보세요.
+              </strong>
+              {" "}매도 타이밍이 매수보다 어렵습니다.
+            </p>
+            <div className="flex gap-1.5 pt-1">
+              <Link
+                href="/app/portfolio/holdings"
+                className="flex-1 inline-flex items-center justify-center gap-1 text-xs rounded-md border border-amber-500/40 bg-background hover:bg-accent px-3 py-1.5 transition-colors"
+              >
+                📊 내 보유 종목 보기 <ArrowRight className="h-3 w-3" />
+              </Link>
+              <button
+                type="button"
+                onClick={() => setJustRebirthed(null)}
+                className="text-xs rounded-md border px-3 py-1.5 hover:bg-accent"
+              >
+                닫기
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* 환생 실행 */}
       <Card className={canRebirth ? "border-emerald-500/40 bg-emerald-500/5" : ""}>
         <CardHeader>

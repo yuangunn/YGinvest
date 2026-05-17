@@ -100,6 +100,19 @@ export async function POST(request: Request) {
       .update({ cash: Number(character.cash) - totalCost })
       .eq("user_id", user.id);
 
+    // Plan #37: 매수 일기 로그
+    const symbolName = stock.name_ko ?? stock.name ?? symbol;
+    await supabase.from("game_diary").insert({
+      user_id: user.id,
+      game_day: 0, // 게임 day 계산 X — current_day는 client에서 알 수 없음
+      real_date: new Date().toISOString(),
+      entry_type: "trade",
+      emoji: "🛒",
+      summary: `${symbolName} ${qty}주 매수 (${Math.round(priceKrw).toLocaleString()}원/주)`,
+      cash_delta: -totalCost,
+      metadata: { symbol, side: "buy", quantity: qty, price: priceKrw },
+    });
+
     return NextResponse.json({
       ok: true,
       side: "buy",
@@ -140,6 +153,29 @@ export async function POST(request: Request) {
     .eq("user_id", user.id);
 
   const profit = (priceKrw - Number(existing.avg_cost)) * qty;
+  const profitPct = (priceKrw - Number(existing.avg_cost)) / Number(existing.avg_cost);
+
+  // Plan #37: 매도 일기 로그 (수익률 강조)
+  const symbolName = stock.name_ko ?? stock.name ?? symbol;
+  const pctText = `${profitPct >= 0 ? "+" : ""}${(profitPct * 100).toFixed(2)}%`;
+  await supabase.from("game_diary").insert({
+    user_id: user.id,
+    game_day: 0,
+    real_date: new Date().toISOString(),
+    entry_type: "trade",
+    emoji: profit >= 0 ? "💰" : "📉",
+    summary: `${symbolName} ${qty}주 매도 ${pctText} (${profit >= 0 ? "+" : ""}${Math.round(profit / 10000)}만원)`,
+    cash_delta: totalCost,
+    metadata: {
+      symbol,
+      side: "sell",
+      quantity: qty,
+      price: priceKrw,
+      profit,
+      profit_pct: profitPct,
+    },
+  });
+
   return NextResponse.json({
     ok: true,
     side: "sell",
@@ -148,6 +184,6 @@ export async function POST(request: Request) {
     price_krw: priceKrw,
     total: totalCost,
     profit,
-    profit_pct: (priceKrw - Number(existing.avg_cost)) / Number(existing.avg_cost),
+    profit_pct: profitPct,
   });
 }
