@@ -73,7 +73,12 @@ async def main_async() -> None:
     # Plan #32: 부팅 시 1회 — ETF 마스터 prefetch (큐레이션 50 + KR 자동 상위)
     await asyncio.to_thread(run_bootstrap_etfs, supabase, logger)
 
-    scheduler = AsyncIOScheduler(timezone="Asia/Seoul")
+    # Plan #34: misfire_grace_time 기본값 5분 — 작업 지연 시에도 fire allow,
+    # max_instances 1 — 같은 job 중복 실행 방지.
+    scheduler = AsyncIOScheduler(
+        timezone="Asia/Seoul",
+        job_defaults={"misfire_grace_time": 300, "max_instances": 1, "coalesce": True},
+    )
     scheduler.add_job(
         _wrap_in_thread(run_heartbeat, supabase, logger),
         trigger="interval",

@@ -52,26 +52,41 @@ def run_compute_recommendations(supabase: Any, logger: Any) -> None:
 
     # 최근 14일치 일봉. PostgREST가 서버측 max-rows 1000을 강제하므로
     # `.range()`로 페이지네이션. stocks 200 × 14일 = ~2800 rows.
+    # Plan #34: HTTP/2 GOAWAY 방지 — symbol을 200개씩 chunk로 나눠 쿼리.
+    # 1000+ symbols을 한 번에 .in_()으로 보내면 URL 길이 + 처리 시간 초과 → 끊김.
     cutoff = (date.today() - timedelta(days=14)).isoformat()
     bars: list[dict] = []
+    SYMBOL_CHUNK = 200
     page_size = 1000
-    offset = 0
-    while True:
-        page = (
-            supabase.table("stock_bars")
-            .select("symbol, ts, close, volume")
-            .gte("ts", cutoff)
-            .in_("symbol", symbols)
-            .range(offset, offset + page_size - 1)
-            .execute()
-            .data
-        )
-        if not page:
-            break
-        bars.extend(page)
-        if len(page) < page_size:
-            break
-        offset += page_size
+    for ci in range(0, len(symbols), SYMBOL_CHUNK):
+        sym_chunk = symbols[ci:ci + SYMBOL_CHUNK]
+        offset = 0
+        while True:
+            try:
+                page = (
+                    supabase.table("stock_bars")
+                    .select("symbol, ts, close, volume")
+                    .gte("ts", cutoff)
+                    .in_("symbol", sym_chunk)
+                    .range(offset, offset + page_size - 1)
+                    .execute()
+                    .data
+                )
+            except Exception as exc:
+                logger.warning(
+                    "compute_recommendations.chunk_failed",
+                    chunk_start=ci,
+                    chunk_size=len(sym_chunk),
+                    offset=offset,
+                    error=str(exc),
+                )
+                break  # 이 chunk 포기 — 다음 chunk 계속
+            if not page:
+                break
+            bars.extend(page)
+            if len(page) < page_size:
+                break
+            offset += page_size
 
     # symbol → sorted (desc by ts) bars
     by_symbol: dict[str, list[dict]] = defaultdict(list)
