@@ -19,6 +19,7 @@ import { YGAssetHero } from "@/components/dashboard/yg-asset-hero";
 import { YGGameCTA } from "@/components/dashboard/yg-game-cta";
 import { YGHoldingsPreview } from "@/components/dashboard/yg-holdings-preview";
 import { YGActionMenu } from "@/components/dashboard/yg-action-menu";
+import { MarketBriefingPopup } from "@/components/dashboard/market-briefing-popup";
 import { SectionHead } from "@/components/yg/section-head";
 
 import { PersonalizedRecommendations } from "@/components/personalized-recommendations";
@@ -157,6 +158,9 @@ export default async function DashboardPage() {
 
   return (
     <div style={{ paddingBottom: 16 }}>
+      {/* Plan #47: 오늘의 시황 popup (첫 진입 시 표시, dismiss 가능) */}
+      <MarketBriefingPopup />
+
       {/* Plan #45: 통일된 너비 — handoff README 기준
           - 가로 패딩: 20px (모든 카드/섹션)
           - 카드간 세로 간격: 12px (yg-stack에서 자동)

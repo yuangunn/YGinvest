@@ -28,6 +28,7 @@ from ygworker.jobs.matching_engine import run_matching_engine
 from ygworker.jobs.notify_economic_events import run_notify_economic_events
 from ygworker.jobs.notify_expiring_orders import run_notify_expiring_orders
 from ygworker.jobs.notify_room_lifecycle import run_notify_room_lifecycle
+from ygworker.jobs.daily_market_briefing import run_daily_market_briefing
 from ygworker.jobs.portfolio_snapshot import run_portfolio_snapshot
 from ygworker.jobs.refresh_leaderboard import run_refresh_leaderboard
 from ygworker.jobs.room_lifecycle import run_room_lifecycle
@@ -144,6 +145,15 @@ async def main_async() -> None:
         hour=4,
         minute=0,
         id="refresh_leaderboard",
+        replace_existing=True,
+    )
+    # Plan #47: 매일 06:30 KST — 시장 시황 브리핑 (RSS+Yahoo+Claude Haiku)
+    scheduler.add_job(
+        _wrap_in_thread(run_daily_market_briefing, supabase, logger),
+        trigger="cron",
+        hour=6,
+        minute=30,
+        id="daily_market_briefing",
         replace_existing=True,
     )
     # Plan #27: 방 status 전이 — 1분 → 5분 (시뮬이라 즉시성 불필요)
