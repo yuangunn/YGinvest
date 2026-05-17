@@ -1,5 +1,14 @@
 [
   {
+    "sha": "2889289",
+    "date": "2026-05-18T01:44:08+09:00",
+    "type": "fix",
+    "scope": "dashboard,game",
+    "breaking": false,
+    "title": "자산 계산 통일 + 게임 환생 조건 (금융수익만) + 시드 100만",
+    "description": "## 1. Dashboard 자산 계산 불일치 (Plan #43)\n이전: hardcoded fx=1300 → portfolio overview는 실제 fx_rates (약 1499.6)\n해서 대시보드 ≠ 포트폴리오 오버뷰 숨상.\n\nFix:\n- yg-asset-hero: fxRate / startingFxRate / holdingsValueKrw props 추가\n- dashboard page: fx_rates 최근 행 fetch (portfolio overview와 같은 query)\n- holdings join 해서 평가액 계산\n- portfolio overview 계산식 같게 (KRW + USD×fx + holdings)\n\n## 2. 게임 환생 조건: 금융수익만 (Plan #43)\n이전: cash >= starting_cash * 1.05\n→ 알바/이벤트/자녀 비용까지 검산되서 하루 몇시간이면 환생 가능\n\nFix:\n- DB migration 20260518000001: game_characters.invested_pnl numeric default 0\n- /api/game/trade (sell): invested_pnl += (price - avg_cost) × qty\n- /api/game/real-estate (delete): invested_pnl += profit (매도이익)\n- /api/game/rebirth: invested_pnl / starting_cash >= 5% 조건 (return_pct도 대체)\n- /app/dashboard, components/game/dashboard: progress bar invested_pnl 기준\n- 일기 탭 자산차트도 (추후 개선)\n\n표시 변경:\n- '환생까지 (현금 기준)' → '환생까지 (금융수익)'\n\n## 3. 시드 1000만 → 100만\n- constants.ts STARTING_CASH = 1_000_000\n- DB column default 동일하게 (migration)\n- 새 캐릭터부터 적용. 기존 캐릭터는 다음 환생 때부터.\n\n게임 시드 100만 × 5% = 환생까지 5만원의 매도 수익 필요."
+  },
+  {
     "sha": "0513934",
     "date": "2026-05-18T01:30:55+09:00",
     "type": "fix",
@@ -1339,14 +1348,5 @@
     "breaking": false,
     "title": "add stocks + fx_rates tables with RLS (Plan #2)",
     "description": "- stocks: master cache with pg_trgm indexes for name/name_ko search\n- fx_rates: time-series table for FX history\n- RLS: public read, service_role write only"
-  },
-  {
-    "sha": "58a29c4",
-    "date": "2026-05-10T15:54:37+09:00",
-    "type": "feat",
-    "scope": "worker",
-    "breaking": false,
-    "title": "add config, supabase client, heartbeat job, APScheduler, Dockerfile",
-    "description": "- config.py: Settings dataclass loads SUPABASE_URL/KEY from env via dotenv\n- supabase_client.py: thin wrapper for service_role client\n- jobs/heartbeat.py: TDD-built heartbeat (mocked unit tests pass)\n- main.py: BlockingScheduler with KST timezone, signal handlers, immediate first heartbeat\n- Dockerfile: python:3.12-slim + uv with PYTHONPATH=/app/src\n- pyproject.toml: pytest pythonpath includes src\n\nTests: 5/5 (3 trigger integration + 2 heartbeat unit)\nBoot test: worker.starting → scheduler_started → heartbeat OK"
   }
 ]
