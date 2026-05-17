@@ -83,6 +83,16 @@ def run_bootstrap_etfs(supabase: Any, logger: Any) -> dict[str, int]:
             if not code or not name:
                 continue
 
+            # Plan #34: FDR ETF/KR listing의 Symbol 컬럼이 가끔 "KODEX"/"TIGER"
+            # 같은 운용사 prefix를 반환하는 버그 — 6자리 숫자(+ optional suffix)만
+            # 통과시켜 stocks 테이블 오염 방지.
+            bare_code = code.removesuffix(".KS").removesuffix(".KQ")
+            if not (bare_code.isdigit() and len(bare_code) == 6):
+                logger.debug(
+                    "bootstrap_etfs.invalid_code_skip", code=code, name=name
+                )
+                continue
+
             # KR ETF는 보통 .KS suffix (KOSPI 상장)
             symbol = code if code.endswith((".KS", ".KQ")) else f"{code}.KS"
             if symbol in curated_symbols:
