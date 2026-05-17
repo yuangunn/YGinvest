@@ -57,6 +57,22 @@ VM의 `~/redeploy.sh`가 `git pull → docker build → 컨테이너 재시작`�
 - Vercel env: `vercel env ls production` (값은 encrypted)
 - VM `.env.worker`: `/home/ubuntu/yginvest/.env.worker` (Supabase keys, VAPID)
 
+## 🤖 진행 중인 백그라운드 작업
+
+### ARM 자동 재시도 봇 (Plan #46) — **활성**
+- **GitHub Actions** `try-arm-capacity.yml` 매 15분 cron
+- ap-chuncheon-1 ARM `VM.Standard.A1.Flex` (2 OCPU / 12GB) 잡으려 시도
+- 잡히면 **Telegram `@ARM_try_bot`** 으로 알림
+- 잡힌 후 작업 = **`docs/ARM_MIGRATION_TODO.md` 정독 후 진행**
+  - Phase A (즉시): SSH + keepalive 컨테이너로 idle 회수 방지
+  - Phase B (3-7일): Docker + worker 셋업
+  - Phase C: Vercel `WORKER_RPC_URL` 갱신 + AMD 종료
+  - Phase D: ARM workflow disable
+- 잡히면 **봇 #2 (모니터링) + 봇 #3 (AI 분석)** 구축도 같은 문서에 정리됨
+
+> ⚠️ ARM 잡혔다는 알림 보면 **즉시 `docs/ARM_MIGRATION_TODO.md` 부터 확인**.
+> 7일 idle이면 Oracle이 회수해서 처음부터 다시.
+
 ## 🇰🇷 한국 시장 컨벤션 (코드/디자인 규칙)
 
 - **상승 = 빨강 `#E84B5A`, 하락 = 파랑 `#2563EB`** (Western convention 반대)

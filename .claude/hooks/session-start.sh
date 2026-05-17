@@ -14,13 +14,18 @@ read -r -d '' CONTEXT <<'EOF' || true
 
 배포 진실의 단일 출처:
 - 웹: Vercel (apps/web) — `cd apps/web && vercel --prod --yes`
-- 워커: Oracle Cloud VM (168.110.114.1) — Railway 아님 (#34 이주 완료)
+- 워커: Oracle Cloud AMD VM (168.110.114.1) — Railway 아님 (#34 이주 완료)
   - 재배포: `ssh -i ~/.ssh/oracle-yginvest.key ubuntu@168.110.114.1 'bash ~/redeploy.sh'`
 - DB: Supabase Cloud — `supabase db push --linked`
 - 통합 배포: `bash scripts/deploy.sh`
 
+진행 중 백그라운드 작업:
+- ARM 자동 재시도 봇 (Plan #46): ap-chuncheon-1에서 ARM 잡으려 매 15분 시도 중.
+  Telegram @ARM_try_bot으로 알림. 잡히면 docs/ARM_MIGRATION_TODO.md 따라 진행.
+  봇 #2 (워커 모니터링), 봇 #3 (AI 분석) 계획도 그 문서에 있음.
+
 ⚠️ 배포/인프라 작업 시 AGENTS.md 먼저 읽기. README의 일부 표현은 outdated일 수 있음.
-상세: docs/ORACLE_MIGRATION.md
+상세: docs/ORACLE_MIGRATION.md / docs/ARM_AUTO_RETRY.md / docs/ARM_MIGRATION_TODO.md
 EOF
 
 # jq 있으면 사용, 없으면 수동 escape (Windows Git Bash에선 jq 없을 수 있음).
