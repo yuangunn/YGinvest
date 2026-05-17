@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Sparkles, ChevronRight } from "lucide-react";
+import { Sparkles, ChevronRight, Trophy } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/yg/page-header";
 import { PushToggle } from "@/components/push-toggle";
 import { NotificationTypeToggle } from "@/components/notification-type-toggle";
+import { LeaderboardOptIn } from "@/components/leaderboard/leaderboard-opt-in";
 
 const TYPES: Array<[string, string]> = [
   ["order_filled", "지정가 주문 체결"],
@@ -103,6 +104,45 @@ export default async function SettingsPage() {
             style={{ color: "var(--yg-fg-tertiary)" }}
           />
         </Link>
+
+        {/* Plan #46: 글로벌 리더보드 참여 */}
+        <div className="yg-card" style={{ padding: 18 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              marginBottom: 4,
+            }}
+          >
+            <Trophy
+              className="h-4 w-4"
+              style={{ color: "var(--yg-up-deep)" }}
+            />
+            <h3
+              style={{
+                margin: 0,
+                fontSize: 16,
+                fontWeight: 800,
+                letterSpacing: "-0.02em",
+              }}
+            >
+              글로벌 리더보드
+            </h3>
+          </div>
+          <p
+            style={{
+              fontSize: 11,
+              color: "var(--yg-fg-tertiary)",
+              fontWeight: 600,
+              margin: "0 0 14px",
+              lineHeight: 1.5,
+            }}
+          >
+            본명은 절대 공개되지 않아요. 닉네임 또는 익명으로 참여할 수 있어요.
+          </p>
+          <LeaderboardOptIn />
+        </div>
 
         {/* 푸시 알림 */}
         <div className="yg-card" style={{ padding: 18 }}>

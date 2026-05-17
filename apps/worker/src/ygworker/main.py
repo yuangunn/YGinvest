@@ -29,6 +29,7 @@ from ygworker.jobs.notify_economic_events import run_notify_economic_events
 from ygworker.jobs.notify_expiring_orders import run_notify_expiring_orders
 from ygworker.jobs.notify_room_lifecycle import run_notify_room_lifecycle
 from ygworker.jobs.portfolio_snapshot import run_portfolio_snapshot
+from ygworker.jobs.refresh_leaderboard import run_refresh_leaderboard
 from ygworker.jobs.room_lifecycle import run_room_lifecycle
 from ygworker.jobs.send_notifications import run_send_notifications
 from ygworker.market_hours import is_any_market_open
@@ -134,6 +135,15 @@ async def main_async() -> None:
         trigger="interval",
         minutes=5,
         id="portfolio_snapshot",
+        replace_existing=True,
+    )
+    # Plan #46: 매일 04:00 KST — 글로벌 리더보드 MV refresh (snapshot 후)
+    scheduler.add_job(
+        _wrap_in_thread(run_refresh_leaderboard, supabase, logger),
+        trigger="cron",
+        hour=4,
+        minute=0,
+        id="refresh_leaderboard",
         replace_existing=True,
     )
     # Plan #27: 방 status 전이 — 1분 → 5분 (시뮬이라 즉시성 불필요)
