@@ -125,6 +125,13 @@ const ACTION_GROUPS = [
       { href: "/app/help/install", label: "앱 설치", Icon: Smartphone },
     ],
   },
+  {
+    title: "🎮 게임 (베타)",
+    defaultOpen: false,
+    items: [
+      { href: "/app/roguelike", label: "인생 시뮬", Icon: Sparkles },
+    ],
+  },
 ] as const;
 
 export default async function DashboardPage() {

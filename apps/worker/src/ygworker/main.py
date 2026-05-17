@@ -16,6 +16,7 @@ from ygworker.jobs.cleanup_old_data import run_cleanup_old_data
 from ygworker.jobs.compute_recommendations import run_compute_recommendations
 from ygworker.jobs.enrich_etfs import run_enrich_etfs
 from ygworker.jobs.enrich_stock_info import run_enrich_stock_info
+from ygworker.jobs.fetch_real_estate_index import run_fetch_real_estate_index
 from ygworker.jobs.fetch_corporate_data import run_fetch_corporate_data
 from ygworker.jobs.fetch_daily_bars import run_fetch_daily_bars
 from ygworker.jobs.fetch_earnings import run_fetch_earnings
@@ -172,6 +173,17 @@ async def main_async() -> None:
         hour=2,
         minute=30,
         id="bootstrap_etfs_daily",
+        replace_existing=True,
+    )
+    # Plan #33: 매주 월요일 07:00 KST — 한국부동산원 R-ONE 주간지수 fetch (게임용)
+    # REB_API_KEY 환경변수 없으면 graceful skip.
+    scheduler.add_job(
+        _wrap_in_thread(run_fetch_real_estate_index, supabase, logger),
+        trigger="cron",
+        day_of_week="mon",
+        hour=7,
+        minute=0,
+        id="fetch_real_estate_index_weekly",
         replace_existing=True,
     )
     # Plan #27: 가격 알림 체크 — 1분 → 5분
