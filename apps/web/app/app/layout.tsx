@@ -1,64 +1,68 @@
+// Plan #42: 앱 shell — YG 디자인 시스템.
+// 헤더(상단 single source) + MarketStatusBar + 본문 + 하단 5탭.
+// 다이나믹 아일랜드 / 홈 인디케이터 safe-area 적용.
+
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { BottomNav } from "@/components/bottom-nav";
 import { CommandPalette } from "@/components/command-palette";
 import {
   AppErrorBoundary,
   GlobalErrorListener,
 } from "@/components/error-boundary";
 import { InstallBanner } from "@/components/install-banner";
-import { Logo } from "@/components/logo";
-import { LogoutButton } from "@/components/logout-button";
 import { MarketStatusBar } from "@/components/market-status";
-import { PortfolioSwitcher } from "@/components/portfolio-switcher";
 import { PullToRefresh } from "@/components/pull-to-refresh";
-import { QueueIndicator } from "@/components/queue-indicator";
-import { ThemeToggle } from "@/components/theme-toggle";
-import {
-  getSelectedPortfolioId,
-  listUserPortfolios,
-} from "@/lib/portfolio-context";
+import { YGAppHeader } from "@/components/layout/yg-app-header";
+import { YGBottomNav } from "@/components/layout/yg-bottom-nav";
+import { getIsAdmin } from "@/lib/auth-admin";
+import changelogData from "@/lib/changelog-data.json";
 
-export default async function AppLayout({ children }: { children: React.ReactNode }) {
+export default async function AppLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
-  const [{ data: profile }, portfolios, selectedId] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("display_name")
-      .eq("id", user.id)
-      .single(),
-    listUserPortfolios(supabase, user.id),
-    getSelectedPortfolioId(supabase, user.id),
-  ]);
+  const isAdmin = await getIsAdmin(supabase, user.id);
+  const latestChangelogSha =
+    (changelogData as { sha: string }[])[0]?.sha ?? null;
 
   return (
-    <div className="min-h-dvh flex flex-col">
+    <div
+      className="yg-surface"
+      style={{
+        minHeight: "100dvh",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
       <PullToRefresh />
       <GlobalErrorListener />
       <CommandPalette />
-      <header className="border-b px-4 py-3 flex items-center justify-between">
-        <Logo />
-        <div className="flex items-center gap-3 text-sm">
-          <PortfolioSwitcher portfolios={portfolios} selectedId={selectedId} />
-          <QueueIndicator />
-          <ThemeToggle />
-          <span className="text-muted-foreground hidden sm:inline">
-            {profile?.display_name ?? user.email}
-          </span>
-          <LogoutButton />
-        </div>
-      </header>
+
+      <YGAppHeader
+        isAdmin={isAdmin}
+        latestChangelogSha={latestChangelogSha}
+      />
       <MarketStatusBar />
       <InstallBanner />
-      <main className="flex-1 pb-20 md:pb-0">
+
+      <main
+        style={{
+          flex: 1,
+          // 하단 탭바(약 60px) + safe-area
+          paddingBottom: "calc(68px + env(safe-area-inset-bottom, 0px))",
+        }}
+      >
         <AppErrorBoundary>{children}</AppErrorBoundary>
       </main>
-      <BottomNav />
+
+      <YGBottomNav />
     </div>
   );
 }

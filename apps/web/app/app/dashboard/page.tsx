@@ -13,9 +13,8 @@ export const revalidate = 0;
 import { createClient } from "@/lib/supabase/server";
 import { getSelectedPortfolioId } from "@/lib/portfolio-context";
 import { getIsAdmin } from "@/lib/auth-admin";
-import changelogData from "@/lib/changelog-data.json";
 
-import { YGTopBar } from "@/components/dashboard/yg-top-bar";
+// Plan #42: 헤더는 app/layout으로 옮김 (중복 제거).
 import { YGAssetHero } from "@/components/dashboard/yg-asset-hero";
 import { YGGameCTA } from "@/components/dashboard/yg-game-cta";
 import { YGHoldingsPreview } from "@/components/dashboard/yg-holdings-preview";
@@ -90,8 +89,21 @@ export default async function DashboardPage() {
   const holdingsCount = (holdingsRes?.count as number | null) ?? 0;
   const greetingName =
     profile?.display_name ?? user.email?.split("@")[0] ?? "투자자";
-  const latestChangelogSha =
-    (changelogData as { sha: string }[])[0]?.sha ?? null;
+
+  // 일일 변동률 계산 (시작 자본 대비)
+  const FX_USD_KRW = 1300;
+  let todayChangePct: number | null = null;
+  if (portfolio) {
+    const totalKRW =
+      Number(portfolio.krw_balance) +
+      Number(portfolio.usd_balance) * FX_USD_KRW;
+    const startKRW =
+      Number(portfolio.starting_krw) +
+      Number(portfolio.starting_usd) * FX_USD_KRW;
+    if (startKRW > 0) {
+      todayChangePct = ((totalKRW - startKRW) / startKRW) * 100;
+    }
+  }
 
   // 게임 환생 진행도 계산
   let gameProgress: number | null = null;
@@ -108,11 +120,9 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="yg-surface" style={{ paddingBottom: 32 }}>
-      <YGTopBar isAdmin={isAdmin} latestChangelogSha={latestChangelogSha} />
-
-      {/* Greeting */}
-      <div style={{ padding: "10px 20px 4px" }}>
+    <div style={{ paddingBottom: 16 }}>
+      {/* Greeting (헤더는 app/layout으로 옮김 → 중복 제거) */}
+      <div style={{ padding: "16px 20px 4px" }}>
         <div
           style={{
             fontSize: 22,
@@ -131,7 +141,27 @@ export default async function DashboardPage() {
             color: "var(--yg-fg-tertiary)",
           }}
         >
-          오늘의 시장을 확인해보세요
+          {todayChangePct != null ? (
+            <>
+              자산이{" "}
+              <span
+                className="yg-num"
+                style={{
+                  color:
+                    todayChangePct >= 0
+                      ? "var(--yg-up-deep)"
+                      : "var(--yg-down-deep)",
+                  fontWeight: 700,
+                }}
+              >
+                {todayChangePct >= 0 ? "+" : ""}
+                {todayChangePct.toFixed(2)}%
+              </span>{" "}
+              {todayChangePct >= 0 ? "늘었어요" : "줄었어요"}
+            </>
+          ) : (
+            "오늘의 시장을 확인해보세요"
+          )}
         </div>
       </div>
 
