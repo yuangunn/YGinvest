@@ -200,6 +200,7 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
       <YGChartCard
         symbol={stock.symbol}
         initialBars={(bars ?? []).map((b) => ({ ...b, ts: String(b.ts) }))}
+        currency={stock.currency as "KRW" | "USD"}
       />
 
       {/* Plan #44: YG 매수/매도 카드 (잔고+보유+평단+버튼) */}

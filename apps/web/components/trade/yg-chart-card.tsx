@@ -18,9 +18,10 @@ type Bar = {
 type Props = {
   symbol: string;
   initialBars: Bar[];
+  currency?: "KRW" | "USD";
 };
 
-export function YGChartCard({ symbol, initialBars }: Props) {
+export function YGChartCard({ symbol, initialBars, currency }: Props) {
   return (
     <div
       className="yg-card"
@@ -57,7 +58,11 @@ export function YGChartCard({ symbol, initialBars }: Props) {
           상세 ›
         </Link>
       </div>
-      <YGRangeChart symbol={symbol} initialBars={initialBars} />
+      <YGRangeChart
+        symbol={symbol}
+        initialBars={initialBars}
+        currency={currency}
+      />
     </div>
   );
 }

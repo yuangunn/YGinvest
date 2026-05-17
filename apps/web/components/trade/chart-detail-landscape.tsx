@@ -2,8 +2,11 @@
 
 // Plan #45: 풀 차트 상세 (가로 모드).
 //
-// 모바일: viewport rotate 안내 OR CSS rotate(90deg)로 가로 전환.
-// 사용자가 가로/세로 토글 가능. screen.orientation.lock() 시도 (Android Chrome PWA).
+// Plan #46.2 버그 수정:
+//   - lightweight-charts canvas는 mount 시 dimensions를 fix함 → orient 변경 시
+//     자동 resize 안 됨. key prop으로 강제 remount.
+//   - iOS Safari CSS rotate text rendering issue → font-smoothing + GPU 가속.
+//   - 가로 모드에서 padding 늘려서 edge-to-edge 안 되게.
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -42,17 +45,26 @@ export function ChartDetailLandscape({
   const router = useRouter();
   const [orient, setOrient] = useState<Orient>("landscape");
   const [vp, setVp] = useState<{ w: number; h: number }>({ w: 360, h: 640 });
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const update = () =>
       setVp({ w: window.innerWidth, h: window.innerHeight });
     update();
     window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
+    window.addEventListener("orientationchange", update);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("orientationchange", update);
+    };
   }, []);
 
   const isMobile = vp.w < 768;
-  // Try lock orientation on mount (가로 모드 강제 — 일부 PWA 환경에서만 동작)
+  // 실제 device가 이미 landscape인지 (사용자가 폰을 회전시킴)
+  const deviceIsLandscape = vp.w > vp.h;
+
+  // Try lock orientation on mount (Android PWA만 동작 — iOS는 silent fail)
   useEffect(() => {
     if (!isMobile || orient !== "landscape") return;
     type LockableOrientation = ScreenOrientation & {
@@ -61,7 +73,7 @@ export function ChartDetailLandscape({
     const scr = window.screen?.orientation as LockableOrientation | undefined;
     if (scr && typeof scr.lock === "function") {
       void scr.lock("landscape").catch(() => {
-        /* lock 권한 없을 수 있음 — silent fail */
+        /* iOS 등 silent fail */
       });
     }
     return () => {
@@ -76,10 +88,27 @@ export function ChartDetailLandscape({
     };
   }, [isMobile, orient]);
 
-  // CSS rotation 적용: 모바일 + landscape 모드일 때만 rotate(90deg) + width/height swap
-  const useCssRotate = isMobile && orient === "landscape";
+  // CSS rotation: 모바일 + landscape 모드 + 디바이스가 아직 portrait (= iOS)일 때만.
+  // device가 이미 landscape면 CSS rotate 불필요 (자연스럽게 표시됨).
+  const useCssRotate =
+    mounted && isMobile && orient === "landscape" && !deviceIsLandscape;
 
-  // rotate시 outer width = viewport height, height = viewport width
+  // 회전 후 보이는 영역 크기 (cm)
+  const visibleW = useCssRotate ? vp.h : vp.w; // 가로 = portrait 높이
+  const visibleH = useCssRotate ? vp.w : vp.h; // 세로 = portrait 너비
+
+  // 가로 모드 스크롤 패딩 (사용자 요청: edge-to-edge 안 되게)
+  const SIDE_PADDING = useCssRotate ? 32 : 16;
+  const TOP_PADDING = useCssRotate ? 14 : 16;
+  const BOTTOM_PADDING = useCssRotate ? 36 : 16;
+  const HEADER_HEIGHT = 56;
+
+  // 차트 카드 안쪽 높이 — 헤더 + padding 제외 + 약간의 여백
+  const chartCardHeight = useCssRotate
+    ? Math.max(280, visibleH - HEADER_HEIGHT - TOP_PADDING - BOTTOM_PADDING - 40)
+    : 520;
+
+  // CSS rotation: portrait viewport 안에 landscape 컨테이너를 회전시켜 표시
   const rotatedStyle: React.CSSProperties = useCssRotate
     ? {
         position: "fixed",
@@ -87,11 +116,19 @@ export function ChartDetailLandscape({
         left: 0,
         width: vp.h,
         height: vp.w,
-        transform: `rotate(90deg) translateY(-${vp.w}px)`,
+        transform: `rotate(90deg) translate(0, -${vp.w}px)`,
         transformOrigin: "top left",
         background: "var(--yg-bg-app)",
-        overflow: "auto",
+        overflowX: "hidden",
+        overflowY: "auto",
         zIndex: 50,
+        // iOS Safari rotate text rendering 개선
+        WebkitOverflowScrolling: "touch",
+        WebkitFontSmoothing: "antialiased",
+        MozOsxFontSmoothing: "grayscale",
+        willChange: "transform",
+        backfaceVisibility: "hidden",
+        WebkitBackfaceVisibility: "hidden",
       }
     : {};
 
@@ -183,26 +220,34 @@ export function ChartDetailLandscape({
         )}
       </header>
 
-      {/* Chart */}
+      {/* Chart container — 스크롤 padding 적용 */}
       <div
         style={{
-          padding: "16px",
-          minHeight: useCssRotate ? vp.w - 60 : undefined,
+          padding: `${TOP_PADDING}px ${SIDE_PADDING}px ${BOTTOM_PADDING}px`,
         }}
       >
         <div
           className="yg-card"
           style={{
             padding: 14,
-            // 가로 모드: 차트 영역 풀 화면 (좁아도 폭이 길어짐)
-            minHeight: useCssRotate ? vp.w - 100 : 480,
+            // 명시적 height로 lightweight-charts canvas 정상 init
+            height: chartCardHeight,
+            overflow: "hidden",
           }}
         >
-          <ChartArea symbol={symbol} initialBars={initialBars} />
+          {/*
+            KEY FIX: lightweight-charts canvas는 mount 시점에 size를 정함.
+            orient/viewport 변경 시 자동 resize 안 됨 → key로 강제 remount.
+          */}
+          <ChartArea
+            key={`chart-${orient}-${vp.w}x${vp.h}`}
+            symbol={symbol}
+            initialBars={initialBars}
+          />
         </div>
       </div>
 
-      {/* 안내문 (세로 모드 + 모바일일 때만) */}
+      {/* 안내: 세로 모드 + 모바일일 때만 */}
       {isMobile && orient === "portrait" && (
         <div
           style={{

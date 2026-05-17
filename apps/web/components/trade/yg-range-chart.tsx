@@ -1,6 +1,7 @@
 "use client";
 
 // Plan #45: YG 범위 차트 — handoff trade-detail.jsx ChartCard 패턴.
+// Plan #46.2 강화: bars + rangeKey + currency 전달로 가격선 + 날짜 축 표시.
 //
 // 1일 / 1주 / 1개월 / 3개월 / 1년 / 5년 탭 → 각각 다른 interval/period 조합.
 // 클라이언트에서 fetch (interval 변경시).
@@ -20,12 +21,13 @@ type Bar = {
 type Props = {
   symbol: string;
   initialBars: Bar[]; // 일봉 365개 (SSR)
+  currency?: "KRW" | "USD";
 };
 
 const RANGES = [
-  { k: "1d", l: "1일", interval: "15m", limit: 32 }, // 15분봉 ~1일 (시장 32틱)
-  { k: "1w", l: "1주", interval: "1h", limit: 40 }, // 시간봉 5거래일
-  { k: "1mo", l: "1개월", interval: "1d", limit: 22 }, // 일봉 ~1개월
+  { k: "1d", l: "1일", interval: "15m", limit: 32 },
+  { k: "1w", l: "1주", interval: "1h", limit: 40 },
+  { k: "1mo", l: "1개월", interval: "1d", limit: 22 },
   { k: "3mo", l: "3개월", interval: "1d", limit: 66 },
   { k: "1y", l: "1년", interval: "1d", limit: 252 },
   { k: "5y", l: "5년", interval: "1wk", limit: 260 },
@@ -33,7 +35,11 @@ const RANGES = [
 
 type RangeKey = (typeof RANGES)[number]["k"];
 
-export function YGRangeChart({ symbol, initialBars }: Props) {
+export function YGRangeChart({
+  symbol,
+  initialBars,
+  currency = "KRW",
+}: Props) {
   const [range, setRange] = useState<RangeKey>("3mo");
   const [bars, setBars] = useState<Bar[]>(initialBars);
   const [loading, startTransition] = useTransition();
@@ -41,15 +47,10 @@ export function YGRangeChart({ symbol, initialBars }: Props) {
 
   const def = RANGES.find((r) => r.k === range)!;
 
-  // 초기엔 3개월 (1d × 66) 로 표시 — initialBars는 365 일봉이라 slice
-  const initial3mo = useMemo(
-    () => initialBars.slice(-66),
-    [initialBars],
-  );
-  // 가장 처음엔 3개월 데이터로 시작
+  // 초기엔 3개월 (1d × 66) 로 표시
+  const initial3mo = useMemo(() => initialBars.slice(-66), [initialBars]);
   const [hasFetched, setHasFetched] = useState(false);
 
-  // range 변경시 fetch (단, 3개월 + initialBars 있을 땐 첫 fetch 스킵)
   useEffect(() => {
     if (range === "3mo" && !hasFetched) {
       setBars(initial3mo);
@@ -85,8 +86,12 @@ export function YGRangeChart({ symbol, initialBars }: Props) {
     });
   }, [range, symbol, def.interval, def.limit, initial3mo, initialBars, hasFetched]);
 
-  const closes = bars.map((b) => Number(b.close)).filter((v) => v > 0);
-  const gain = closes.length >= 2 ? closes[closes.length - 1] >= closes[0] : true;
+  const validBars = bars.filter((b) => Number(b.close) > 0);
+  const gain =
+    validBars.length >= 2
+      ? Number(validBars[validBars.length - 1].close) >=
+        Number(validBars[0].close)
+      : true;
 
   return (
     <div>
@@ -112,7 +117,7 @@ export function YGRangeChart({ symbol, initialBars }: Props) {
         {error ? (
           <div
             style={{
-              height: 180,
+              height: 200,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -124,7 +129,13 @@ export function YGRangeChart({ symbol, initialBars }: Props) {
             데이터 로드 실패
           </div>
         ) : (
-          <YGAreaChart data={closes} h={180} gain={gain} />
+          <YGAreaChart
+            bars={validBars}
+            h={200}
+            gain={gain}
+            rangeKey={range}
+            currency={currency}
+          />
         )}
       </div>
 
