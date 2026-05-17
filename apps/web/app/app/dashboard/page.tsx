@@ -61,57 +61,93 @@ export default async function DashboardPage() {
     getIsAdmin(supabase, user.id),
   ]);
 
-  const [{ data: portfolio }, holdingsRes, { data: character }] = portfolioId
+  const [
+    { data: portfolio },
+    holdingsRes,
+    { data: character },
+    { data: fxRow },
+  ] = portfolioId
     ? await Promise.all([
         supabase
           .from("portfolios")
           .select(
-            "krw_balance, usd_balance, starting_krw, starting_usd, room_id, status",
+            "krw_balance, usd_balance, starting_krw, starting_usd, fx_rate_at_start, room_id, status",
           )
           .eq("id", portfolioId)
           .maybeSingle(),
-        // Plan #41 fix: 컬럼명은 `quantity` (기존 코드에 qty 오류 있었음)
         supabase
           .from("holdings")
-          .select("symbol", { count: "exact", head: true })
+          .select("symbol, quantity, stocks(currency, last_price)", {
+            count: "exact",
+          })
           .eq("portfolio_id", portfolioId)
           .gt("quantity", 0),
         supabase
           .from("game_characters")
           .select(
-            "name, gender, education_level, job_type, job_title, cash, starting_cash, current_day",
+            "name, gender, education_level, job_type, job_title, cash, starting_cash, current_day, invested_pnl",
           )
           .eq("user_id", user.id)
           .maybeSingle(),
+        // Plan #43: 실제 USD/KRW 환율 fetch (portfolio overview와 동일)
+        supabase
+          .from("fx_rates")
+          .select("rate")
+          .eq("base", "USD")
+          .eq("quote", "KRW")
+          .order("ts", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
       ])
-    : [{ data: null }, { count: null }, { data: null }];
+    : [{ data: null }, { count: null, data: null }, { data: null }, { data: null }];
 
   const holdingsCount = (holdingsRes?.count as number | null) ?? 0;
   const greetingName =
     profile?.display_name ?? user.email?.split("@")[0] ?? "투자자";
 
-  // 일일 변동률 계산 (시작 자본 대비)
-  const FX_USD_KRW = 1300;
+  // 환율 (없으면 1395 fallback — portfolio overview와 동일)
+  const fxRate = fxRow?.rate ? Number(fxRow.rate) : 1395;
+  const startingFxRate = portfolio?.fx_rate_at_start
+    ? Number(portfolio.fx_rate_at_start)
+    : fxRate;
+
+  // 보유 종목 평가액 (KRW 환산)
+  let holdingsValueKrw = 0;
+  type HoldingStock = { currency: string; last_price: number | null };
+  type HoldingRow = {
+    quantity: number;
+    stocks: HoldingStock | HoldingStock[] | null;
+  };
+  for (const h of (holdingsRes?.data ?? []) as unknown as HoldingRow[]) {
+    const stock = Array.isArray(h.stocks) ? h.stocks[0] : h.stocks;
+    if (!stock?.last_price) continue;
+    const valueLocal = Number(stock.last_price) * Number(h.quantity);
+    holdingsValueKrw +=
+      stock.currency === "KRW" ? valueLocal : valueLocal * fxRate;
+  }
+
+  // 누적 수익률
   let todayChangePct: number | null = null;
   if (portfolio) {
     const totalKRW =
       Number(portfolio.krw_balance) +
-      Number(portfolio.usd_balance) * FX_USD_KRW;
+      Number(portfolio.usd_balance) * fxRate +
+      holdingsValueKrw;
     const startKRW =
       Number(portfolio.starting_krw) +
-      Number(portfolio.starting_usd) * FX_USD_KRW;
+      Number(portfolio.starting_usd) * startingFxRate;
     if (startKRW > 0) {
       todayChangePct = ((totalKRW - startKRW) / startKRW) * 100;
     }
   }
 
-  // 게임 환생 진행도 계산
+  // 게임 환생 진행도 — Plan #43: invested_pnl 기반 (알바 수익 제외)
   let gameProgress: number | null = null;
   if (character) {
     const startingCash = Number(character.starting_cash);
-    const cash = Number(character.cash);
+    const investedPnl = Number(character.invested_pnl ?? 0);
     if (startingCash > 0) {
-      const pct = (cash - startingCash) / startingCash;
+      const pct = investedPnl / startingCash;
       gameProgress = Math.max(
         0,
         Math.min(100, (pct / REBIRTH_THRESHOLD_PCT) * 100),
@@ -173,6 +209,9 @@ export default async function DashboardPage() {
             usdBalance={Number(portfolio.usd_balance)}
             startingKrw={Number(portfolio.starting_krw)}
             startingUsd={Number(portfolio.starting_usd)}
+            holdingsValueKrw={holdingsValueKrw}
+            fxRate={fxRate}
+            startingFxRate={startingFxRate}
           />
         </div>
       )}

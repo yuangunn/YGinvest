@@ -210,9 +210,20 @@ export async function DELETE(request: Request) {
     .delete()
     .eq("id", id);
 
+  // Plan #43: 부동산 매도 차익도 invested_pnl에 누적 (환생 조건 기준)
+  const { data: charBefore } = await supabase
+    .from("game_characters")
+    .select("invested_pnl")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const prevPnl = Number(charBefore?.invested_pnl ?? 0);
+
   await supabase
     .from("game_characters")
-    .update({ cash: Number(character.cash) + proceeds })
+    .update({
+      cash: Number(character.cash) + proceeds,
+      invested_pnl: prevPnl + profit,
+    })
     .eq("user_id", user.id);
 
   return NextResponse.json({

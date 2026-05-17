@@ -147,13 +147,25 @@ export async function POST(request: Request) {
       .eq("symbol", symbol);
   }
 
-  await supabase
-    .from("game_characters")
-    .update({ cash: Number(character.cash) + totalCost })
-    .eq("user_id", user.id);
-
   const profit = (priceKrw - Number(existing.avg_cost)) * qty;
   const profitPct = (priceKrw - Number(existing.avg_cost)) / Number(existing.avg_cost);
+
+  // Plan #43: invested_pnl 누적 — 매도 차익만 (알바 수익 제외)
+  // 환생 조건이 이 컬럼 기준이라 게임 본질(매도 타이밍 학습)에 충실.
+  const { data: charBefore } = await supabase
+    .from("game_characters")
+    .select("invested_pnl")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const prevPnl = Number(charBefore?.invested_pnl ?? 0);
+
+  await supabase
+    .from("game_characters")
+    .update({
+      cash: Number(character.cash) + totalCost,
+      invested_pnl: prevPnl + profit,
+    })
+    .eq("user_id", user.id);
 
   // Plan #37: 매도 일기 로그 (수익률 강조)
   const symbolName = stock.name_ko ?? stock.name ?? symbol;

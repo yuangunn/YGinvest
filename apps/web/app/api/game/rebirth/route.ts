@@ -68,32 +68,39 @@ export async function POST() {
 
   const totalAssets = Number(character.cash) + stocksValue + realEstateValue;
   const startingCash = Number(character.starting_cash);
-  const returnPct = (totalAssets - startingCash) / startingCash;
 
-  // 환생 임계점 (점진적 난이도 — 환생 횟수마다 ↑)
+  // Plan #43: 환생 조건 = invested_pnl (금융수익) >= starting_cash * 5%
+  // 알바/연금/이벤트 등 비투자 cash flow는 제외.
+  const investedPnl = Number(character.invested_pnl ?? 0);
+  const investedReturnPct = startingCash > 0 ? investedPnl / startingCash : 0;
+  // 총 자산 수익률은 표시용으로만 유지 (game_rebirths에 기록)
+  const totalReturnPct = (totalAssets - startingCash) / startingCash;
+
   const { data: profile } = await supabase
     .from("profiles")
     .select("game_rebirth_count, game_points")
     .eq("id", user.id)
     .maybeSingle();
   const rebirthCount = profile?.game_rebirth_count ?? 0;
-  // 일단 항상 5%. 너무 쉽다 싶으면 + rebirthCount * 0.025
   const threshold = REBIRTH_THRESHOLD_PCT;
 
-  if (returnPct < threshold) {
+  if (investedReturnPct < threshold) {
     return NextResponse.json({
       error: "below_threshold",
-      current_return_pct: returnPct,
+      current_return_pct: investedReturnPct,
+      total_return_pct: totalReturnPct,
       required_pct: threshold,
+      invested_pnl: investedPnl,
       total_assets: totalAssets,
       starting_cash: startingCash,
-      shortage: startingCash * (1 + threshold) - totalAssets,
+      shortage: startingCash * threshold - investedPnl,
+      hint: "금융수익(주식/부동산 매도 차익)만 환생 조건에 들어가요. 알바/연금 제외.",
     }, { status: 400 });
   }
 
   // 환생!
   const daysPlayed = character.current_day;
-  const pointsEarned = calculateRebirthPoints(returnPct, daysPlayed);
+  const pointsEarned = calculateRebirthPoints(investedReturnPct, daysPlayed);
   const newRebirthCount = rebirthCount + 1;
 
   // 1. 환생 기록 저장
@@ -103,7 +110,7 @@ export async function POST() {
     starting_cash: startingCash,
     ending_cash: Number(character.cash),
     total_assets: totalAssets,
-    return_pct: returnPct,
+    return_pct: investedReturnPct,
     days_played: daysPlayed,
     points_earned: pointsEarned,
   });
@@ -131,7 +138,7 @@ export async function POST() {
     points_earned: pointsEarned,
     total_points: (profile?.game_points ?? 0) + pointsEarned,
     final_assets: totalAssets,
-    return_pct: returnPct,
+    return_pct: investedReturnPct,
     days_played: daysPlayed,
     next_step: "/app/roguelike (onboarding으로 자동 이동)",
   });

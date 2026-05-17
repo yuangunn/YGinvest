@@ -1,5 +1,14 @@
 [
   {
+    "sha": "0513934",
+    "date": "2026-05-18T01:30:55+09:00",
+    "type": "fix",
+    "scope": "layout",
+    "breaking": false,
+    "title": "Plan #42 — YG 앜 셰울 (헤더 중복 해소 + 5탭 BottomNav)",
+    "description": "## 이슈 (원아로이드 2구고)\n1. 헤더 이중 렌더: app/layout (Logo + LogoutButton) + Dashboard 안에서 YGTopBar\n2. 하단 탭바 이모지 아이콘 (이전 BottomNav: 홈/거래/자산/학습/설정)\n\n## Fix\n- components/layout/yg-app-header.tsx 신규:\n  앜 전체 단일 헤더. 다이나믹 아일랜드/펀치홀 회피 위해\n  env(safe-area-inset-top) 적용.\n  구성: YG로고 + 브랜드 + ADMIN 배지 / changelog + bell + settings\n- components/layout/yg-bottom-nav.tsx 신규:\n  5탭 (홈/거래/보유/게임/내정보), YGIcon SVG 사용 (이모지 아님).\n  env(safe-area-inset-bottom) 적용 (iOS 홈 인디케이터 회피).\n- app/app/layout.tsx: 기존 헤더/BottomNav 제거, YG 컴포넌트로 교체\n- app/app/dashboard/page.tsx:\n  YGTopBar import 제거 (레이아웃이 처리)\n  greeting subtext에 자산 변동률 추가 (아레튼 trick: red↑ / blue↓)\n\n## Quick wins (레퍼런스 이미지 구조 따라)\n- 탭바: 홈/거래/보유/게임/내정보 순서 일치\n- 헤더: 레퍼런스 구조 그대로\n- 게임이 명시적 탭으로 승격 (이전에는 collapsible 메뉴 안에만 있었음)"
+  },
+  {
     "sha": "1997438",
     "date": "2026-05-18T01:11:21+09:00",
     "type": "fix",

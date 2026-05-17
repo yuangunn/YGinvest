@@ -8,6 +8,12 @@ type Props = {
   usdBalance: number;
   startingKrw: number;
   startingUsd: number;
+  /** 보유 종목 평가액 (KRW 환산). 없으면 0. */
+  holdingsValueKrw?: number;
+  /** 현재 USD/KRW 환율. fx_rates의 최신값. */
+  fxRate: number;
+  /** 시작 시점 환율 (portfolio.fx_rate_at_start) */
+  startingFxRate: number;
 };
 
 export function YGAssetHero({
@@ -15,10 +21,14 @@ export function YGAssetHero({
   usdBalance,
   startingKrw,
   startingUsd,
+  holdingsValueKrw = 0,
+  fxRate,
+  startingFxRate,
 }: Props) {
-  const FX = 1300; // 단순 환율 (실제는 fx_rates 활용)
-  const totalKRW = krwBalance + usdBalance * FX;
-  const startingTotalKRW = startingKrw + startingUsd * FX;
+  // Plan #43: portfolio overview와 동일한 계산식.
+  // 총자산 = KRW 현금 + USD 현금×fx + 보유 종목 평가액(KRW 환산)
+  const totalKRW = krwBalance + usdBalance * fxRate + holdingsValueKrw;
+  const startingTotalKRW = startingKrw + startingUsd * startingFxRate;
   const changeAbs = totalKRW - startingTotalKRW;
   const changePct =
     startingTotalKRW > 0 ? (changeAbs / startingTotalKRW) * 100 : 0;
