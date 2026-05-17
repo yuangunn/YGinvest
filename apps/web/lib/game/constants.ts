@@ -193,13 +193,17 @@ export const RANDOM_EVENTS: RandomEventDef[] = [
 ];
 
 // ──────────── 모드별 예상 수입 (UI 표시용) ────────────
+// Plan #39: 시간 할당 모델 — 매일 work_weight 비율로 일급 받음.
 export type ModeEstimate = {
-  parttimeDaily: number;     // 알바 출근 시 받는 일급
-  fulltimeDaily: number;     // 사원 출근 시
-  fulltimeManager: number;   // 대리
-  /** 주간 평균 (주 5일 × work weight × 평균 일급) */
-  weeklyAverageParttime: number;
-  weeklyAverageFulltime: number;
+  /** 알바일 때 매일 받는 수입 (work_weight 적용) */
+  parttimeDaily: number;
+  /** 사원 정규직일 때 매일 받는 수입 */
+  fulltimeDaily: number;
+  /** 매일 지력 증가 (study_weight 적용) */
+  dailyIntelligence: number;
+  /** 주간 (7일) 누적 cash */
+  weeklyParttime: number;
+  weeklyFulltime: number;
 };
 
 export function modeIncomeEstimate(
@@ -208,21 +212,27 @@ export function modeIncomeEstimate(
 ): ModeEstimate {
   const parttimeBonus = 1 + (unlocks["parttime_bonus"] ?? 0) * 0.1;
   const fulltimeBonus = 1 + (unlocks["fulltime_bonus"] ?? 0) * 0.1;
+  const mentorEffect = (unlocks["mentor_effect"] ?? 0) > 0;
   const weights = PLAY_MODES[mode].weights;
 
-  const parttimeDaily = Math.floor(PARTTIME_DAILY_WAGE * parttimeBonus);
-  const fulltimeDaily = Math.floor(FULLTIME_DAILY_BY_RANK["사원"] * fulltimeBonus);
-  const fulltimeManager = Math.floor(FULLTIME_DAILY_BY_RANK["대리"] * fulltimeBonus);
+  const parttimeDaily = Math.floor(
+    PARTTIME_DAILY_WAGE * parttimeBonus * weights.work,
+  );
+  const fulltimeDaily = Math.floor(
+    FULLTIME_DAILY_BY_RANK["사원"] * fulltimeBonus * weights.work,
+  );
 
-  // Plan #38: 주 7일 (주말도 일함) × work weight
-  const workDaysPerWeek = 7 * weights.work;
+  const baseGain = mentorEffect
+    ? INTELLIGENCE_GAIN_PER_STUDY * 1.5
+    : INTELLIGENCE_GAIN_PER_STUDY;
+  const dailyIntelligence = Math.round(baseGain * weights.study);
 
   return {
     parttimeDaily,
     fulltimeDaily,
-    fulltimeManager,
-    weeklyAverageParttime: Math.floor(parttimeDaily * workDaysPerWeek),
-    weeklyAverageFulltime: Math.floor(fulltimeDaily * workDaysPerWeek),
+    dailyIntelligence,
+    weeklyParttime: parttimeDaily * 7,
+    weeklyFulltime: fulltimeDaily * 7,
   };
 }
 
@@ -238,62 +248,74 @@ export function computeDailyResult(
   mode: PlayMode,
   jobType: "unemployed" | "parttime" | "fulltime",
   jobTitle: string | null,
-  _dayOfWeek: number, // Plan #38: 주말도 동일 (그냥 게임 단순화)
+  _dayOfWeek: number,
   unlocks: Record<string, number>,
 ): DailyResult {
-  const modeWeights = PLAY_MODES[mode].weights;
+  const weights = PLAY_MODES[mode].weights;
   const parttimeBonus = 1 + (unlocks["parttime_bonus"] ?? 0) * 0.1;
   const fulltimeBonus = 1 + (unlocks["fulltime_bonus"] ?? 0) * 0.1;
   const mentorEffect = (unlocks["mentor_effect"] ?? 0) > 0;
 
-  // Plan #38: 주말 강제 휴식 제거 — 그냥 게임처럼 매일 활동.
+  // Plan #39: 시간 할당 비율 모델 — 매 day 결정적으로 work_weight 시간 일하고
+  // study_weight 시간 공부. 확률 X. 사용자 의도 명확.
 
-  // 모드 weight 기반 활동 결정
-  const r = Math.random();
-  let activity: "work" | "study" | "rest";
-  if (r < modeWeights.work) activity = "work";
-  else if (r < modeWeights.work + modeWeights.study) activity = "study";
-  else activity = "rest";
+  // 1) 일 부분 (work_weight 비율만큼 일급)
+  let workCash = 0;
+  let workLabel = "";
+  let workEmoji = "💪";
 
-  if (activity === "work") {
+  if (weights.work > 0) {
     if (jobType === "fulltime" && jobTitle) {
       const base = FULLTIME_DAILY_BY_RANK[jobTitle] ?? FULLTIME_DAILY_BY_RANK["사원"];
-      const wage = Math.floor(base * fulltimeBonus);
-      return {
-        cashDelta: wage,
-        intelligenceDelta: 0,
-        summary: `${jobTitle} 출근 — +${Math.round(wage / 10000)}만원`,
-        emoji: "💼",
-      };
+      workCash = Math.floor(base * fulltimeBonus * weights.work);
+      workLabel = `${jobTitle} ${Math.round(weights.work * 100)}%`;
+      workEmoji = "💼";
+    } else {
+      workCash = Math.floor(PARTTIME_DAILY_WAGE * parttimeBonus * weights.work);
+      workLabel = `알바 ${Math.round(weights.work * 100)}%`;
+      workEmoji = "💪";
     }
-    // 알바 (또는 unemployed지만 모드에서 일하라고 한 경우 — 편의점 알바 가정)
-    const wage = Math.floor(PARTTIME_DAILY_WAGE * parttimeBonus);
-    return {
-      cashDelta: wage,
-      intelligenceDelta: 0,
-      summary: `알바 출근 — +${Math.round(wage / 10000)}만원`,
-      emoji: "💪",
-    };
   }
 
-  if (activity === "study") {
-    const gain = mentorEffect
-      ? Math.floor(INTELLIGENCE_GAIN_PER_STUDY * 1.5)
+  // 2) 공부 부분 (study_weight 비율만큼 지력 증가)
+  let studyIntel = 0;
+  let studyLabel = "";
+  if (weights.study > 0) {
+    const baseGain = mentorEffect
+      ? INTELLIGENCE_GAIN_PER_STUDY * 1.5
       : INTELLIGENCE_GAIN_PER_STUDY;
+    studyIntel = Math.round(baseGain * weights.study);
+    studyLabel = `공부 ${Math.round(weights.study * 100)}%`;
+  }
+
+  // 3) summary + emoji 조합
+  const parts = [workLabel, studyLabel].filter((s) => s);
+  const cashPart = workCash > 0 ? ` +${(workCash / 10000).toFixed(1)}만` : "";
+  const intelPart = studyIntel > 0 ? ` 지력+${studyIntel}` : "";
+
+  // emoji: 압도적인 비율 따라
+  let emoji: string;
+  if (weights.work === 0 && weights.study === 0) emoji = "🛌";
+  else if (weights.work === 1) emoji = workEmoji;
+  else if (weights.study === 1) emoji = "📚";
+  else if (weights.work >= weights.study) emoji = workEmoji;
+  else emoji = "📚";
+
+  // 활동 없는 경우 (둘 다 0) — rest
+  if (parts.length === 0) {
     return {
       cashDelta: 0,
-      intelligenceDelta: gain,
-      summary: `자기계발 — 지력 +${gain}`,
-      emoji: "📚",
+      intelligenceDelta: 0,
+      summary: "휴식 — 재충전",
+      emoji: "🛌",
     };
   }
 
-  // rest
   return {
-    cashDelta: 0,
-    intelligenceDelta: 0,
-    summary: "휴식 — 재충전",
-    emoji: "🛌",
+    cashDelta: workCash,
+    intelligenceDelta: studyIntel,
+    summary: `${parts.join(" + ")}${cashPart}${intelPart}`,
+    emoji,
   };
 }
 

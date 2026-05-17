@@ -149,38 +149,38 @@ export function DiaryView({ currentMode, currentDay, unlocks, onModeChange }: Pr
                 <div className="text-[11px] text-muted-foreground mt-0.5">
                   {def.description}
                 </div>
-                {/* Plan #37: 모드별 예상 수입 */}
+                {/* Plan #39: 모드별 일일 수입 + 지력 (시간 할당 모델) */}
                 <div className="mt-1.5 pt-1.5 border-t border-border/40 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px]">
                   <div>
-                    <span className="text-muted-foreground">알바 출근 시</span>{" "}
+                    <span className="text-muted-foreground">알바 매일</span>{" "}
                     <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
-                      {manwon(est.parttimeDaily)}
+                      {est.parttimeDaily > 0 ? manwon(est.parttimeDaily) : "—"}
                     </span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">사원 출근 시</span>{" "}
+                    <span className="text-muted-foreground">사원 매일</span>{" "}
                     <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
-                      {manwon(est.fulltimeDaily)}
+                      {est.fulltimeDaily > 0 ? manwon(est.fulltimeDaily) : "—"}
                     </span>
                   </div>
-                  {def.weights.work > 0 && (
-                    <>
-                      <div>
-                        <span className="text-muted-foreground">알바 주간 평균</span>{" "}
-                        <span className="font-mono">{manwon(est.weeklyAverageParttime)}</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">사원 주간 평균</span>{" "}
-                        <span className="font-mono">{manwon(est.weeklyAverageFulltime)}</span>
-                      </div>
-                    </>
-                  )}
+                  <div>
+                    <span className="text-muted-foreground">지력 매일</span>{" "}
+                    <span className="font-mono font-semibold text-purple-500">
+                      +{est.dailyIntelligence}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">알바 주간</span>{" "}
+                    <span className="font-mono">
+                      {est.weeklyParttime > 0 ? manwon(est.weeklyParttime) : "—"}
+                    </span>
+                  </div>
                 </div>
               </button>
             );
           })}
           <p className="text-[10px] text-muted-foreground pt-1">
-            💡 주 7일 × work weight = 실제 출근일 (게임이라 주말도 활동).
+            💡 매일 시간 할당 비율대로 수입/지력 동시 획득. 확률 X.
           </p>
         </CardContent>
       </Card>
