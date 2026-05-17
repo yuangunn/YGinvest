@@ -7,8 +7,8 @@
 // 더 빠른 페이스. 환생 사이클이 4~7일 게임 시간 안에 가능.
 export const HOURS_PER_GAME_DAY = 1;
 
-// 시작 자원
-export const STARTING_CASH = 10_000_000;
+// 시작 자원 — Plan #43: 1000만 → 100만원 (시드 축소).
+export const STARTING_CASH = 1_000_000;
 export const REBIRTH_THRESHOLD_PCT = 0.05;
 
 // ──────────── 한국 임금 (2026년 기준 추정) ────────────

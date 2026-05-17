@@ -56,6 +56,7 @@ type Character = {
   married_at?: string | null;
   children_count?: number;
   is_retired?: boolean;
+  invested_pnl?: number;
 };
 
 type Props = {
@@ -109,12 +110,13 @@ export function GameDashboard({
     };
   }, []);
 
-  const cashReturn =
-    (Number(character.cash) - Number(character.starting_cash)) /
-    Number(character.starting_cash);
+  // Plan #43: 환생 진행도는 invested_pnl (금융 수익) 기준. 알바 수익 제외.
+  const startingCash = Number(character.starting_cash);
+  const investedPnl = Number(character.invested_pnl ?? 0);
+  const investedReturn = startingCash > 0 ? investedPnl / startingCash : 0;
   const threshold = REBIRTH_THRESHOLD_PCT;
-  const progress = Math.max(0, Math.min(1, cashReturn / threshold));
-  const canRebirth = cashReturn >= threshold;
+  const progress = Math.max(0, Math.min(1, investedReturn / threshold));
+  const canRebirth = investedReturn >= threshold;
 
   // 직업 표시
   const career =
@@ -197,12 +199,12 @@ export function GameDashboard({
             </div>
           </div>
 
-          {/* 환생 진행도 */}
+          {/* 환생 진행도 — Plan #43: 금융수익(매도 차익)만 카운트, 알바 제외 */}
           <div className="pt-1">
             <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-              <span>환생까지 (현금 기준)</span>
+              <span>환생까지 (금융수익)</span>
               <span>
-                {(cashReturn * 100).toFixed(2)}% / {(threshold * 100).toFixed(0)}%
+                {(investedReturn * 100).toFixed(2)}% / {(threshold * 100).toFixed(0)}%
               </span>
             </div>
             <div className="mt-1 h-1.5 rounded-full bg-muted overflow-hidden">
