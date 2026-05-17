@@ -50,39 +50,41 @@
 }
 
 :root {
+  /* Plan #44: shadcn 토큰을 YG 디자인 시스템에 브리지.
+     아직 YG 컴포넌트로 못 옮긴 페이지(Card, Button 등)도 자동으로 YG 톤. */
   --font-sans: 'Pretendard Variable', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.546 0.227 264);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.95 0.05 264);
-  --accent-foreground: oklch(0.546 0.227 264);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.546 0.227 264);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.546 0.227 264);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.95 0.05 264);
-  --sidebar-accent-foreground: oklch(0.546 0.227 264);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.546 0.227 264);
+  --background: #F4F5F7;          /* yg-bg-app */
+  --foreground: #0F1115;          /* yg-fg-primary */
+  --card: #FFFFFF;                /* yg-bg-card */
+  --card-foreground: #0F1115;
+  --popover: #FFFFFF;
+  --popover-foreground: #0F1115;
+  --primary: #0F1115;             /* yg-brand (deep ink, NOT competitor blue) */
+  --primary-foreground: #FFFFFF;
+  --secondary: #F2F3F5;           /* yg-bg-tint-ink */
+  --secondary-foreground: #0F1115;
+  --muted: #F8F9FB;               /* yg-bg-sub */
+  --muted-foreground: #4A5160;    /* yg-fg-secondary */
+  --accent: #F2F3F5;
+  --accent-foreground: #0F1115;
+  --destructive: #E84B5A;         /* yg-up (KR 관례) */
+  --border: #EBEDF0;              /* yg-line */
+  --input: #EBEDF0;
+  --ring: #0F1115;
+  --chart-1: #0F1115;
+  --chart-2: #5B47FB;
+  --chart-3: #0E7C66;
+  --chart-4: #B45309;
+  --chart-5: #1F3A8A;
+  --radius: 1.125rem;             /* 18px = yg-r-card */
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #0F1115;
+  --sidebar-primary: #0F1115;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #F2F3F5;
+  --sidebar-accent-foreground: #0F1115;
+  --sidebar-border: #EBEDF0;
+  --sidebar-ring: #0F1115;
 }
 
 .dark {

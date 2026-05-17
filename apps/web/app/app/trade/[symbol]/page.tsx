@@ -7,22 +7,19 @@ import { StockNews } from "@/components/stock-news";
 import { StockFinancials } from "@/components/stock-financials";
 import Link from "next/link";
 import { GitCompare } from "lucide-react";
-import { BuySellSheet } from "@/components/buy-sell-sheet";
+import { YGPriceCard } from "@/components/trade/yg-price-card";
+import { YGTradeButtons } from "@/components/trade/yg-trade-buttons";
 import { WatchlistButton } from "@/components/watchlist-button";
 import { KrSessionBadge } from "@/components/kr-session-badge";
 import { NxtSpreadBadge } from "@/components/nxt-spread-badge";
-import { StockThemes } from "@/components/stock-themes";
-import { StockRatingBadge } from "@/components/stock-rating-badge";
 import { Term } from "@/components/term";
 import { OrderBook } from "@/components/order-book";
 import { PriceAlertForm } from "@/components/price-alert-form";
 import { RecentTracker } from "@/components/recent-tracker";
-import { FreshnessIndicator } from "@/components/freshness-indicator";
 import { TradeNotes } from "@/components/trade-notes";
 import { EtfInfoCard } from "@/components/etf-info-card";
 import { EtfHoldingsList } from "@/components/etf-holdings-list";
 import { getSelectedPortfolioId } from "@/lib/portfolio-context";
-import { formatMarketTimestamp } from "@/lib/time-format";
 
 const KRW = new Intl.NumberFormat("ko-KR", { style: "currency", currency: "KRW", maximumFractionDigits: 0 });
 const USD = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
@@ -86,25 +83,94 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
         : Promise.resolve({ data: null }),
     ]);
 
-  const fmt = stock.currency === "KRW" ? KRW : USD;
   const symbolName = stock.name_ko ?? stock.name;
+  // 기본 정보 카드의 fmt 헬퍼 (KRW vs USD)
+  const fmt = stock.currency === "KRW" ? KRW : USD;
 
   return (
-    <div className="max-w-3xl mx-auto p-6 space-y-4">
+    <div style={{ paddingBottom: 16 }}>
       <RecentTracker symbol={stock.symbol} name={symbolName} />
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="text-xs text-muted-foreground flex items-center gap-2">
-            <span>{stock.symbol} · {stock.market}</span>
+
+      {/* Plan #44: YG 헤더 — Toss 스타일 (큰 종목명 + ticker + market) */}
+      <div
+        style={{
+          padding: "16px 20px 12px",
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: 10,
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              marginBottom: 4,
+            }}
+          >
+            <span
+              className="yg-num"
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: "var(--yg-fg-tertiary)",
+              }}
+            >
+              {stock.symbol}
+            </span>
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: "var(--yg-fg-tertiary)",
+              }}
+            >
+              · {stock.market}
+            </span>
             {stock.currency === "KRW" && <KrSessionBadge />}
+            <NxtSpreadBadge
+              market={stock.market}
+              lastPrice={stock.last_price ? Number(stock.last_price) : null}
+              marketCap={stock.market_cap ? Number(stock.market_cap) : null}
+            />
           </div>
-          <h1 className="text-2xl font-bold">{symbolName}</h1>
+          <h1
+            style={{
+              fontSize: 22,
+              fontWeight: 800,
+              letterSpacing: "-0.025em",
+              margin: 0,
+              color: "var(--yg-fg-primary)",
+            }}
+          >
+            {symbolName}
+          </h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            flexShrink: 0,
+          }}
+        >
           <Link
             href={`/app/compare?a=${encodeURIComponent(stock.symbol)}`}
-            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary border rounded-md px-2 py-1"
             title="다른 종목과 비교"
+            style={{
+              padding: "6px 10px",
+              borderRadius: 99,
+              fontSize: 12,
+              fontWeight: 700,
+              background: "var(--yg-bg-tint-ink)",
+              color: "var(--yg-fg-secondary)",
+              textDecoration: "none",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 4,
+            }}
           >
             <GitCompare className="h-3 w-3" />
             비교
@@ -113,54 +179,21 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            현재가
-            {stock.instrument_type === "etf" && (
-              <span className="text-[10px] rounded border border-primary/40 bg-primary/10 text-primary px-1.5 py-0.5 font-semibold">
-                ETF
-              </span>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-3xl font-bold font-mono">
-            {stock.last_price ? fmt.format(Number(stock.last_price)) : "—"}
-          </div>
-          <div className="text-xs text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
-            <span>
-              업데이트:{" "}
-              {stock.last_price_at
-                ? formatMarketTimestamp(stock.last_price_at, stock.market)
-                : "—"}
-            </span>
-            <FreshnessIndicator
-              lastFetchedAt={stock.last_price_at}
-              market={stock.market}
-            />
-          </div>
-          <div className="mt-2">
-            <NxtSpreadBadge
-              market={stock.market}
-              lastPrice={stock.last_price ? Number(stock.last_price) : null}
-              marketCap={stock.market_cap ? Number(stock.market_cap) : null}
-            />
-          </div>
-          <div className="mt-2">
-            <StockThemes symbol={stock.symbol} />
-          </div>
-          <div className="mt-2">
-            <Suspense
-              fallback={
-                <div className="text-xs text-muted-foreground">분석 로딩…</div>
-              }
-            >
-              <StockRatingBadge symbol={stock.symbol} />
-            </Suspense>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Plan #44: YG 가격 hero */}
+      <YGPriceCard
+        lastPrice={stock.last_price ? Number(stock.last_price) : null}
+        currency={stock.currency}
+        lastPriceAt={stock.last_price_at}
+        market={stock.market}
+        fiftyTwoWeekHigh={
+          stock.fifty_two_week_high ? Number(stock.fifty_two_week_high) : null
+        }
+        fiftyTwoWeekLow={
+          stock.fifty_two_week_low ? Number(stock.fifty_two_week_low) : null
+        }
+        symbol={stock.symbol}
+        isEtf={stock.instrument_type === "etf"}
+      />
 
       <Card>
         <CardHeader>
@@ -202,37 +235,24 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
         </>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">거래</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {portfolio ? (
-            <BuySellSheet
-              portfolioId={portfolio.id}
-              symbol={stock.symbol}
-              symbolName={symbolName}
-              currency={stock.currency}
-              market={stock.market}
-              lastPrice={stock.last_price ? Number(stock.last_price) : null}
-              cashBalance={
-                stock.currency === "KRW"
-                  ? Number(portfolio.krw_balance ?? 0)
-                  : Number(portfolio.usd_balance ?? 0)
-              }
-              currentQty={holding ? Number(holding.quantity) : 0}
-              avgCost={holding ? Number(holding.avg_cost) : null}
-            />
-          ) : (
-            <div className="text-sm text-muted-foreground">포트폴리오 로딩 실패</div>
-          )}
-          <div className="text-xs text-muted-foreground">
-            잔고: {portfolio?.krw_balance ? KRW.format(Number(portfolio.krw_balance)) : "—"}
-            {" · "}
-            {portfolio?.usd_balance ? USD.format(Number(portfolio.usd_balance)) : "$0"}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Plan #44: YG 매수/매도 카드 (잔고+보유+평단+버튼) */}
+      {portfolio && (
+        <YGTradeButtons
+          portfolioId={portfolio.id}
+          symbol={stock.symbol}
+          symbolName={symbolName}
+          currency={stock.currency}
+          market={stock.market}
+          lastPrice={stock.last_price ? Number(stock.last_price) : null}
+          cashBalance={
+            stock.currency === "KRW"
+              ? Number(portfolio.krw_balance ?? 0)
+              : Number(portfolio.usd_balance ?? 0)
+          }
+          currentQty={holding ? Number(holding.quantity) : 0}
+          avgCost={holding ? Number(holding.avg_cost) : null}
+        />
+      )}
 
       {stock.market.startsWith("KRX_") && (
         <Card>
