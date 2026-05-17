@@ -1,11 +1,10 @@
-"use client";
-
 // Plan #45: YG ChartCard — handoff trade-detail.jsx ChartCard 패턴.
 //
-// 카드 wrapping + section-head + ChartArea + range tabs.
-// margin: '12px 20px 0' 으로 다른 카드와 폭 일관성 보장.
+// 깔끔한 AreaChart + range tabs (1일~5년) + "상세 ›" 링크 (자동 추세선 풀 차트로).
+// margin: '12px 20px 0' 으로 다른 카드와 폭 일관성.
 
-import { ChartArea } from "@/components/chart-area";
+import Link from "next/link";
+import { YGRangeChart } from "./yg-range-chart";
 
 type Bar = {
   ts: string;
@@ -46,20 +45,19 @@ export function YGChartCard({ symbol, initialBars }: Props) {
         >
           차트
         </h3>
-        <span
+        <Link
+          href={`/app/trade/${encodeURIComponent(symbol)}/chart`}
           style={{
-            fontSize: 11,
+            fontSize: 13,
             fontWeight: 700,
             color: "var(--yg-fg-tertiary)",
-            padding: "4px 8px",
-            background: "var(--yg-bg-tint-ink)",
-            borderRadius: 99,
+            textDecoration: "none",
           }}
         >
-          일봉
-        </span>
+          상세 ›
+        </Link>
       </div>
-      <ChartArea symbol={symbol} initialBars={initialBars} />
+      <YGRangeChart symbol={symbol} initialBars={initialBars} />
     </div>
   );
 }
