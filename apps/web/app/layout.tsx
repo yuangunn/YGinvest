@@ -39,7 +39,13 @@ export default function RootLayout({
   return (
     <html lang="ko" className="h-full antialiased" suppressHydrationWarning>
       <body className="min-h-full flex flex-col bg-background text-foreground">
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        {/* Plan #42: 라이트 모드 강제 (OS 다크모드 무시). 추후 YG 다크 디자인 완성 시 해제. */}
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem={false}
+          forcedTheme="light"
+        >
           {children}
           <Toaster position="top-center" richColors closeButton />
         </ThemeProvider>

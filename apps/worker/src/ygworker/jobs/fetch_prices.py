@@ -37,9 +37,12 @@ def run_fetch_prices(supabase: Any, logger: Any) -> None:
     now = datetime.now(UTC).isoformat()
     updated = 0
 
-    # KR: 두 번의 listing 호출로 모든 prices를 한번에
+    # KR: 두 번의 listing 호출로 일반 주식 prices, ETF는 yfinance fallback
+    # Plan #42: FDR StockListing(KOSPI/KOSDAQ)에는 ETF가 빠져 있어 069500.KS 등
+    # 75개 ETF가 영원히 null. fallback으로 yfinance batch로 보완.
     if kr_symbols:
         kr_prices = _build_kr_price_map(logger)
+        kr_missing: list[str] = []
         for sym in kr_symbols:
             price = kr_prices.get(sym)
             if price is not None:
@@ -47,6 +50,39 @@ def run_fetch_prices(supabase: Any, logger: Any) -> None:
                     {"last_price": price, "last_price_at": now, "updated_at": now}
                 ).eq("symbol", sym).execute()
                 updated += 1
+            else:
+                kr_missing.append(sym)
+
+        # FDR이 못 찾은 KR 심볼 (대부분 ETF) → yfinance batch
+        if kr_missing:
+            logger.info(
+                "fetch_prices.kr_fallback_yf",
+                missing=len(kr_missing),
+                sample=kr_missing[:5],
+            )
+            for i in range(0, len(kr_missing), US_BATCH_SIZE):
+                chunk = kr_missing[i:i + US_BATCH_SIZE]
+                try:
+                    batch = fetch_closes_batch(chunk)
+                except Exception as exc:
+                    logger.warning(
+                        "fetch_prices.kr_fallback_batch_failed",
+                        chunk_start=i,
+                        error=str(exc),
+                    )
+                    continue
+                for sym, close in batch.items():
+                    try:
+                        supabase.table("stocks").update(
+                            {"last_price": close, "last_price_at": now, "updated_at": now}
+                        ).eq("symbol", sym).execute()
+                        updated += 1
+                    except Exception as exc:
+                        logger.warning(
+                            "fetch_prices.kr_fallback_update_failed",
+                            symbol=sym,
+                            error=str(exc),
+                        )
 
     # US: yfinance batch (chunked) — 한 번에 200개씩 다운로드
     if us_symbols:
