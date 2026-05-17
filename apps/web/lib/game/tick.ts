@@ -1,23 +1,21 @@
-// Plan #33: 게임 tick 처리 — 실제 시간 흐름에 따라 스케줄된 행동 실행.
+// Plan #36: 게임 tick 재설계 — 모드 기반 자동 진행 + 일기 + 이벤트.
 //
-// 호출 시점: 사용자가 게임 페이지 진입 / refresh / 매수매도 직전.
-//   서버 액션으로 "현재 시각 - life_started_at = 며칠 지났나" 계산 후,
-//   미실행 game_schedule을 순서대로 실행.
-//
-// 게임 시간 = 실제 시간 (1일 = 1일). 한 번에 여러 일이 밀려있어도 순차 처리.
+// 호출: 게임 페이지 진입 시 / 매도 직전 / 환생 직전.
+// 처리: 현재 시각 - life_started_at = 며칠 지났나 → 미실행 day들을 순차 처리.
+// 각 day마다:
+//   1. 모드 기반 자동 활동 결정 (work/study/rest)
+//   2. 보유 주식 시세 변동 반영 (정보용 — 실제 cash는 매도 시점에만)
+//   3. 학력/승진 마일스톤 체크
+//   4. 랜덤 이벤트 발생
+//   5. 일기 row insert (entry_type별)
 
 import {
-  ACTIVITY_COST,
-  FATIGUE_DELTA,
-  HAPPINESS_DELTA,
-  INTELLIGENCE_DELTA,
-  PARTTIME_DAILY_WAGE,
-  HOLIDAY_BONUS_MULT,
-  FULLTIME_DAILY_BY_RANK,
-  FATIGUE_PRODUCTIVITY_DROP,
-  FATIGUE_FIRE_RISK,
-  FATIGUE_HOSPITAL,
   HOURS_PER_GAME_DAY,
+  RANDOM_EVENTS,
+  computeDailyResult,
+  checkMilestones,
+  INTELLIGENCE_FOR_GED,
+  type PlayMode,
 } from "./constants";
 
 export type GameCharacter = {
@@ -35,185 +33,191 @@ export type GameCharacter = {
   life_started_at: string;
   current_day: number;
   starting_cash: number;
-};
-
-export type ScheduleRow = {
-  user_id: string;
-  game_day: number;
-  activity: string;
-  executed_at: string | null;
-  result_summary: string | null;
+  play_mode: PlayMode;
 };
 
 export type Unlocks = Record<string, number>;
 
-/** 두 시각 사이 게임 일수 — HOURS_PER_GAME_DAY 배율 적용.
- *  Plan #35: 실제 2시간 = 게임 1일 (기본). 너무 느린 1:1을 1:12로. */
-function daysBetween(startIso: string, endIso: string): number {
+export type DiaryEntry = {
+  game_day: number;
+  real_date: string;
+  entry_type: "activity" | "event" | "milestone" | "trade" | "market";
+  emoji: string;
+  summary: string;
+  cash_delta: number;
+  metadata?: Record<string, unknown>;
+};
+
+/** 두 시각 사이 게임 일수 */
+export function daysBetween(startIso: string, endIso: string): number {
   const start = new Date(startIso).getTime();
   const end = new Date(endIso).getTime();
   const realHours = (end - start) / 3_600_000;
   return Math.floor(realHours / HOURS_PER_GAME_DAY);
 }
 
-/** 평일 공휴일 (월~금 + 공휴일) → 공휴수당 적용 */
-function isWeekdayHoliday(date: Date): boolean {
-  const day = date.getDay();
-  if (day === 0 || day === 6) return false;
-  const md = `${date.getMonth() + 1}-${date.getDate()}`;
-  return ["1-1", "3-1", "5-5", "6-6", "8-15", "10-3", "10-9", "12-25"].includes(md);
+/** game_day → 실제 timestamp */
+export function gameDayToRealDate(lifeStartedAt: string, gameDay: number): Date {
+  const start = new Date(lifeStartedAt).getTime();
+  return new Date(start + gameDay * HOURS_PER_GAME_DAY * 3_600_000);
 }
 
 /**
- * tick 실행: 현재까지 밀려 있는 스케줄을 character에 반영.
+ * tick 실행: 마지막 처리 이후의 모든 day를 처리해 일기 entry + character 변화 계산.
  *
- * Returns: 변경된 character (저장 안 됨, 호출자가 저장 책임)
+ * Returns: 누적 변화 + diary entries (호출자가 DB에 저장).
  */
-export function applyScheduleTicks(
+export function applyTickWithDiary(
   character: GameCharacter,
-  pendingSchedules: ScheduleRow[],
   unlocks: Unlocks,
   nowIso: string,
+  ged_already_celebrated: boolean,
 ): {
-  character: GameCharacter;
-  executedSchedules: { game_day: number; result_summary: string }[];
-  events: string[];
+  updatedCharacter: GameCharacter;
+  diaryEntries: DiaryEntry[];
 } {
   const today = daysBetween(character.life_started_at, nowIso);
-  const events: string[] = [];
-  const executed: { game_day: number; result_summary: string }[] = [];
+  const startDay = character.current_day;
 
-  // 보너스 배수 (해금 효과)
-  const parttimeBonus = 1 + (unlocks["parttime_bonus"] ?? 0) * 0.1;
-  const fulltimeBonus = 1 + (unlocks["fulltime_bonus"] ?? 0) * 0.1;
-  const fatigueResistance = (unlocks["fatigue_resistance"] ?? 0) * 10;
-  const mentorEffect = (unlocks["mentor_effect"] ?? 0) > 0;
-  const happinessBuffer = (unlocks["happiness_buffer"] ?? 0) > 0 ? 20 : 0;
-
-  let { cash, fatigue, intelligence, happiness, job_type, job_title } = character;
-
-  // 일별로 순차 처리 (역순 X — 시간 흐름대로)
-  const sorted = pendingSchedules
-    .filter((s) => s.game_day <= today && !s.executed_at)
-    .sort((a, b) => a.game_day - b.game_day);
-
-  for (const schedule of sorted) {
-    const activity = schedule.activity;
-    // Plan #35: game_day → 실제 날짜 (시간 배율 적용)
-    const lifeStart = new Date(character.life_started_at).getTime();
-    const realMsOffset = schedule.game_day * HOURS_PER_GAME_DAY * 3_600_000;
-    const dayDate = new Date(lifeStart + realMsOffset);
-    const summary: string[] = [];
-
-    // 1. 비용 차감
-    const cost = ACTIVITY_COST[activity] ?? 0;
-    if (cost > 0) {
-      if (cash < cost) {
-        summary.push(`💸 돈 부족 — ${activity} 못 함`);
-        executed.push({
-          game_day: schedule.game_day,
-          result_summary: summary.join(" · "),
-        });
-        continue;
-      }
-      cash -= cost;
-      summary.push(`-${(cost / 10000).toFixed(0)}만원`);
-    }
-
-    // 2. 수입 (알바/정규직)
-    let income = 0;
-    if (activity === "parttime") {
-      let wage = PARTTIME_DAILY_WAGE * parttimeBonus;
-      if (isWeekdayHoliday(dayDate)) {
-        wage *= HOLIDAY_BONUS_MULT;
-        summary.push("🎉 공휴수당 1.5x");
-      }
-      // 피로도에 따른 능률
-      if (fatigue >= FATIGUE_PRODUCTIVITY_DROP) {
-        wage *= 0.9;
-        summary.push("😴 피로 -10%");
-      }
-      income = Math.floor(wage);
-      cash += income;
-      summary.push(`+${(income / 10000).toFixed(1)}만원 알바`);
-    } else if (activity === "fulltime" && job_title) {
-      const rank = job_title;
-      const base = FULLTIME_DAILY_BY_RANK[rank] ?? FULLTIME_DAILY_BY_RANK["사원"];
-      let wage = base * fulltimeBonus;
-      if (fatigue >= FATIGUE_PRODUCTIVITY_DROP) {
-        wage *= 0.9;
-        summary.push("😴 피로 -10%");
-      }
-      income = Math.floor(wage);
-      cash += income;
-      summary.push(`+${(income / 10000).toFixed(1)}만원 (${rank})`);
-    }
-
-    // 3. 피로도 변화
-    const fatigueChange = FATIGUE_DELTA[activity] ?? 0;
-    fatigue = Math.max(0, Math.min(100, fatigue + fatigueChange));
-
-    // 4. 행복도 변화
-    const happinessChange = HAPPINESS_DELTA[activity] ?? 0;
-    happiness = Math.max(
-      -happinessBuffer,
-      Math.min(100, happiness + happinessChange),
-    );
-
-    // 5. 지력 변화
-    let intChange = INTELLIGENCE_DELTA[activity] ?? 0;
-    if (activity === "study" && mentorEffect) intChange = Math.floor(intChange * 1.5);
-    intelligence += intChange;
-    if (intChange > 0) summary.push(`📚 지력 +${intChange}`);
-
-    // 6. 피로도 임계점 이벤트
-    const fireRisk = FATIGUE_FIRE_RISK + fatigueResistance;
-    const hospital = FATIGUE_HOSPITAL + fatigueResistance;
-    if (fatigue >= hospital) {
-      // 강제 입원 1주
-      events.push(`🏥 ${dayDate.toLocaleDateString("ko-KR")} 과로로 입원 — 1주일 강제 휴식`);
-      fatigue = 30; // 입원 후 회복
-      happiness = Math.max(0, happiness - 20);
-      summary.push("🏥 입원");
-    } else if (fatigue >= fireRisk && (activity === "parttime" || activity === "fulltime")) {
-      // 5% 확률 해고
-      if (Math.random() < 0.05) {
-        events.push(`💼 ${dayDate.toLocaleDateString("ko-KR")} 피로 누적으로 해고됨`);
-        job_type = "unemployed";
-        job_title = null;
-        summary.push("💔 해고");
-      }
-    }
-
-    executed.push({
-      game_day: schedule.game_day,
-      result_summary: summary.join(" · ") || "—",
-    });
+  if (today <= startDay) {
+    return { updatedCharacter: character, diaryEntries: [] };
   }
 
-  // 누락된 일자 (스케줄이 없거나 'free'였던 경우) — 자동 휴식으로 처리
-  // 너무 빈 일자가 많으면 행복도 하락 등은 Phase 2에서.
+  const luckBonus = (unlocks["good_luck"] ?? 0) > 0 ? 1.25 : 1.0;
+  const goodEventKeys = new Set([
+    "parent_gift",
+    "lottery_small",
+    "company_meal",
+    "company_award",
+    "ai_boom",
+    "book_inspiration",
+    "tax_refund",
+  ]);
 
-  return {
-    character: {
-      ...character,
-      cash,
-      fatigue,
-      intelligence,
-      happiness,
+  let { cash, intelligence, education_level, job_type, job_title, job_started_at } = character;
+  const entries: DiaryEntry[] = [];
+  let gedCelebrated = ged_already_celebrated;
+
+  for (let day = startDay + 1; day <= today; day++) {
+    const realDate = gameDayToRealDate(character.life_started_at, day);
+    const dayOfWeek = (realDate.getDay() + 6) % 7; // 월=0 ... 일=6
+
+    // 1. 일상 활동
+    const result = computeDailyResult(
+      character.play_mode,
       job_type,
       job_title,
+      dayOfWeek,
+      unlocks,
+    );
+    cash += result.cashDelta;
+    intelligence += result.intelligenceDelta;
+
+    entries.push({
+      game_day: day,
+      real_date: realDate.toISOString(),
+      entry_type: "activity",
+      emoji: result.emoji,
+      summary: result.summary,
+      cash_delta: result.cashDelta,
+      metadata: {
+        intelligence_delta: result.intelligenceDelta,
+      },
+    });
+
+    // 2. 학력/승진 마일스톤 체크
+    const milestone = checkMilestones(
+      {
+        education_level,
+        job_type,
+        job_title,
+        intelligence,
+        job_started_at,
+        current_day: day,
+      },
+      character.life_started_at,
+    );
+    if (milestone) {
+      if (milestone.educationLevel) education_level = milestone.educationLevel;
+      if (milestone.jobType) {
+        job_type = milestone.jobType;
+        if (milestone.jobType === "fulltime") {
+          job_started_at = realDate.toISOString();
+        }
+      }
+      if (milestone.jobTitle) job_title = milestone.jobTitle;
+      entries.push({
+        game_day: day,
+        real_date: realDate.toISOString(),
+        entry_type: "milestone",
+        emoji: milestone.emoji,
+        summary: milestone.summary,
+        cash_delta: 0,
+        metadata: { milestone_type: milestone.type },
+      });
+    }
+
+    // 검정고시 한 번만 알림 (지력 200+ 첫 도달)
+    if (!gedCelebrated && intelligence >= INTELLIGENCE_FOR_GED) {
+      entries.push({
+        game_day: day,
+        real_date: realDate.toISOString(),
+        entry_type: "milestone",
+        emoji: "📜",
+        summary: "검정고시 합격! 대학 진학 준비 중",
+        cash_delta: 0,
+        metadata: { milestone_type: "ged" },
+      });
+      gedCelebrated = true;
+    }
+
+    // 3. 랜덤 이벤트 (한 day에 최대 1개)
+    for (const event of RANDOM_EVENTS) {
+      const isGood = goodEventKeys.has(event.key);
+      const prob = event.dailyProbability * (isGood ? luckBonus : 1);
+      if (event.fulltimeOnly && job_type !== "fulltime") continue;
+      if (Math.random() < prob) {
+        const eventCashDelta = event.cashDelta(cash);
+        cash += eventCashDelta;
+        if (event.intelligenceDelta) intelligence += event.intelligenceDelta;
+        entries.push({
+          game_day: day,
+          real_date: realDate.toISOString(),
+          entry_type: "event",
+          emoji: event.emoji,
+          summary: event.summary + (
+            eventCashDelta !== 0
+              ? ` (${eventCashDelta > 0 ? "+" : ""}${Math.round(eventCashDelta / 10000)}만원)`
+              : ""
+          ),
+          cash_delta: eventCashDelta,
+          metadata: {
+            event_key: event.key,
+            stock_multiplier: event.stockMultiplier ?? null,
+            intelligence_delta: event.intelligenceDelta ?? null,
+          },
+        });
+        break; // 한 day에 1개 이벤트만
+      }
+    }
+  }
+
+  return {
+    updatedCharacter: {
+      ...character,
+      cash,
+      intelligence,
+      education_level,
+      job_type,
+      job_title,
+      job_started_at,
       current_day: today,
     },
-    executedSchedules: executed,
-    events,
+    diaryEntries: entries,
   };
 }
 
-/**
- * 게임 자산 총합 계산 (현금 + 게임 주식 평가액 + 게임 부동산 평가액).
- * 환생 조건 체크용.
- */
+/** 게임 자산 합산 (현금 + 주식 평가액 + 부동산 평가액) */
 export type AssetSnapshot = {
   cash: number;
   stocks_value: number;
@@ -238,12 +242,7 @@ export function computeAssets(
   };
 }
 
-/**
- * 부동산 현재 시세 계산:
- *   base × weekly_index × (1 + kospi_daily_change × kospi_beta) × (1 + daily_noise)
- *
- * KOSPI 일일 변동을 받아서 베타만큼 반영. noise는 deterministic 하게 game_day 기반 hash.
- */
+/** 부동산 현재 시세 (Plan #33 그대로 유지) */
 export function computeRealEstatePrice(
   basePrice: number,
   weeklyIndex: number,
@@ -253,9 +252,8 @@ export function computeRealEstatePrice(
   gameDay: number,
   regionCode: string,
 ): number {
-  // deterministic noise: hash(regionCode + gameDay) → -1~1
   const seed = simpleHash(regionCode + ":" + gameDay);
-  const noise = ((seed % 2000) / 1000 - 1) * dailyVolatility; // -volatility ~ +volatility
+  const noise = ((seed % 2000) / 1000 - 1) * dailyVolatility;
   const price =
     basePrice * weeklyIndex * (1 + kospiDailyChange * kospiBeta) * (1 + noise);
   return Math.round(price);

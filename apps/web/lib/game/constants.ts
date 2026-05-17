@@ -1,107 +1,369 @@
-// Plan #33: 게임 상수 — 활동 효과 / 직급 / 해금 등.
+// Plan #36: 게임 상수 — 모드 / 활동 / 이벤트 / 학력 / 승진.
 //
-// 모든 수치는 한 곳에 집약. 밸런싱 시 여기만 수정.
+// 30일 스케줄 → 3가지 모드로 대체.
+// 피로도/행복도 제거. 자원은 cash + intelligence + (job 정보).
 
 // Plan #35: 시간 배율 — 실제 2시간 = 게임 1일.
-// 너무 느려도 안 되고 (1:1=실 30일 = 1환생) 너무 빨라도 안 됨 (시세 못 따라감).
-// 2시간:1일이면 사용자가 점심/저녁/잘 때 자연스럽게 체크하면서 진행.
 export const HOURS_PER_GAME_DAY = 2;
 
 // 시작 자원
-export const STARTING_CASH = 10_000_000; // 1,000만원
-export const REBIRTH_THRESHOLD_PCT = 0.05; // 5% 수익 → 환생 가능
+export const STARTING_CASH = 10_000_000;
+export const REBIRTH_THRESHOLD_PCT = 0.05;
 
-// 한국 최저시급 (2026년 추정) × 8시간 × 주 5일
-export const MIN_HOURLY_WAGE = 10_300; // 원/시간 (2026년 예상)
+// ──────────── 한국 임금 (2026년 기준 추정) ────────────
+export const MIN_HOURLY_WAGE = 10_300;
 export const PARTTIME_HOURS_PER_DAY = 8;
 export const PARTTIME_DAILY_WAGE = MIN_HOURLY_WAGE * PARTTIME_HOURS_PER_DAY; // 82,400원
-export const HOLIDAY_BONUS_MULT = 1.5; // 공휴수당 1.5배
+export const HOLIDAY_BONUS_MULT = 1.5;
 
-// 직급별 일급 (정규직, 월급 ÷ 22)
+// 정규직 직급별 일급 (월급 ÷ 22)
 export const FULLTIME_DAILY_BY_RANK: Record<string, number> = {
-  사원: 130_000,    // 월 약 286만원
-  대리: 170_000,    // 월 약 374만원
-  과장: 220_000,    // 월 약 484만원
-  차장: 280_000,    // 월 약 616만원
-  부장: 350_000,    // 월 약 770만원
+  사원: 130_000,
+  대리: 170_000,
+  과장: 220_000,
+  차장: 280_000,
+  부장: 350_000,
 };
 export const FULLTIME_RANKS = ["사원", "대리", "과장", "차장", "부장"] as const;
 export type FulltimeRank = (typeof FULLTIME_RANKS)[number];
 
-// 활동 비용 (행복도 ↑ 활동은 돈 -)
-export const ACTIVITY_COST: Record<string, number> = {
-  shopping: 50_000,
-  dining: 30_000,
-  healing: 100_000,
-  study: 0,
-  rest: 0,
-  exercise: 0,
-  parttime: 0,
-  fulltime: 0,
-  job_search: 0,
-  free: 0,
+// ──────────── 모드 정의 ──────────────────────────────
+export type PlayMode = "learning" | "income" | "balanced";
+
+export type ModeDef = {
+  key: PlayMode;
+  label: string;
+  emoji: string;
+  description: string;
+  /** 각 day에 어떤 활동을 할 확률 */
+  weights: {
+    work: number;   // 알바 또는 정규직 (있으면)
+    study: number;  // 자기계발
+    rest: number;   // 휴식 (수입 0, 지력 0)
+  };
 };
 
-// 피로도 변화 (양수 = 누적, 음수 = 회복)
-export const FATIGUE_DELTA: Record<string, number> = {
-  parttime: 15,
-  fulltime: 18,
-  study: 8,
-  job_search: 10,
-  rest: -20,
-  shopping: -10,
-  dining: -10,
-  healing: -25,
-  exercise: -15, // 체력 단련 효과
-  free: -5,
+export const PLAY_MODES: Record<PlayMode, ModeDef> = {
+  learning: {
+    key: "learning",
+    label: "학습 중심",
+    emoji: "📚",
+    description:
+      "지력 빠르게 ↑ → 대학/취업 빠름. 수입 적음. 환생까지 오래 걸리지만 정규직 도달 후 가속.",
+    weights: { work: 0.3, study: 0.7, rest: 0 },
+  },
+  income: {
+    key: "income",
+    label: "수입 중심",
+    emoji: "💰",
+    description:
+      "현금 빠르게 모음. 환생까지 가장 빠르지만 학력 진보 X (계속 알바).",
+    weights: { work: 1.0, study: 0, rest: 0 },
+  },
+  balanced: {
+    key: "balanced",
+    label: "균형",
+    emoji: "⚖️",
+    description:
+      "절반 일하고 절반 공부. 안정적인 진행. 첫 환생 시 추천.",
+    weights: { work: 0.5, study: 0.5, rest: 0 },
+  },
 };
 
-// 행복도 변화
-export const HAPPINESS_DELTA: Record<string, number> = {
-  parttime: -2,
-  fulltime: -3,
-  study: -1,
-  job_search: -3,
-  rest: 3,
-  shopping: 8,
-  dining: 10,
-  healing: 15,
-  exercise: 5,
-  free: 1,
-};
-
-// 지력 (자기계발) 변화 — study만 +5
-export const INTELLIGENCE_DELTA: Record<string, number> = {
-  study: 5,
-};
-
-// 피로도 임계점
-export const FATIGUE_PRODUCTIVITY_DROP = 70; // 이상 시 수입 -10%
-export const FATIGUE_FIRE_RISK = 90;          // 이상 시 5% 해고
-export const FATIGUE_HOSPITAL = 100;          // 이상 시 강제 1주 입원
-
-// 학력 / 직업 unlock 조건
-export const INTELLIGENCE_FOR_GED = 200;       // 검정고시 (자기계발 누적 200시간)
+// ──────────── 학력 마일스톤 ───────────────────────────
+export const INTELLIGENCE_FOR_GED = 200;        // 검정고시
 export const INTELLIGENCE_FOR_UNIVERSITY = 600; // 대학 진학
 export const INTELLIGENCE_FOR_FULLTIME = 1500;  // 사무직 취업
 
-// 승진 조건 (직장 N일 + 피로도 평균 < X)
-export const PROMOTION_DAYS_PER_RANK = 180; // 약 6개월마다 승진 기회
+export const INTELLIGENCE_GAIN_PER_STUDY = 5;
 
-// 환생 포인트 계산
-// points = 수익률(%) × 10 + 시간 효율 보너스 (빠를수록 ↑)
-// 예: 5% 수익, 30일 = 50 + 보너스 = ~60pt
+// ──────────── 승진 시스템 ─────────────────────────────
+export const PROMOTION_DAYS_PER_RANK = 180; // 게임 180일마다 승진 기회
+
+// ──────────── 랜덤 이벤트 풀 ──────────────────────────
+export type RandomEventDef = {
+  key: string;
+  emoji: string;
+  /** 확률 (0-1). 매 day 진행 시 계산 */
+  dailyProbability: number;
+  /** 일기 summary */
+  summary: string;
+  /** 현금 변화 함수 (cash, random)으로 받음 */
+  cashDelta: (currentCash: number) => number;
+  /** 보유 주식 가격에 영향 (1.0 = 변화 없음, 1.1 = +10%) */
+  stockMultiplier?: number;
+  /** 정규직만 발생 */
+  fulltimeOnly?: boolean;
+  /** 추가 효과 (지력 +) */
+  intelligenceDelta?: number;
+};
+
+export const RANDOM_EVENTS: RandomEventDef[] = [
+  {
+    key: "parent_gift",
+    emoji: "🎁",
+    dailyProbability: 0.02,
+    summary: "부모님 용돈 도착",
+    cashDelta: () => 300_000,
+  },
+  {
+    key: "lottery_small",
+    emoji: "🎟️",
+    dailyProbability: 0.01,
+    summary: "복권 5등 당첨",
+    cashDelta: () => 100_000,
+  },
+  {
+    key: "company_meal",
+    emoji: "🍱",
+    dailyProbability: 0.015,
+    summary: "회사 식대 지원금",
+    cashDelta: () => 50_000,
+    fulltimeOnly: true,
+  },
+  {
+    key: "company_award",
+    emoji: "🏆",
+    dailyProbability: 0.01,
+    summary: "회사 표창 — 보너스 입금!",
+    cashDelta: () => 500_000,
+    fulltimeOnly: true,
+  },
+  {
+    key: "ai_boom",
+    emoji: "🚀",
+    dailyProbability: 0.01,
+    summary: "[뉴스] AI 붐 — 보유 주식 일제히 상승",
+    cashDelta: () => 0,
+    stockMultiplier: 1.08,
+  },
+  {
+    key: "book_inspiration",
+    emoji: "📕",
+    dailyProbability: 0.02,
+    summary: "좋은 책 발견 — 지력 +20",
+    cashDelta: () => 0,
+    intelligenceDelta: 20,
+  },
+  {
+    key: "medical",
+    emoji: "🏥",
+    dailyProbability: 0.012,
+    summary: "병원비 지출",
+    cashDelta: () => -Math.floor(Math.random() * 700_000) - 300_000, // -30~100만
+  },
+  {
+    key: "car_accident",
+    emoji: "🚗",
+    dailyProbability: 0.005,
+    summary: "차사고 — 수리비 지출",
+    cashDelta: () => -Math.floor(Math.random() * 2_000_000) - 1_000_000, // -100~300만
+  },
+  {
+    key: "wedding",
+    emoji: "💌",
+    dailyProbability: 0.015,
+    summary: "친구 결혼식 — 축의금",
+    cashDelta: () => -200_000,
+  },
+  {
+    key: "crypto_crash",
+    emoji: "📉",
+    dailyProbability: 0.008,
+    summary: "[뉴스] 코인 폭락 — 보유 주식 동반 하락",
+    cashDelta: () => 0,
+    stockMultiplier: 0.92,
+  },
+  {
+    key: "economic_crisis",
+    emoji: "🌪️",
+    dailyProbability: 0.003,
+    summary: "[뉴스] 경제 위기 — 시장 대폭락",
+    cashDelta: () => 0,
+    stockMultiplier: 0.82,
+  },
+  {
+    key: "tax_refund",
+    emoji: "💸",
+    dailyProbability: 0.008,
+    summary: "연말정산 환급금 입금",
+    cashDelta: () => 250_000,
+  },
+];
+
+// ──────────── 모드별 day당 cash/intel 계산 ──────────────
+export type DailyResult = {
+  cashDelta: number;
+  intelligenceDelta: number;
+  summary: string;
+  emoji: string;
+};
+
+export function computeDailyResult(
+  mode: PlayMode,
+  jobType: "unemployed" | "parttime" | "fulltime",
+  jobTitle: string | null,
+  dayOfWeek: number, // 0-6 (월=0 ... 일=6)
+  unlocks: Record<string, number>,
+): DailyResult {
+  const modeWeights = PLAY_MODES[mode].weights;
+  const parttimeBonus = 1 + (unlocks["parttime_bonus"] ?? 0) * 0.1;
+  const fulltimeBonus = 1 + (unlocks["fulltime_bonus"] ?? 0) * 0.1;
+  const mentorEffect = (unlocks["mentor_effect"] ?? 0) > 0;
+
+  // 주말은 강제 휴식 (현실감 — 주 5일 근무제)
+  const isWeekend = dayOfWeek === 5 || dayOfWeek === 6;
+  if (isWeekend) {
+    return {
+      cashDelta: 0,
+      intelligenceDelta: 0,
+      summary: "주말 — 휴식",
+      emoji: "🛌",
+    };
+  }
+
+  // 모드 weight 기반 활동 결정
+  const r = Math.random();
+  let activity: "work" | "study" | "rest";
+  if (r < modeWeights.work) activity = "work";
+  else if (r < modeWeights.work + modeWeights.study) activity = "study";
+  else activity = "rest";
+
+  if (activity === "work") {
+    if (jobType === "fulltime" && jobTitle) {
+      const base = FULLTIME_DAILY_BY_RANK[jobTitle] ?? FULLTIME_DAILY_BY_RANK["사원"];
+      const wage = Math.floor(base * fulltimeBonus);
+      return {
+        cashDelta: wage,
+        intelligenceDelta: 0,
+        summary: `${jobTitle} 출근 — +${Math.round(wage / 10000)}만원`,
+        emoji: "💼",
+      };
+    }
+    // 알바 (또는 unemployed지만 모드에서 일하라고 한 경우 — 편의점 알바 가정)
+    const wage = Math.floor(PARTTIME_DAILY_WAGE * parttimeBonus);
+    return {
+      cashDelta: wage,
+      intelligenceDelta: 0,
+      summary: `알바 출근 — +${Math.round(wage / 10000)}만원`,
+      emoji: "💪",
+    };
+  }
+
+  if (activity === "study") {
+    const gain = mentorEffect
+      ? Math.floor(INTELLIGENCE_GAIN_PER_STUDY * 1.5)
+      : INTELLIGENCE_GAIN_PER_STUDY;
+    return {
+      cashDelta: 0,
+      intelligenceDelta: gain,
+      summary: `자기계발 — 지력 +${gain}`,
+      emoji: "📚",
+    };
+  }
+
+  // rest
+  return {
+    cashDelta: 0,
+    intelligenceDelta: 0,
+    summary: "휴식 — 재충전",
+    emoji: "🛌",
+  };
+}
+
+// ──────────── 학력/직업 진행 자동 체크 ──────────────────
+export type MilestoneResult = {
+  type: "ged" | "university" | "fulltime_offer" | "promotion";
+  summary: string;
+  emoji: string;
+  /** 추가 효과 (학력 변경, job 변경 등) */
+  educationLevel?: "highschool" | "bachelor";
+  jobType?: "unemployed" | "parttime" | "fulltime";
+  jobTitle?: string;
+};
+
+export function checkMilestones(
+  character: {
+    education_level: "highschool" | "bachelor";
+    job_type: "unemployed" | "parttime" | "fulltime";
+    job_title: string | null;
+    intelligence: number;
+    job_started_at: string | null;
+    current_day: number;
+  },
+  lifeStartedAt: string,
+): MilestoneResult | null {
+  // 1. 사무직 취업 (지력 1500+ && 현재 사무직 아닐 때)
+  if (
+    character.intelligence >= INTELLIGENCE_FOR_FULLTIME &&
+    character.job_type !== "fulltime"
+  ) {
+    return {
+      type: "fulltime_offer",
+      summary: "사무직 취업 성공! 직급: 사원",
+      emoji: "🎉",
+      jobType: "fulltime",
+      jobTitle: "사원",
+    };
+  }
+
+  // 2. 대학 진학 (지력 600+ && 학력 고졸)
+  if (
+    character.intelligence >= INTELLIGENCE_FOR_UNIVERSITY &&
+    character.education_level === "highschool"
+  ) {
+    return {
+      type: "university",
+      summary: "대학 진학! 학력: 대졸",
+      emoji: "🎓",
+      educationLevel: "bachelor",
+    };
+  }
+
+  // 3. 검정고시 (지력 200+ && 마일스톤 아직 안 받음) — 그냥 일기 알림용
+  // 별도 학력 X. 다만 일기에 "검정고시 합격" 기록 가능 — 아래에서 별도 처리
+
+  // 4. 승진 (정규직 && job_started 후 PROMOTION_DAYS_PER_RANK 경과)
+  if (
+    character.job_type === "fulltime" &&
+    character.job_title &&
+    character.job_started_at
+  ) {
+    const startDay = Math.floor(
+      (new Date(character.job_started_at).getTime() -
+        new Date(lifeStartedAt).getTime()) /
+        86_400_000 / (HOURS_PER_GAME_DAY / 24),
+    );
+    const daysAtJob = character.current_day - startDay;
+    const nextRankIdx = FULLTIME_RANKS.indexOf(character.job_title as FulltimeRank) + 1;
+    if (nextRankIdx > 0 && nextRankIdx < FULLTIME_RANKS.length) {
+      const requiredDays = nextRankIdx * PROMOTION_DAYS_PER_RANK;
+      if (daysAtJob >= requiredDays) {
+        const nextRank = FULLTIME_RANKS[nextRankIdx];
+        return {
+          type: "promotion",
+          summary: `승진! ${character.job_title} → ${nextRank}`,
+          emoji: "🎊",
+          jobTitle: nextRank,
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+// ──────────── 환생 포인트 계산 (그대로) ──────────────
 export function calculateRebirthPoints(
   returnPct: number,
   daysPlayed: number,
 ): number {
-  const returnPoints = Math.floor(returnPct * 100 * 10); // 5% → 50pt
-  // 시간 보너스: 100일 안에 클리어하면 +20, 200일 +10, 그 이상 0
+  const returnPoints = Math.floor(returnPct * 100 * 10);
   const timeBonus = daysPlayed <= 100 ? 20 : daysPlayed <= 200 ? 10 : 0;
   return returnPoints + timeBonus;
 }
 
-// 영구 업그레이드 메뉴 (해금 가능 항목)
+// ──────────── 영구 업그레이드 (Plan #33 그대로) ────────
 export type UnlockDef = {
   key: string;
   label: string;
@@ -135,166 +397,29 @@ export const UNLOCK_CATALOG: UnlockDef[] = [
   {
     key: "bachelor_unlock",
     label: "🎓 대졸 시작 unlock",
-    description: "환생 시 학력 시작점을 대졸로 선택 가능. 시작 시 자기계발 +500",
+    description: "환생 시 대졸 시작 가능 + 지력 500",
     cost: 100,
     maxLevel: 1,
   },
   {
-    key: "fatigue_resistance",
-    label: "🛌 피로 저항 +10",
-    description: "피로도 임계점이 모두 +10 (누적)",
-    cost: 35,
-    maxLevel: 3,
-  },
-  {
     key: "real_estate_starter",
     label: "🏠 부동산 시작 자금",
-    description: "환생 시 +5,000만원 (부동산 진입 가속)",
+    description: "환생 시 +5,000만원",
     cost: 150,
     maxLevel: 1,
   },
   {
     key: "mentor_effect",
     label: "👨‍🏫 멘토 효과",
-    description: "study 활동 시 지력 +50% (5 → 7.5)",
+    description: "study 활동 시 지력 +50%",
     cost: 60,
     maxLevel: 1,
   },
   {
-    key: "happiness_buffer",
-    label: "😊 행복도 버퍼 +20",
-    description: "행복도가 0이 되어도 디버프 없음 (-20 까지 보호)",
-    cost: 45,
+    key: "good_luck",
+    label: "🍀 행운",
+    description: "긍정 이벤트 확률 +25%",
+    cost: 70,
     maxLevel: 1,
   },
 ];
-
-// 활동 라벨 (한글)
-export const ACTIVITY_LABEL: Record<string, string> = {
-  parttime: "💪 알바",
-  fulltime: "💼 출근",
-  study: "📚 공부",
-  rest: "🛌 휴식",
-  shopping: "🛍️ 쇼핑",
-  dining: "🍔 외식",
-  healing: "🧘 힐링",
-  exercise: "🏃 운동",
-  job_search: "📝 구직",
-  free: "⚪ 미정",
-};
-
-// 활동 색상 (UI)
-export const ACTIVITY_COLOR: Record<string, string> = {
-  parttime: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/40",
-  fulltime: "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/40",
-  study: "bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/40",
-  rest: "bg-slate-500/15 text-slate-600 dark:text-slate-400 border-slate-500/40",
-  shopping: "bg-pink-500/15 text-pink-600 dark:text-pink-400 border-pink-500/40",
-  dining: "bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/40",
-  healing: "bg-teal-500/15 text-teal-600 dark:text-teal-400 border-teal-500/40",
-  exercise: "bg-green-500/15 text-green-600 dark:text-green-400 border-green-500/40",
-  job_search: "bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border-cyan-500/40",
-  free: "bg-muted text-muted-foreground border",
-};
-
-// Plan #35: 활동별 효과 요약 (UI 버튼/스케줄 칸에 표시)
-// short: 한 줄 요약 ("+8만 ·피로+15")
-// effects: 자세한 effect list (모달용)
-export type ActivityEffect = {
-  delta: number;
-  emoji: string;
-  label: string;
-  isGood: boolean;
-};
-
-export function getActivityEffects(activity: string): ActivityEffect[] {
-  const effects: ActivityEffect[] = [];
-
-  // 수입 (알바/정규직)
-  if (activity === "parttime") {
-    effects.push({
-      delta: PARTTIME_DAILY_WAGE,
-      emoji: "💰",
-      label: `+${Math.round(PARTTIME_DAILY_WAGE / 10000)}만원 (최저시급×8h)`,
-      isGood: true,
-    });
-  } else if (activity === "fulltime") {
-    const base = FULLTIME_DAILY_BY_RANK["사원"];
-    effects.push({
-      delta: base,
-      emoji: "💰",
-      label: `+${Math.round(base / 10000)}만원~ (직급별)`,
-      isGood: true,
-    });
-  }
-
-  // 비용
-  const cost = ACTIVITY_COST[activity] ?? 0;
-  if (cost > 0) {
-    effects.push({
-      delta: -cost,
-      emoji: "💸",
-      label: `-${Math.round(cost / 10000)}만원`,
-      isGood: false,
-    });
-  }
-
-  // 피로도
-  const fatigueChange = FATIGUE_DELTA[activity] ?? 0;
-  if (fatigueChange !== 0) {
-    effects.push({
-      delta: fatigueChange,
-      emoji: "🔋",
-      label: fatigueChange > 0 ? `피로 +${fatigueChange}` : `피로 ${fatigueChange}`,
-      isGood: fatigueChange < 0,
-    });
-  }
-
-  // 행복도
-  const happinessChange = HAPPINESS_DELTA[activity] ?? 0;
-  if (happinessChange !== 0) {
-    effects.push({
-      delta: happinessChange,
-      emoji: "😊",
-      label: happinessChange > 0 ? `행복 +${happinessChange}` : `행복 ${happinessChange}`,
-      isGood: happinessChange > 0,
-    });
-  }
-
-  // 지력
-  const intChange = INTELLIGENCE_DELTA[activity] ?? 0;
-  if (intChange !== 0) {
-    effects.push({
-      delta: intChange,
-      emoji: "📚",
-      label: `지력 +${intChange}`,
-      isGood: true,
-    });
-  }
-
-  return effects;
-}
-
-/** 활동 효과 한 줄 요약 (버튼용) */
-export function getActivityShortSummary(activity: string): string {
-  const fx = getActivityEffects(activity);
-  if (fx.length === 0) return "변화 없음";
-  return fx
-    .slice(0, 2)
-    .map((e) => e.label.replace(/[+\-](\d+)만원/g, (_, n) => `${e.delta > 0 ? "+" : "-"}${n}만`))
-    .join(" · ");
-}
-
-/** 활동 부가 설명 (모달용) */
-export const ACTIVITY_DESCRIPTION: Record<string, string> = {
-  parttime: "최저시급×8시간. 주 5일 권장, 6일 이상이면 피로 누적으로 능률↓/해고위험↑.",
-  fulltime: "정규직 출근. 직급별 일급(사원 13만~부장 35만). 자기계발 충분히 쌓으면 승진.",
-  study: "자기계발. 지력 누적 → 200=검정고시, 600=대학진학, 1500=사무직 취업.",
-  rest: "휴식. 피로 -20, 행복 +3. 비용 0.",
-  shopping: "쇼핑. 행복 +8, 피로 -10. 비용 5만원.",
-  dining: "외식. 행복 +10, 피로 -10. 비용 3만원.",
-  healing: "힐링 (스파/마사지). 행복 +15, 피로 -25. 비용 10만원.",
-  exercise: "운동. 피로 -15, 행복 +5. 비용 0.",
-  job_search: "구직활동. (Phase 2에서 정규직 면접 시스템 추가 예정)",
-  free: "미정. 자동으로 가벼운 휴식 처리.",
-};

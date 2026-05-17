@@ -1,6 +1,6 @@
 "use client";
 
-// Plan #33: 게임 onboarding — 캐릭터 생성.
+// Plan #36: 게임 onboarding — 이름/성별/학력/모드 선택.
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { PLAY_MODES, type PlayMode } from "@/lib/game/constants";
 
 type Props = {
   userName: string;
@@ -30,6 +31,7 @@ export function GameOnboarding({
   const [education, setEducation] = useState<"highschool" | "bachelor">(
     "highschool",
   );
+  const [playMode, setPlayMode] = useState<PlayMode>("balanced");
   const [submitting, setSubmitting] = useState(false);
 
   async function startGame() {
@@ -46,6 +48,7 @@ export function GameOnboarding({
           name: name.trim(),
           gender,
           education_level: education,
+          play_mode: playMode,
         }),
       });
       const data = await res.json();
@@ -68,9 +71,9 @@ export function GameOnboarding({
           인생 시뮬레이션
         </h1>
         <p className="text-sm text-muted-foreground">
-          1,000만원으로 시작. 5% 수익 도달하면 환생 가능.
+          1,000만원으로 시작. 5% 수익 도달하면 환생.
           <br />
-          매수만 잘하는 게 아니라 <strong>매도 타이밍</strong>이 관건.
+          모드 선택하고 가끔 들어와 일기 보면 됩니다 (오프라인 자동 진행).
         </p>
         {rebirthCount > 0 && (
           <div className="inline-flex items-center gap-2 text-xs rounded-full border bg-muted/50 px-3 py-1">
@@ -167,14 +170,45 @@ export function GameOnboarding({
             </div>
           </div>
 
+          {/* 플레이 모드 */}
+          <div className="space-y-1.5">
+            <Label>플레이 모드</Label>
+            <div className="space-y-1.5">
+              {(["balanced", "income", "learning"] as const).map((m) => {
+                const def = PLAY_MODES[m];
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setPlayMode(m)}
+                    className={`w-full text-left rounded-md border p-3 transition-colors ${
+                      playMode === m
+                        ? "border-primary bg-primary/10"
+                        : "hover:bg-accent"
+                    }`}
+                  >
+                    <div className="font-semibold text-sm flex items-center gap-1.5">
+                      {def.emoji} {def.label}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5">
+                      {def.description}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground mt-1">
+                      활동 비율: 일 {Math.round(def.weights.work * 100)}% ·
+                      공부 {Math.round(def.weights.study * 100)}%
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <Button onClick={startGame} disabled={submitting} className="w-full">
             인생 시작 🚀
           </Button>
 
           <p className="text-[11px] text-muted-foreground text-center">
-            게임 1일 = 실제 1일. 페이스가 매우 느려요.
-            <br />
-            가끔 들어와서 스케줄만 짜두면 캐릭터가 알아서 살아갑니다.
+            실제 2시간 = 게임 1일. 가끔 들어와서 일기만 확인하세요.
           </p>
         </CardContent>
       </Card>
