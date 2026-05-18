@@ -7,6 +7,7 @@
 // - anonymous: 등수 + 수익률만 (닉네임 "익명")
 // - public: 닉네임 + 수익률 공개
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -256,6 +257,75 @@ export function LeaderboardOptIn() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Plan #47.8: 자격 조건 안내 (항상 표시) */}
+      <div
+        style={{
+          marginTop: 14,
+          padding: "12px 14px",
+          background: "var(--yg-bg-sub)",
+          borderRadius: 12,
+        }}
+      >
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 800,
+            color: "var(--yg-fg-tertiary)",
+            letterSpacing: "0.04em",
+            marginBottom: 8,
+          }}
+        >
+          📋 리더보드 등재 조건
+        </div>
+        <ul
+          style={{
+            margin: 0,
+            paddingLeft: 16,
+            fontSize: 12,
+            color: "var(--yg-fg-secondary)",
+            fontWeight: 600,
+            lineHeight: 1.7,
+          }}
+        >
+          <li>
+            <strong>거래 5건 이상</strong> (매수/매도 합산)
+          </li>
+          <li>
+            <strong>종합 / 꾸준함</strong> 카테고리: 가입 30일 이상
+          </li>
+          <li>
+            <strong>이번 달</strong> 카테고리: 가입 기간 제한 없음
+          </li>
+          <li>
+            매일 새벽 04:00 KST 갱신 (자격 충족 즉시 X)
+          </li>
+        </ul>
+      </div>
+
+      {/* Plan #47.8: 리더보드 보기 CTA — opt-in 했을 때만 */}
+      {v !== "hidden" && (
+        <Link
+          href="/app/leaderboard"
+          className="yg-btn"
+          style={{
+            display: "flex",
+            width: "100%",
+            marginTop: 10,
+            height: 44,
+            background: "var(--yg-bg-tint-ink)",
+            color: "var(--yg-fg-primary)",
+            fontSize: 13,
+            fontWeight: 800,
+            textDecoration: "none",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          🏆 리더보드 보러 가기 →
+        </Link>
       )}
     </div>
   );
