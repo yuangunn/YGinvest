@@ -29,6 +29,7 @@ from ygworker.jobs.notify_economic_events import run_notify_economic_events
 from ygworker.jobs.notify_expiring_orders import run_notify_expiring_orders
 from ygworker.jobs.notify_room_lifecycle import run_notify_room_lifecycle
 from ygworker.jobs.daily_market_briefing import run_daily_market_briefing
+from ygworker.jobs.health_monitor import run_health_monitor
 from ygworker.jobs.portfolio_snapshot import run_portfolio_snapshot
 from ygworker.jobs.refresh_leaderboard import run_refresh_leaderboard
 from ygworker.jobs.room_lifecycle import run_room_lifecycle
@@ -154,6 +155,15 @@ async def main_async() -> None:
         hour=6,
         minute=30,
         id="daily_market_briefing",
+        replace_existing=True,
+    )
+    # Plan #47.3: 매 15분 — E2E health monitor (price stale, snapshot lag, fx 등)
+    # 위반 시 Telegram 즉시 알림 + health_alerts 테이블에 기록
+    scheduler.add_job(
+        _wrap_in_thread(run_health_monitor, supabase, logger),
+        trigger="interval",
+        minutes=15,
+        id="health_monitor",
         replace_existing=True,
     )
     # Plan #27: 방 status 전이 — 1분 → 5분 (시뮬이라 즉시성 불필요)
