@@ -39,16 +39,38 @@ def _fetch_one_history(symbol: str) -> float | None:
         return None
 
 
+def _load_all_active_stocks(supabase: Any) -> list[dict]:
+    """active=true 모든 stocks 페이지네이션으로 전부 가져오기.
+
+    Supabase REST는 기본 1000 row limit. 3000+ active 종목 모두 처리하려면
+    .range()로 페이징 필요. 이거 없으면 1000개 이후 종목은 영원히 stale.
+    """
+    out: list[dict] = []
+    offset = 0
+    page_size = 1000
+    while True:
+        page = (
+            supabase.table("stocks")
+            .select("symbol, last_price_at")
+            .eq("is_active", True)
+            .order("symbol", desc=False)
+            .range(offset, offset + page_size - 1)
+            .execute()
+            .data
+            or []
+        )
+        if not page:
+            break
+        out.extend(page)
+        if len(page) < page_size:
+            break
+        offset += page_size
+    return out
+
+
 def run_fetch_prices(supabase: Any, logger: Any) -> None:
     """모든 active stocks의 last_price/last_price_at 갱신."""
-    rows = (
-        supabase.table("stocks")
-        .select("symbol, last_price_at")
-        .eq("is_active", True)
-        .execute()
-        .data
-        or []
-    )
+    rows = _load_all_active_stocks(supabase)
     if not rows:
         logger.info("fetch_prices.skip", reason="no_active_symbols")
         return
