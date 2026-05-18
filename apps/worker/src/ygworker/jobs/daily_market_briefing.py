@@ -124,10 +124,16 @@ def fetch_all_headlines(logger: Any) -> list[dict[str, Any]]:
 
 
 def fetch_macro_snapshot(supabase: Any) -> dict[str, Any]:
+    """매크로 snapshot. intraday(실시간) 우선, fallback으로 일봉(macro_indicators).
+
+    Plan #47.7: intraday 5분봉 도입 → KOSPI 등 실시간 표시.
+    change_pct = (현재값 - 전일 종가) / 전일 종가 × 100.
+    """
     snap: dict[str, Any] = {}
     for symbol in MACRO_KEYS:
         try:
-            res = (
+            # 1) 일봉 최근 2개 (전일 종가 참조용)
+            daily_res = (
                 supabase.table("macro_indicators")
                 .select("ts, value")
                 .eq("symbol", symbol)
@@ -135,16 +141,39 @@ def fetch_macro_snapshot(supabase: Any) -> dict[str, Any]:
                 .limit(2)
                 .execute()
             )
-            rows = res.data or []
-            if not rows:
+            daily_rows = daily_res.data or []
+            if not daily_rows:
                 continue
-            latest = float(rows[0]["value"])
-            prev = float(rows[1]["value"]) if len(rows) > 1 else latest
-            change_pct = ((latest - prev) / prev * 100) if prev else 0.0
+            daily_latest = float(daily_rows[0]["value"])
+            daily_prev = float(daily_rows[1]["value"]) if len(daily_rows) > 1 else None
+
+            # 2) intraday 최신값 (있으면 우선)
+            intraday_res = (
+                supabase.table("macro_intraday")
+                .select("ts, value")
+                .eq("symbol", symbol)
+                .order("ts", desc=True)
+                .limit(1)
+                .execute()
+            )
+            intraday_rows = intraday_res.data or []
+
+            if intraday_rows:
+                # 실시간 값 + 전일 종가 대비 변동률
+                current_value = float(intraday_rows[0]["value"])
+                current_ts = intraday_rows[0]["ts"]
+                # 전일 종가는 daily_prev (어제). daily_latest는 오늘 종가일 수도/장중일 수도
+                ref = daily_prev if daily_prev else daily_latest
+            else:
+                current_value = daily_latest
+                current_ts = daily_rows[0]["ts"]
+                ref = daily_prev
+
+            change_pct = ((current_value - ref) / ref * 100) if ref else 0.0
             snap[symbol] = {
-                "value": latest,
+                "value": current_value,
                 "change_pct": round(change_pct, 2),
-                "ts": rows[0]["ts"],
+                "ts": current_ts,
             }
         except Exception:
             continue

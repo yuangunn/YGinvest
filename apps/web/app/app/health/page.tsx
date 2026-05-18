@@ -115,8 +115,10 @@ export default async function HealthPage() {
     {
       name: "일봉 (stock_bars)",
       age: barsAge,
-      thresh: 60 * 24 * 2,
-      detail: "KR 장 마감 후 + US 장 마감 후 daily — 2일 이내 정상",
+      // 주말(토일) + 월요일 장 미마감까지 정상 (4일 = 금요일 종가 + 주말 + 월 오전)
+      thresh: 60 * 24 * 4,
+      detail:
+        "KR 16:00 / US 07:00 KST cron — 주말 휴장+장 미마감 포함 4일 이내 정상",
     },
     {
       name: "거시경제 지표 (macro)",
@@ -319,7 +321,7 @@ export default async function HealthPage() {
       </Card>
 
       <p className="text-[10px] text-muted-foreground text-center">
-        Worker (Railway) + Supabase (Cloud). 운영자가 5분 간격으로 점검 권장.
+        Worker (Oracle Cloud VM) + Supabase (Cloud). 매 15분 자동 health monitor + Telegram 알림.
       </p>
     </div>
   );

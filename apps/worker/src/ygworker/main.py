@@ -25,6 +25,7 @@ from ygworker.jobs.fetch_daily_bars import run_fetch_daily_bars
 from ygworker.jobs.fetch_earnings import run_fetch_earnings
 from ygworker.jobs.fetch_fx import run_fetch_fx
 from ygworker.jobs.fetch_macro_indicators import run_fetch_macro_indicators
+from ygworker.jobs.fetch_macro_intraday import run_fetch_macro_intraday
 from ygworker.jobs.fetch_prices import run_fetch_prices
 from ygworker.jobs.fetch_real_estate_index import run_fetch_real_estate_index
 from ygworker.jobs.health_monitor import run_health_monitor
@@ -283,6 +284,15 @@ async def main_async() -> None:
         id="fetch_macro_pre_noon",
         replace_existing=True,
     )
+    # Plan #47.7: 매크로 실시간 fetch — 5분 간격 (장중만 gated)
+    # KOSPI/KOSDAQ/USDKRW 등 10개 종목 fast_info.last_price → macro_intraday 테이블
+    scheduler.add_job(
+        _gated_macro_intraday(supabase, logger),
+        trigger="interval",
+        minutes=5,
+        id="fetch_macro_intraday",
+        replace_existing=True,
+    )
     # Plan #27 A5: 매일 02:00 KST 오래된 데이터 정리
     scheduler.add_job(
         _wrap_in_thread(run_cleanup_old_data, supabase, logger),
@@ -429,6 +439,16 @@ def _gated_fetch_prices(supabase: Any, logger: Any):
             logger.debug("fetch_prices.gated", reason="no_market_open")
             return
         await asyncio.to_thread(run_fetch_prices, supabase, logger)
+
+    return runner
+
+
+def _gated_macro_intraday(supabase: Any, logger: Any):
+    async def runner():
+        if not is_any_market_open():
+            logger.debug("macro_intraday.gated", reason="no_market_open")
+            return
+        await asyncio.to_thread(run_fetch_macro_intraday, supabase, logger)
 
     return runner
 
