@@ -325,6 +325,90 @@ def _check_briefing(supabase: Any, logger: Any) -> list[dict[str, Any]]:
     return []
 
 
+# Plan #47.8: 사용자 증가 임계치 — 도달 시 Telegram 알림 (각 임계치 1회만)
+GROWTH_THRESHOLDS = [
+    (500, "info", "📈 누적 사용자 500명 돌파! 안정 운영 구간."),
+    (
+        800,
+        "warning",
+        (
+            "⚠️ 누적 사용자 800명 — Vercel Edge Requests 한계(1M/월) 근접.\n"
+            "  Pro 업그레이드($20/월) 검토 시점.\n"
+            "  Supabase DB는 아직 여유."
+        ),
+    ),
+    (
+        1000,
+        "critical",
+        (
+            "🚨 누적 사용자 1,000명 — Vercel Edge Requests 한계 임박.\n"
+            "  Vercel Pro 업그레이드 권장.\n"
+            "  Supabase Bandwidth 도 점검 (2 GB/월)."
+        ),
+    ),
+    (
+        1500,
+        "critical",
+        (
+            "🔥 누적 사용자 1,500명 — 무료 한도 초과 가능.\n"
+            "  Vercel Pro + Supabase Pro 필수 ($45/월 ≈ 6.3만원).\n"
+            "  업그레이드 안 하면 API 429 / 사이트 down 가능."
+        ),
+    ),
+    (
+        3000,
+        "critical",
+        "🔥🔥 누적 사용자 3,000명 — 인프라 재검토 필요. 캐싱/CDN 강화 + 서비스 분리 고려.",
+    ),
+]
+
+
+def _check_user_growth(supabase: Any, logger: Any) -> list[dict[str, Any]]:
+    """사용자 수 임계치 도달 시 1회 알림."""
+    try:
+        res = (
+            supabase.table("profiles")
+            .select("id", count="exact", head=True)
+            .execute()
+        )
+        user_count = res.count or 0
+    except Exception as e:
+        logger.warning("health.user_count_failed", error=str(e))
+        return []
+
+    # 도달한 임계치 중 가장 높은 것만 alert (낮은 건 이미 보냈을 거)
+    alerts: list[dict[str, Any]] = []
+    for threshold, severity, msg in GROWTH_THRESHOLDS:
+        if user_count >= threshold:
+            # alert_key가 임계치별로 unique → 한 번만 (영구 dedup, 30일 후에도 안 보냄)
+            alert_key = f"user_growth_{threshold}"
+            # 영구 dedup — 한 번 alert 보냈으면 다시 안 보냄
+            try:
+                exists = (
+                    supabase.table("health_alerts")
+                    .select("id")
+                    .eq("alert_key", alert_key)
+                    .limit(1)
+                    .execute()
+                    .data
+                    or []
+                )
+                if exists:
+                    continue  # 이미 보냄
+            except Exception:
+                pass
+
+            alerts.append(
+                {
+                    "key": alert_key,
+                    "severity": severity,
+                    "msg": f"{msg}\n\n📊 현재 사용자: {user_count}명",
+                    "context": {"threshold": threshold, "user_count": user_count},
+                }
+            )
+    return alerts
+
+
 def run_health_monitor(supabase: Any, logger: Any) -> None:
     """매 15분 cron — E2E 헬스 체크 + Telegram alert."""
     market_open = is_any_market_open()
@@ -342,6 +426,7 @@ def run_health_monitor(supabase: Any, logger: Any) -> None:
     alerts.extend(_check_fx(supabase, logger))
     alerts.extend(_check_pending_orders(supabase, logger))
     alerts.extend(_check_briefing(supabase, logger))
+    alerts.extend(_check_user_growth(supabase, logger))
 
     if not alerts:
         logger.info("health.ok", market_open=market_open)
@@ -350,9 +435,12 @@ def run_health_monitor(supabase: Any, logger: Any) -> None:
     # alert 처리 — dedup 후 Telegram + 로깅
     sent_count = 0
     for a in alerts:
-        if not _should_alert(supabase, a["key"]):
-            logger.debug("health.alert_deduped", key=a["key"])
-            continue
+        # user_growth alert는 _check_user_growth가 이미 영구 dedup 처리 (DB query)
+        # 다른 alert는 60분 dedup
+        if not a["key"].startswith("user_growth_"):
+            if not _should_alert(supabase, a["key"]):
+                logger.debug("health.alert_deduped", key=a["key"])
+                continue
         logger.warning(
             "health.alert", key=a["key"], severity=a["severity"], context=a.get("context")
         )
