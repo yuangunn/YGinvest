@@ -1,6 +1,7 @@
 // Plan #47: 오늘의 시황 상세 페이지 — 키워드별 뉴스 + 매크로 + AI 요약.
 
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/yg/page-header";
 
@@ -108,19 +109,46 @@ function relTime(iso: string): string {
   return d.toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" });
 }
 
-export default async function MarketTodayPage() {
+const SLOT_LABEL: Record<string, { label: string; emoji: string; color: string }> = {
+  morning: {
+    label: "오전 06:30 · 장 시작 전",
+    emoji: "🌅",
+    color: "var(--yg-up-deep)",
+  },
+  noon: {
+    label: "정오 12:30 · 오전장 정리",
+    emoji: "☀️",
+    color: "var(--yg-down-deep)",
+  },
+};
+
+export default async function MarketTodayPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ date?: string; slot?: string }>;
+}) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
-  const { data } = await supabase
+  const params = await searchParams;
+
+  // 특정 date+slot 조회 (아카이브에서 클릭) 또는 최신 1개
+  let query = supabase
     .from("market_briefing")
-    .select("date, summary, keywords, macro_snapshot, source_count, generated_at")
-    .order("date", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .select(
+      "date, slot, summary, keywords, macro_snapshot, source_count, generated_at",
+    );
+
+  if (params.date && params.slot) {
+    query = query.eq("date", params.date).eq("slot", params.slot);
+  } else {
+    query = query.order("date", { ascending: false }).order("slot", { ascending: false }).limit(1);
+  }
+
+  const { data } = await query.maybeSingle();
 
   if (!data) {
     return (
@@ -137,15 +165,18 @@ export default async function MarketTodayPage() {
               fontWeight: 600,
             }}
           >
-            오늘의 시황은 매일 오전 06:30에 생성돼요.
+            평일 오전 06:30 / 정오 12:30에 시황이 생성돼요.
             <div style={{ fontSize: 11, marginTop: 6 }}>
-              조금 후에 다시 와주세요.
+              주말은 휴장이라 생성되지 않습니다.
             </div>
           </div>
         </div>
       </div>
     );
   }
+
+  const slot = (data.slot as "morning" | "noon" | undefined) ?? "morning";
+  const slotMeta = SLOT_LABEL[slot] ?? SLOT_LABEL.morning;
 
   const keywords = (data.keywords ?? []) as KeywordGroup[];
   const macro = (data.macro_snapshot ?? {}) as MacroSnap;
@@ -160,7 +191,23 @@ export default async function MarketTodayPage() {
 
   return (
     <div style={{ paddingBottom: 24 }}>
-      <PageHeader title="오늘의 시황" sub={`${dateLabel} · ${generatedLabel} 갱신`} />
+      <PageHeader
+        title="오늘의 시황"
+        sub={`${dateLabel} · ${generatedLabel} 갱신`}
+        right={
+          <Link
+            href="/app/market-today/history"
+            className="yg-chip"
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              textDecoration: "none",
+            }}
+          >
+            아카이브
+          </Link>
+        }
+      />
 
       {/* AI 요약 hero */}
       <div style={{ padding: "8px 20px 0" }}>
@@ -174,14 +221,23 @@ export default async function MarketTodayPage() {
         >
           <div
             style={{
-              fontSize: 11,
-              fontWeight: 800,
-              color: "var(--yg-up-deep)",
-              letterSpacing: "0.04em",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
               marginBottom: 8,
             }}
           >
-            🤖 AI 시장 요약
+            <span style={{ fontSize: 14 }}>{slotMeta.emoji}</span>
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 800,
+                color: slotMeta.color,
+                letterSpacing: "0.04em",
+              }}
+            >
+              {slotMeta.label}
+            </span>
           </div>
           <div
             style={{

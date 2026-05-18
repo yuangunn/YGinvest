@@ -29,12 +29,18 @@ function firstLine(summary: string): string {
   return lines[0] ?? "";
 }
 
+const SLOT_LABEL: Record<string, { label: string; emoji: string }> = {
+  morning: { label: "오전 시황", emoji: "🌅" },
+  noon: { label: "오전장 정리", emoji: "☀️" },
+};
+
 export async function MarketBriefingCard() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("market_briefing")
-    .select("date, summary, keywords, generated_at")
+    .select("date, slot, summary, keywords, generated_at")
     .order("date", { ascending: false })
+    .order("slot", { ascending: false })
     .limit(1)
     .maybeSingle();
 
@@ -43,6 +49,8 @@ export async function MarketBriefingCard() {
   const summary = (data.summary as string) ?? "";
   const headline = firstLine(summary);
   const keywords = ((data.keywords ?? []) as Keyword[]).slice(0, 5);
+  const slot = (data.slot as string) ?? "morning";
+  const slotMeta = SLOT_LABEL[slot] ?? SLOT_LABEL.morning;
   const dateLabel = new Date(data.date as string).toLocaleDateString("ko-KR", {
     month: "numeric",
     day: "numeric",
@@ -85,7 +93,7 @@ export async function MarketBriefingCard() {
               letterSpacing: "0.04em",
             }}
           >
-            📊 오늘의 시황
+            {slotMeta.emoji} {slotMeta.label}
           </span>
           <span
             style={{

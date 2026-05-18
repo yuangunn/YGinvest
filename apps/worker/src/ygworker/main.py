@@ -28,7 +28,10 @@ from ygworker.jobs.matching_engine import run_matching_engine
 from ygworker.jobs.notify_economic_events import run_notify_economic_events
 from ygworker.jobs.notify_expiring_orders import run_notify_expiring_orders
 from ygworker.jobs.notify_room_lifecycle import run_notify_room_lifecycle
-from ygworker.jobs.daily_market_briefing import run_daily_market_briefing
+from ygworker.jobs.daily_market_briefing import (
+    run_morning_briefing,
+    run_noon_briefing,
+)
 from ygworker.jobs.health_monitor import run_health_monitor
 from ygworker.jobs.portfolio_snapshot import run_portfolio_snapshot
 from ygworker.jobs.refresh_leaderboard import run_refresh_leaderboard
@@ -148,13 +151,24 @@ async def main_async() -> None:
         id="refresh_leaderboard",
         replace_existing=True,
     )
-    # Plan #47: 매일 06:30 KST — 시장 시황 브리핑 (RSS+Yahoo+Claude Haiku)
+    # Plan #47.4: 평일 06:30 KST — morning briefing (장 시작 전)
     scheduler.add_job(
-        _wrap_in_thread(run_daily_market_briefing, supabase, logger),
+        _wrap_in_thread(run_morning_briefing, supabase, logger),
         trigger="cron",
+        day_of_week="mon-fri",
         hour=6,
         minute=30,
-        id="daily_market_briefing",
+        id="briefing_morning",
+        replace_existing=True,
+    )
+    # Plan #47.4: 평일 12:30 KST — noon briefing (오전장 정리)
+    scheduler.add_job(
+        _wrap_in_thread(run_noon_briefing, supabase, logger),
+        trigger="cron",
+        day_of_week="mon-fri",
+        hour=12,
+        minute=30,
+        id="briefing_noon",
         replace_existing=True,
     )
     # Plan #47.3: 매 15분 — E2E health monitor (price stale, snapshot lag, fx 등)

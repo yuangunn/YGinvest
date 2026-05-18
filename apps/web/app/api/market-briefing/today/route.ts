@@ -1,5 +1,5 @@
-// Plan #47: 오늘의 시황 브리핑 조회.
-// 가장 최근 row 1개 반환 (오늘 없으면 어제 fallback).
+// Plan #47.4: 가장 최근 brief (slot 무관) 1개.
+// 평일 06:30(morning) + 12:30(noon) 둘 중 최신.
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
@@ -31,23 +31,25 @@ export async function GET() {
   if (!user)
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
 
+  // date desc, slot desc → 같은 날짜에서 noon 우선 (알파벳: noon > morning)
   const { data, error } = await supabase
     .from("market_briefing")
     .select(
-      "date, summary, keywords, macro_snapshot, source_count, generated_at",
+      "date, slot, summary, keywords, macro_snapshot, source_count, generated_at",
     )
     .order("date", { ascending: false })
+    .order("slot", { ascending: false })
     .limit(1)
     .maybeSingle();
 
   if (error)
     return NextResponse.json({ error: error.message }, { status: 500 });
-  if (!data)
-    return NextResponse.json({ briefing: null });
+  if (!data) return NextResponse.json({ briefing: null });
 
   return NextResponse.json({
     briefing: {
       date: data.date as string,
+      slot: data.slot as "morning" | "noon",
       summary: data.summary as string,
       keywords: (data.keywords ?? []) as KeywordGroup[],
       macro_snapshot: (data.macro_snapshot ?? {}) as MacroSnap,

@@ -25,11 +25,17 @@ type MacroSnap = Record<
 
 type Briefing = {
   date: string;
+  slot: "morning" | "noon";
   summary: string;
   keywords: KeywordGroup[];
   macro_snapshot: MacroSnap;
   source_count: number;
   generated_at: string;
+};
+
+const SLOT_LABEL: Record<string, { label: string; emoji: string }> = {
+  morning: { label: "오전 시황", emoji: "🌅" },
+  noon: { label: "오전장 정리", emoji: "☀️" },
 };
 
 const CATEGORY_META: Record<
@@ -61,8 +67,8 @@ const MACRO_LABELS: Record<string, { label: string; unit: string }> = {
   FED_FUNDS: { label: "Fed금리", unit: "%" },
 };
 
-function dismissKey(date: string): string {
-  return `yg_briefing_dismissed_${date}`;
+function dismissKey(date: string, slot: string): string {
+  return `yg_briefing_dismissed_${date}_${slot}`;
 }
 
 export function MarketBriefingPopup() {
@@ -76,13 +82,11 @@ export function MarketBriefingPopup() {
       .then((r) => r.json())
       .then((j: { briefing: Briefing | null }) => {
         if (cancelled || !j.briefing) return;
-        // dismiss 체크 (오늘 날짜 기준)
-        const today = new Date().toISOString().slice(0, 10);
-        const dismissed = localStorage.getItem(dismissKey(today));
+        // slot별 dismiss 체크 (morning과 noon은 별개)
+        const dismissed = localStorage.getItem(
+          dismissKey(j.briefing.date, j.briefing.slot),
+        );
         if (dismissed === "1") return;
-        // 또는 brief date 자체 기준 (worker가 어제 만들었으면 어제 dismiss 키 사용해도 OK)
-        const briefDismissed = localStorage.getItem(dismissKey(j.briefing.date));
-        if (briefDismissed === "1") return;
 
         setBriefing(j.briefing);
         setOpen(true);
@@ -95,10 +99,7 @@ export function MarketBriefingPopup() {
 
   const close = () => {
     if (dontShowToday && briefing) {
-      localStorage.setItem(dismissKey(briefing.date), "1");
-      // 오늘 날짜 키도 같이 (date 다를 수 있음)
-      const today = new Date().toISOString().slice(0, 10);
-      localStorage.setItem(dismissKey(today), "1");
+      localStorage.setItem(dismissKey(briefing.date, briefing.slot), "1");
     }
     setOpen(false);
   };
@@ -156,9 +157,13 @@ export function MarketBriefingPopup() {
                 color: "var(--yg-up-deep)",
                 letterSpacing: "0.04em",
                 marginBottom: 4,
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
               }}
             >
-              📊 오늘의 시황
+              <span>{SLOT_LABEL[briefing.slot]?.emoji ?? "📊"}</span>
+              {SLOT_LABEL[briefing.slot]?.label ?? "오늘의 시황"}
             </div>
             <h2
               style={{
@@ -174,8 +179,7 @@ export function MarketBriefingPopup() {
                 month: "long",
                 day: "numeric",
                 weekday: "short",
-              })}{" "}
-              시장 브리핑
+              })}
             </h2>
           </div>
 
