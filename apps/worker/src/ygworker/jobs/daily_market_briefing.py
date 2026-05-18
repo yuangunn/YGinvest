@@ -17,7 +17,12 @@ from zoneinfo import ZoneInfo
 
 import anthropic
 import feedparser
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from ygworker.data_sources.yahoo_news import fetch_news as fetch_yahoo_news
 
@@ -189,6 +194,29 @@ def build_user_prompt(headlines: list[dict[str, Any]], today_kst: str) -> str:
     return "\n".join(lines)
 
 
+@retry(
+    stop=stop_after_attempt(4),
+    wait=wait_exponential(multiplier=2, min=2, max=30),
+    retry=retry_if_exception_type(
+        (anthropic.APIStatusError, anthropic.APIConnectionError, anthropic.APIError)
+    ),
+    reraise=True,
+)
+def _call_claude_with_retry(
+    client: anthropic.Anthropic,
+    model: str,
+    system_prompt: str,
+    user_content: str,
+) -> Any:
+    """Anthropic API 호출 + 재시도. 529 overloaded나 5xx에 자동 backoff."""
+    return client.messages.create(
+        model=model,
+        max_tokens=2000,
+        system=system_prompt,
+        messages=[{"role": "user", "content": user_content}],
+    )
+
+
 def generate_briefing_with_claude(
     headlines: list[dict[str, Any]],
     today_kst: str,
@@ -204,15 +232,9 @@ def generate_briefing_with_claude(
     system_prompt = (
         BRIEFING_SYSTEM_MORNING if slot == "morning" else BRIEFING_SYSTEM_NOON
     )
+    user_content = build_user_prompt(headlines, today_kst)
 
-    msg = client.messages.create(
-        model=model,
-        max_tokens=2000,
-        system=system_prompt,
-        messages=[
-            {"role": "user", "content": build_user_prompt(headlines, today_kst)}
-        ],
-    )
+    msg = _call_claude_with_retry(client, model, system_prompt, user_content)
 
     text = ""
     for block in msg.content:
