@@ -88,10 +88,14 @@ const MACRO_LABELS: Record<string, { label: string; unit: string }> = {
   KOSDAQ: { label: "KOSDAQ", unit: "" },
   SP500: { label: "S&P 500", unit: "" },
   NASDAQ: { label: "NASDAQ", unit: "" },
-  USD_KRW: { label: "원/달러 환율", unit: "원" },
-  WTI_OIL: { label: "WTI 유가", unit: "$" },
+  USDKRW: { label: "원/달러 환율", unit: "원" },
+  OIL_WTI: { label: "WTI 유가", unit: "$" },
   GOLD: { label: "금 시세", unit: "$" },
   BTC_USD: { label: "비트코인", unit: "$" },
+  DXY: { label: "달러 인덱스", unit: "" },
+  VIX: { label: "VIX 공포지수", unit: "" },
+  TNX10Y: { label: "美 10년물 금리", unit: "%" },
+  FED_FUNDS: { label: "美 기준금리", unit: "%" },
 };
 
 function relTime(iso: string): string {
