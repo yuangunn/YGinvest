@@ -5,6 +5,15 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/yg/page-header";
 
+type RelatedStock = {
+  symbol: string;
+  name: string;
+  market: string;
+  currency: string;
+  last_price: number | null;
+  sector: string | null;
+};
+
 type KeywordGroup = {
   keyword: string;
   category: string;
@@ -15,6 +24,7 @@ type KeywordGroup = {
     source: string;
     published_at: string | null;
   }>;
+  related_stocks?: RelatedStock[];
 };
 
 type MacroSnap = Record<
@@ -416,6 +426,85 @@ export default async function MarketTodayPage({
                     </div>
                   </div>
                 </div>
+
+                {/* 관련 종목 (Plan #47.5) */}
+                {kw.related_stocks && kw.related_stocks.length > 0 && (
+                  <div
+                    style={{
+                      marginBottom: 12,
+                      padding: "10px 12px",
+                      background: "var(--yg-bg-sub)",
+                      borderRadius: 10,
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 800,
+                        color: "var(--yg-fg-tertiary)",
+                        letterSpacing: "0.04em",
+                        marginBottom: 8,
+                      }}
+                    >
+                      관련 종목
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: 6,
+                      }}
+                    >
+                      {kw.related_stocks.map((s) => {
+                        const priceText = s.last_price
+                          ? s.currency === "KRW"
+                            ? `${Math.round(s.last_price).toLocaleString(
+                                "ko-KR",
+                              )}원`
+                            : `$${s.last_price.toFixed(2)}`
+                          : "—";
+                        return (
+                          <Link
+                            key={s.symbol}
+                            href={`/app/trade/${encodeURIComponent(s.symbol)}`}
+                            className="yg-tap"
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 6,
+                              padding: "6px 10px",
+                              borderRadius: 99,
+                              background: "var(--yg-bg-card)",
+                              border: "1px solid var(--yg-line)",
+                              textDecoration: "none",
+                              color: "var(--yg-fg-primary)",
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontSize: 12,
+                                fontWeight: 800,
+                                letterSpacing: "-0.01em",
+                              }}
+                            >
+                              {s.name}
+                            </span>
+                            <span
+                              className="yg-num"
+                              style={{
+                                fontSize: 10,
+                                fontWeight: 700,
+                                color: "var(--yg-fg-tertiary)",
+                              }}
+                            >
+                              {priceText}
+                            </span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {/* 관련 뉴스 */}
                 {kw.articles.length === 0 ? (
