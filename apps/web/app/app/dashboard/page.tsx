@@ -20,6 +20,7 @@ import { YGGameCTA } from "@/components/dashboard/yg-game-cta";
 import { YGHoldingsPreview } from "@/components/dashboard/yg-holdings-preview";
 import { YGActionMenu } from "@/components/dashboard/yg-action-menu";
 import { MarketBriefingPopup } from "@/components/dashboard/market-briefing-popup";
+import { MarketBriefingCard } from "@/components/dashboard/market-briefing-card";
 import { SectionHead } from "@/components/yg/section-head";
 
 import { PersonalizedRecommendations } from "@/components/personalized-recommendations";
@@ -208,6 +209,11 @@ export default async function DashboardPage() {
             "오늘의 시장을 확인해보세요"
           )}
         </div>
+      </div>
+
+      {/* Plan #47.2: 오늘의 시황 카드 (popup 끄더라도 항상 여기서 볼 수 있음) */}
+      <div style={{ padding: "12px 20px 0" }}>
+        <MarketBriefingCard />
       </div>
 
       {/* Top stack: hero + game CTA + holdings + pending + quiz (12px gap) */}
