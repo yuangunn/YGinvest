@@ -14,25 +14,25 @@ from ygworker.jobs.bootstrap_stocks import run_bootstrap_stocks
 from ygworker.jobs.check_price_alerts import run_check_price_alerts
 from ygworker.jobs.cleanup_old_data import run_cleanup_old_data
 from ygworker.jobs.compute_recommendations import run_compute_recommendations
+from ygworker.jobs.daily_market_briefing import (
+    run_morning_briefing,
+    run_noon_briefing,
+)
 from ygworker.jobs.enrich_etfs import run_enrich_etfs
 from ygworker.jobs.enrich_stock_info import run_enrich_stock_info
-from ygworker.jobs.fetch_real_estate_index import run_fetch_real_estate_index
 from ygworker.jobs.fetch_corporate_data import run_fetch_corporate_data
 from ygworker.jobs.fetch_daily_bars import run_fetch_daily_bars
 from ygworker.jobs.fetch_earnings import run_fetch_earnings
 from ygworker.jobs.fetch_fx import run_fetch_fx
 from ygworker.jobs.fetch_macro_indicators import run_fetch_macro_indicators
 from ygworker.jobs.fetch_prices import run_fetch_prices
+from ygworker.jobs.fetch_real_estate_index import run_fetch_real_estate_index
+from ygworker.jobs.health_monitor import run_health_monitor
 from ygworker.jobs.heartbeat import run_heartbeat
 from ygworker.jobs.matching_engine import run_matching_engine
 from ygworker.jobs.notify_economic_events import run_notify_economic_events
 from ygworker.jobs.notify_expiring_orders import run_notify_expiring_orders
 from ygworker.jobs.notify_room_lifecycle import run_notify_room_lifecycle
-from ygworker.jobs.daily_market_briefing import (
-    run_morning_briefing,
-    run_noon_briefing,
-)
-from ygworker.jobs.health_monitor import run_health_monitor
 from ygworker.jobs.portfolio_snapshot import run_portfolio_snapshot
 from ygworker.jobs.refresh_leaderboard import run_refresh_leaderboard
 from ygworker.jobs.room_lifecycle import run_room_lifecycle
@@ -259,6 +259,28 @@ async def main_async() -> None:
         hour=3,
         minute=30,
         id="fetch_macro_indicators",
+        replace_existing=True,
+    )
+    # Plan #47.6: 평일 시황 직전 macro 갱신 — 시황 데이터 최신화
+    # 06:20 (morning 10분 전 — 미국 야간 마감 후 최신)
+    # 12:20 (noon 10분 전 — USDKRW/BTC/원자재 갱신)
+    # 한국 인덱스(^KS11)는 일봉만이라 큰 변화 X, 환율/원자재/암호화폐는 실시간 가까운 갱신
+    scheduler.add_job(
+        _wrap_in_thread(run_fetch_macro_indicators, supabase, logger),
+        trigger="cron",
+        day_of_week="mon-fri",
+        hour=6,
+        minute=20,
+        id="fetch_macro_pre_morning",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        _wrap_in_thread(run_fetch_macro_indicators, supabase, logger),
+        trigger="cron",
+        day_of_week="mon-fri",
+        hour=12,
+        minute=20,
+        id="fetch_macro_pre_noon",
         replace_existing=True,
     )
     # Plan #27 A5: 매일 02:00 KST 오래된 데이터 정리

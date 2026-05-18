@@ -13,7 +13,8 @@ export function SectionHead({ title, sub, href, linkLabel = "전체" }: Props) {
   return (
     <div
       style={{
-        padding: "0 4px",
+        // Plan #47.6: 다른 카드들과 좌측 정렬 일관성 (20px 외부 padding + 4px 시각적 정렬)
+        padding: "0 24px",
         display: "flex",
         justifyContent: "space-between",
         alignItems: "flex-end",
