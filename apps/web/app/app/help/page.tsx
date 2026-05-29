@@ -277,7 +277,7 @@ const SECTIONS: FaqSection[] = [
                 에서 글로벌 리더보드 참여 모드 선택:
                 <ul>
                   <li>🔒 비공개 (기본): 리더보드 노출 안 됨</li>
-                  <li>👤 익명: 등수+수익률만 ("익명"으로 표시)</li>
+                  <li>👤 익명: 등수+수익률만 (&quot;익명&quot;으로 표시)</li>
                   <li>✨ 닉네임: 본인 닉네임 공개</li>
                 </ul>
               </li>
@@ -460,7 +460,7 @@ const SECTIONS: FaqSection[] = [
             <ol>
               <li>
                 대시보드 상단{" "}
-                <strong>"📊 오늘의 시황" 카드</strong>를 클릭하면 다시 볼 수
+                <strong>&quot;📊 오늘의 시황&quot; 카드</strong>를 클릭하면 다시 볼 수
                 있어요
               </li>
               <li>
@@ -496,9 +496,9 @@ const SECTIONS: FaqSection[] = [
               종목 ticker 3-4개를 추천합니다.
             </p>
             <ul>
-              <li>예: "기준금리" → KB금융, 신한지주, 하나금융</li>
-              <li>예: "이란전쟁" → 한화에어로스페이스, LIG넥스원</li>
-              <li>예: "AI 반도체" → 삼성전자, SK하이닉스, NVDA</li>
+              <li>예: &quot;기준금리&quot; → KB금융, 신한지주, 하나금융</li>
+              <li>예: &quot;이란전쟁&quot; → 한화에어로스페이스, LIG넥스원</li>
+              <li>예: &quot;AI 반도체&quot; → 삼성전자, SK하이닉스, NVDA</li>
               <li>추천 종목은 거래 페이지로 직링크</li>
             </ul>
           </>
@@ -568,11 +568,11 @@ const SECTIONS: FaqSection[] = [
           <>
             <ul>
               <li>
-                <strong>iOS Safari</strong>: 공유 버튼 → "홈 화면에 추가"
+                <strong>iOS Safari</strong>: 공유 버튼 → &quot;홈 화면에 추가&quot;
               </li>
               <li>
-                <strong>Android Chrome</strong>: 메뉴 → "앱 설치" 또는 "홈
-                화면에 추가"
+                <strong>Android Chrome</strong>: 메뉴 → &quot;앱 설치&quot; 또는 &quot;홈
+                화면에 추가&quot;
               </li>
               <li>
                 <strong>데스크탑 Chrome</strong>: 주소창 우측의 설치 아이콘
@@ -596,7 +596,7 @@ const SECTIONS: FaqSection[] = [
           <>
             <p>
               Service Worker로 일부 페이지 캐시. 단 가격/거래 같은 실시간
-              데이터는 인터넷 필요. 오프라인 시 마지막 캐시 표시 + "오프라인"
+              데이터는 인터넷 필요. 오프라인 시 마지막 캐시 표시 + &quot;오프라인&quot;
               안내.
             </p>
           </>
@@ -636,7 +636,7 @@ const SECTIONS: FaqSection[] = [
         a: (
           <>
             <p>
-              로그인 페이지의 "비밀번호 재설정" 링크로 이메일 reset 가능. 5-10분
+              로그인 페이지의 &quot;비밀번호 재설정&quot; 링크로 이메일 reset 가능. 5-10분
               안에 메일 도착.
             </p>
           </>
