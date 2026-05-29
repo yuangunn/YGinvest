@@ -7,8 +7,8 @@ import { ScenariosClient } from "@/components/scenarios-client";
 
 type Holding = {
   symbol: string;
-  qty: number;
-  avg_price: number;
+  quantity: number;
+  avg_cost: number;
   stocks: {
     name: string;
     name_ko: string | null;
@@ -32,10 +32,10 @@ export default async function ScenariosPage() {
   const { data: holdingsRaw } = await supabase
     .from("holdings")
     .select(
-      "symbol, qty, avg_price, stocks(name, name_ko, sector, last_price, currency)",
+      "symbol, quantity, avg_cost, stocks(name, name_ko, sector, last_price, currency)",
     )
     .eq("portfolio_id", portfolioId)
-    .gt("qty", 0);
+    .gt("quantity", 0);
 
   const holdings = (holdingsRaw as unknown as Holding[] | null) ?? [];
 
@@ -44,8 +44,8 @@ export default async function ScenariosPage() {
     .filter((h) => h.stocks)
     .map((h) => {
       const stock = h.stocks!;
-      const price = Number(stock.last_price ?? h.avg_price);
-      const value = Number(h.qty) * price;
+      const price = Number(stock.last_price ?? h.avg_cost);
+      const value = Number(h.quantity) * price;
       return {
         symbol: h.symbol,
         name: stock.name_ko ?? stock.name,
