@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -9,8 +10,11 @@ const COOKIE_NAME = "yginvest_portfolio";
  *   1. 쿠키에 있고 사용자의 포트폴리오 중 하나라면 그 값
  *   2. 없거나 검증 실패 → 글로벌 포트폴리오 (room_id IS NULL)
  *   3. 글로벌도 없음 → null
+ *
+ * React `cache()`로 요청 단위 메모이즈 — createClient()가 캐시되어 같은 요청에선
+ * 동일 supabase 인스턴스가 전달되므로, 여러 컴포넌트가 호출해도 조회는 1회만.
  */
-export async function getSelectedPortfolioId(
+export const getSelectedPortfolioId = cache(async function getSelectedPortfolioId(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<string | null> {
@@ -36,7 +40,7 @@ export async function getSelectedPortfolioId(
     .is("room_id", null)
     .maybeSingle();
   return global?.id ?? null;
-}
+});
 
 /**
  * 사용자의 모든 활성/종료 포트폴리오 목록 (스위처용).

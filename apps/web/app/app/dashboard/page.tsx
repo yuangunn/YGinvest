@@ -11,6 +11,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/user";
 import { getSelectedPortfolioId } from "@/lib/portfolio-context";
 import { getIsAdmin } from "@/lib/auth-admin";
 
@@ -47,12 +48,10 @@ function CardSkeleton() {
 }
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
 
+  const supabase = await createClient();
   const [{ data: profile }, portfolioId, isAdmin] = await Promise.all([
     supabase
       .from("profiles")

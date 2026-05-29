@@ -4,6 +4,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/user";
 import { CommandPalette } from "@/components/command-palette";
 import {
   AppErrorBoundary,
@@ -22,12 +23,10 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
 
+  const supabase = await createClient();
   const isAdmin = await getIsAdmin(supabase, user.id);
   const latestChangelogSha =
     (changelogData as { sha: string }[])[0]?.sha ?? null;
