@@ -8,6 +8,7 @@ import { getSelectedPortfolioId } from "@/lib/portfolio-context";
 import { PageHeader } from "@/components/yg/page-header";
 import { DeltaText } from "@/components/yg/delta-text";
 import { fmt } from "@/lib/yg-fmt";
+import { fetchUsdKrwRate } from "@/lib/fx";
 
 export default async function PortfolioOverview() {
   const supabase = await createClient();
@@ -27,15 +28,7 @@ export default async function PortfolioOverview() {
         .single()
     : { data: null };
 
-  const { data: fxRow } = await supabase
-    .from("fx_rates")
-    .select("rate")
-    .eq("base", "USD")
-    .eq("quote", "KRW")
-    .order("ts", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  const fxRate = fxRow?.rate ? Number(fxRow.rate) : 1395;
+  const fxRate = await fetchUsdKrwRate(supabase);
 
   const { data: holdings } = await supabase
     .from("holdings")

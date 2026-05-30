@@ -5,6 +5,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { GAME_FX_USD_KRW } from "@/lib/fx";
 
 export const dynamic = "force-dynamic";
 
@@ -44,10 +45,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "stock_not_found_or_no_price" }, { status: 404 });
   }
 
-  // 게임 내에서는 KRW만 사용 (USD 종목은 환율 1300원 가정 — 단순화)
-  const FX_USD_KRW = 1300;
+  // 게임 내에서는 KRW만 사용 (USD 종목은 고정 환율 가정 — 단순화)
   const priceKrw =
-    stock.currency === "KRW" ? Number(stock.last_price) : Number(stock.last_price) * FX_USD_KRW;
+    stock.currency === "KRW" ? Number(stock.last_price) : Number(stock.last_price) * GAME_FX_USD_KRW;
   const totalCost = priceKrw * qty;
 
   // 캐릭터 + 보유 fetch

@@ -3,6 +3,7 @@ import { GitCompare } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSelectedPortfolioId } from "@/lib/portfolio-context";
+import { fetchUsdKrwRate, toKrw } from "@/lib/fx";
 
 type Trade = {
   symbol: string;
@@ -71,6 +72,9 @@ export default async function WhatIfPage() {
     ((stocksData as StockMeta[] | null) ?? []).map((s) => [s.symbol, s]),
   );
 
+  // 실시간 USD→KRW 환율 (lib/fx 단일 소스)
+  const fxRate = await fetchUsdKrwRate(supabase);
+
   // 매수의 KRW 가치 + 매수 시점 (시장 환산)
   let totalBuyKrw = 0;
   let totalSellKrw = 0;
@@ -91,9 +95,7 @@ export default async function WhatIfPage() {
     const qty = Number(t.quantity);
     const price = Number(t.price);
     const tradedValue = qty * price;
-    // 단순화: USD = 1400원 가정
-    const krwMul = t.currency === "KRW" ? 1 : 1400;
-    const valueKrw = tradedValue * krwMul;
+    const valueKrw = toKrw(tradedValue, t.currency, fxRate);
     const tradeTime = new Date(t.created_at).getTime();
     const yearsAgo = (now - tradeTime) / (365.25 * 86400000);
     const market: "KR" | "US" = t.currency === "KRW" ? "KR" : "US";
@@ -130,7 +132,7 @@ export default async function WhatIfPage() {
   for (const [sym, h] of holdings) {
     const meta = stockMap.get(sym);
     const cur = Number(meta?.last_price ?? h.avgCost);
-    const valueKrw = h.qty * cur * (h.currency === "KRW" ? 1 : 1400);
+    const valueKrw = toKrw(h.qty * cur, h.currency, fxRate);
     currentHoldKrw += valueKrw;
   }
 

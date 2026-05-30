@@ -3,6 +3,7 @@ import { Activity, TriangleAlert } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSelectedPortfolioId } from "@/lib/portfolio-context";
+import { fetchUsdKrwRate } from "@/lib/fx";
 import { ScenariosClient } from "@/components/scenarios-client";
 
 type Holding = {
@@ -38,6 +39,9 @@ export default async function ScenariosPage() {
     .gt("quantity", 0);
 
   const holdings = (holdingsRaw as unknown as Holding[] | null) ?? [];
+
+  // 실시간 USD→KRW 환율 (lib/fx 단일 소스)
+  const usdKrwRate = await fetchUsdKrwRate(supabase);
 
   // 클라이언트로 전달할 단순화된 포지션 데이터
   const positions = holdings
@@ -76,7 +80,7 @@ export default async function ScenariosPage() {
           </CardContent>
         </Card>
       ) : (
-        <ScenariosClient positions={positions} />
+        <ScenariosClient positions={positions} usdKrwRate={usdKrwRate} />
       )}
 
       <Card>
