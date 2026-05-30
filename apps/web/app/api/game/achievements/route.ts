@@ -3,10 +3,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { ACHIEVEMENTS, checkAchievements } from "@/lib/game/achievements";
+import { GAME_FX_USD_KRW } from "@/lib/fx";
 
 export const dynamic = "force-dynamic";
 
-const FX_USD_KRW = 1300;
+const FX_USD_KRW = GAME_FX_USD_KRW;
 
 export async function GET() {
   const supabase = await createClient();

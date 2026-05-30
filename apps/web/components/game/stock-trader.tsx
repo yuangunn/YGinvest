@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { GAME_FX_USD_KRW } from "@/lib/fx";
 
 type Holding = {
   symbol: string;
@@ -35,7 +36,7 @@ const KRW = new Intl.NumberFormat("ko-KR", {
   currency: "KRW",
   maximumFractionDigits: 0,
 });
-const FX_USD_KRW = 1300;
+const FX_USD_KRW = GAME_FX_USD_KRW;
 
 function priceKrw(price: number | null, currency: string): number {
   if (price == null) return 0;

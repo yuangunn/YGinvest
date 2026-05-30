@@ -5,6 +5,7 @@ import { TrendingDown, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { sensitivityForSector } from "@/lib/macro-sensitivity";
+import { toKrw } from "@/lib/fx";
 
 type Position = {
   symbol: string;
@@ -16,24 +17,19 @@ type Position = {
 
 type Props = {
   positions: Position[];
+  /** 서버에서 내려준 실시간 USD→KRW 환율 (lib/fx 단일 소스) */
+  usdKrwRate: number;
 };
 
-// FX 환산용 — 클라이언트에서는 1,400원 가정 (정확한 값은 시나리오 분석에 큰 영향 없음)
-const USD_KRW_DEFAULT = 1400;
-
-function toKrw(value: number, currency: string): number {
-  return currency === "KRW" ? value : value * USD_KRW_DEFAULT;
-}
-
-export function ScenariosClient({ positions }: Props) {
+export function ScenariosClient({ positions, usdKrwRate }: Props) {
   const [rateDelta, setRateDelta] = useState(0); // %p, -2 ~ +2
   const [fxDelta, setFxDelta] = useState(0);     // %, -15 ~ +15
   const [oilDelta, setOilDelta] = useState(0);   // %, -40 ~ +40
   const [vixDelta, setVixDelta] = useState(0);   // pt, -10 ~ +30
 
   const totalValueKrw = useMemo(
-    () => positions.reduce((s, p) => s + toKrw(p.value, p.currency), 0),
-    [positions],
+    () => positions.reduce((s, p) => s + toKrw(p.value, p.currency, usdKrwRate), 0),
+    [positions, usdKrwRate],
   );
 
   // 각 종목별 영향 추정
@@ -50,7 +46,7 @@ export function ScenariosClient({ positions }: Props) {
         (fxDelta / 10) * sens.fx +
         (oilDelta / 20) * sens.oil +
         (vixDelta / 10) * sens.vix;
-      const valueKrw = toKrw(p.value, p.currency);
+      const valueKrw = toKrw(p.value, p.currency, usdKrwRate);
       const deltaKrw = (valueKrw * pctChange) / 100;
       return {
         ...p,
@@ -59,7 +55,7 @@ export function ScenariosClient({ positions }: Props) {
         valueKrw,
       };
     });
-  }, [positions, rateDelta, fxDelta, oilDelta, vixDelta]);
+  }, [positions, rateDelta, fxDelta, oilDelta, vixDelta, usdKrwRate]);
 
   const totalDeltaKrw = impacts.reduce((s, i) => s + i.deltaKrw, 0);
   const totalPct =

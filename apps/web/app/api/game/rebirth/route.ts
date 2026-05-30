@@ -6,10 +6,11 @@ import {
   REBIRTH_THRESHOLD_PCT,
   calculateRebirthPoints,
 } from "@/lib/game/constants";
+import { GAME_FX_USD_KRW } from "@/lib/fx";
 
 export const dynamic = "force-dynamic";
 
-const FX_USD_KRW = 1300;
+const FX_USD_KRW = GAME_FX_USD_KRW;
 
 export async function POST() {
   const supabase = await createClient();

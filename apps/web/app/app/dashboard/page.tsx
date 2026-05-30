@@ -14,6 +14,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/user";
 import { getSelectedPortfolioId } from "@/lib/portfolio-context";
 import { getIsAdmin } from "@/lib/auth-admin";
+import { fetchUsdKrwRate, PORTFOLIO_FX_FALLBACK } from "@/lib/fx";
 
 // Plan #42: 헤더는 app/layout으로 옮김 (중복 제거).
 import { YGAssetHero } from "@/components/dashboard/yg-asset-hero";
@@ -66,7 +67,7 @@ export default async function DashboardPage() {
     { data: portfolio },
     holdingsRes,
     { data: character },
-    { data: fxRow },
+    fxRate,
   ] = portfolioId
     ? await Promise.all([
         supabase
@@ -90,24 +91,16 @@ export default async function DashboardPage() {
           )
           .eq("user_id", user.id)
           .maybeSingle(),
-        // Plan #43: 실제 USD/KRW 환율 fetch (portfolio overview와 동일)
-        supabase
-          .from("fx_rates")
-          .select("rate")
-          .eq("base", "USD")
-          .eq("quote", "KRW")
-          .order("ts", { ascending: false })
-          .limit(1)
-          .maybeSingle(),
+        // Plan #43: 실제 USD/KRW 환율 (lib/fx 단일 소스)
+        fetchUsdKrwRate(supabase),
       ])
-    : [{ data: null }, { count: null, data: null }, { data: null }, { data: null }];
+    : [{ data: null }, { count: null, data: null }, { data: null }, PORTFOLIO_FX_FALLBACK];
 
   const holdingsCount = (holdingsRes?.count as number | null) ?? 0;
   const greetingName =
     profile?.display_name ?? user.email?.split("@")[0] ?? "투자자";
 
-  // 환율 (없으면 1395 fallback — portfolio overview와 동일)
-  const fxRate = fxRow?.rate ? Number(fxRow.rate) : 1395;
+  // 환율: 시작 시점 환율 폴백용
   const startingFxRate = portfolio?.fx_rate_at_start
     ? Number(portfolio.fx_rate_at_start)
     : fxRate;
