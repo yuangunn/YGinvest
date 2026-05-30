@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { Smartphone } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/user";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { InstallHelpClient } from "@/components/install-help-client";
 
@@ -8,9 +9,7 @@ export default async function InstallHelpPage() {
   // 로그인 안 한 사용자도 보기 가능하게 할 수도 있지만,
   // 현재 layout이 /app/* 전부 로그인 강제하므로 유지.
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
 
   return (

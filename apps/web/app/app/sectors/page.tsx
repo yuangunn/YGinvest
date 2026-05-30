@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/user";
 import { Term } from "@/components/term";
 import { PageHeader } from "@/components/yg/page-header";
 
@@ -48,9 +49,7 @@ export default async function SectorsHeatmapPage({
   searchParams: Promise<{ scope?: string }>;
 }) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
 
   const params = await searchParams;

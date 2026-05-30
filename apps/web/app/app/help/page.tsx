@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/user";
 import { PageHeader } from "@/components/yg/page-header";
 
 export const dynamic = "force-dynamic";
@@ -681,9 +682,7 @@ const SECTIONS: FaqSection[] = [
 
 export default async function HelpPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
 
   return (

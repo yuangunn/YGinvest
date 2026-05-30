@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/user";
 import { PageHeader } from "@/components/yg/page-header";
 
 type Keyword = {
@@ -53,9 +54,7 @@ function relTime(iso: string): string {
 
 export default async function MarketHistoryPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
 
   const { data } = await supabase

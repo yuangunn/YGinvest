@@ -10,6 +10,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/user";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/yg/page-header";
 import { loadSectorStats, getSectorStats } from "@/lib/sector-stats";
@@ -48,9 +49,7 @@ type StockRow = {
 
 export default async function CurationPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
 
   // Top 1500 by market_cap 만 — 시총 작은 종목은 데이터 부실 확률 ↑ + 페이지 무거워짐

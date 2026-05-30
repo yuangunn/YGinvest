@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { GitCompare } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/user";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSelectedPortfolioId } from "@/lib/portfolio-context";
 import { fetchUsdKrwRate, toKrw } from "@/lib/fx";
@@ -28,9 +29,7 @@ function annualizedReturn(market: "KR" | "US"): number {
 
 export default async function WhatIfPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
 
   const portfolioId = await getSelectedPortfolioId(supabase, user.id);

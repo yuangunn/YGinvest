@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ChevronLeft, Sparkles, Target, Activity } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/user";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Suspense } from "react";
 import { StockFinancials } from "@/components/stock-financials";
@@ -35,9 +36,7 @@ export default async function StockAnalysisPage({
   const { symbol } = await params;
   const decodedSymbol = decodeURIComponent(symbol);
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
 
   const { data: stock } = await supabase

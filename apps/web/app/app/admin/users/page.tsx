@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, ShieldCheck, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/user";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -19,9 +20,7 @@ type Profile = {
 
 export default async function AdminUsersPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
 
   const isAdmin = await getIsAdmin(supabase, user.id);

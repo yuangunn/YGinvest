@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { Calendar } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/user";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type EconomicEvent = {
@@ -30,9 +31,7 @@ const COUNTRY_LABEL: Record<string, string> = {
 
 export default async function EconomicCalendarPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
 
   const today = new Date().toISOString().slice(0, 10);

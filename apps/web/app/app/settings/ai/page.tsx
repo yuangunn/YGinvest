@@ -2,14 +2,13 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ChevronLeft, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/user";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AiKeysForm } from "@/components/ai-keys-form";
 
 export default async function AiSettingsPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
 
   const { data: keys } = await supabase

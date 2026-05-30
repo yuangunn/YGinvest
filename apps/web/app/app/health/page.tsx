@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/user";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatMarketTimestamp } from "@/lib/time-format";
 import { getIsAdmin } from "@/lib/auth-admin";
@@ -23,9 +24,7 @@ function ageMin(iso: string | undefined | null): number | null {
 
 export default async function HealthPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
 
   const isAdmin = await getIsAdmin(supabase, user.id);

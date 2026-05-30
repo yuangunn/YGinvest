@@ -4,6 +4,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Sparkles, ChevronRight, Trophy } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/user";
 import { PageHeader } from "@/components/yg/page-header";
 import { PushToggle } from "@/components/push-toggle";
 import { NotificationTypeToggle } from "@/components/notification-type-toggle";
@@ -20,9 +21,7 @@ const TYPES: Array<[string, string]> = [
 
 export default async function SettingsPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
 
   const { data: settings } = await supabase

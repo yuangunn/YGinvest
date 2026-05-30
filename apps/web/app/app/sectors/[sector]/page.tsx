@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ChevronLeft, BarChart3 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/user";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { loadSectorStats, getSectorStats } from "@/lib/sector-stats";
 
@@ -39,9 +40,7 @@ export default async function SectorDetailPage({
   const scope: "KR" | "US" = scopeRaw === "US" ? "US" : "KR";
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
 
   const marketFilter =

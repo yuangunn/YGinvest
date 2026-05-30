@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/user";
 import { ChartArea } from "@/components/chart-area";
 import { StockNews } from "@/components/stock-news";
 import { StockFinancials } from "@/components/stock-financials";
@@ -29,7 +30,7 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
   const { symbol } = await params;
   const decodedSymbol = decodeURIComponent(symbol);
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
 
   const { data: stock } = await supabase

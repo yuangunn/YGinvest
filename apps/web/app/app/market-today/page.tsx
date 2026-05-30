@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/user";
 import { PageHeader } from "@/components/yg/page-header";
 
 type RelatedStock = {
@@ -138,9 +139,7 @@ export default async function MarketTodayPage({
   searchParams: Promise<{ date?: string; slot?: string }>;
 }) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
 
   const params = await searchParams;
