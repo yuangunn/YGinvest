@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { Sparkles, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/user";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getIsAdmin } from "@/lib/auth-admin";
 import { EtfSearchClient } from "@/components/etf-search-client";
@@ -12,9 +13,7 @@ export const revalidate = 0;
 
 export default async function AdminEtfsPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
   if (!(await getIsAdmin(supabase, user.id))) {
     redirect("/app/dashboard");

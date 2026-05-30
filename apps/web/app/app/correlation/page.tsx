@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/user";
 import { CorrelationClient } from "@/components/correlation-client";
 import { PageHeader } from "@/components/yg/page-header";
 import { getSelectedPortfolioId } from "@/lib/portfolio-context";
@@ -10,9 +11,7 @@ type StockRow = { symbol: string; name: string; name_ko: string | null };
 
 export default async function CorrelationPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
 
   const portfolioId = await getSelectedPortfolioId(supabase, user.id);

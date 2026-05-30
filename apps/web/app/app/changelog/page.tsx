@@ -10,6 +10,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/user";
 import { Card, CardContent } from "@/components/ui/card";
 import changelogData from "@/lib/changelog-data.json";
 import { ChangelogMarker } from "@/components/changelog-marker";
@@ -98,9 +99,7 @@ function formatMonth(key: string): string {
 
 export default async function ChangelogPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
 
   const entries = changelogData as ChangelogEntry[];

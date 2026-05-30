@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ChevronLeft, TrendingUp, TrendingDown } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/user";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { computeThemeReturns } from "@/lib/theme-stats";
 
@@ -11,9 +12,7 @@ function pctFormat(ret: number): string {
 
 export default async function ThemeRankingPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
 
   const all = await computeThemeReturns(supabase);

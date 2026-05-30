@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/user";
 import { PageHeader } from "@/components/yg/page-header";
 
 type Theme = {
@@ -34,9 +35,7 @@ function colorFor(slug: string): string {
 
 export default async function ThemesPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
 
   const [{ data: themes }, { data: favRows }, { data: stockThemes }] =

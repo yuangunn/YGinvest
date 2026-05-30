@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ChevronLeft, Tags } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/user";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ThemeFavoriteButton } from "@/components/theme-favorite-button";
 import { ThemeRelationsSection } from "@/components/theme-relations-section";
@@ -48,9 +49,7 @@ export default async function ThemeDetailPage({
 }) {
   const { slug } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
 
   const { data: theme } = await supabase

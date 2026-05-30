@@ -1,13 +1,12 @@
 import { redirect } from "next/navigation";
 import { PieChart } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/user";
 import { AllocationClient } from "@/components/allocation-client";
 
 export default async function AllocationPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
 
   return (

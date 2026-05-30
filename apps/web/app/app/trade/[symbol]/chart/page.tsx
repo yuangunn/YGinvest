@@ -5,6 +5,7 @@
 
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/user";
 import { ChartDetailLandscape } from "@/components/trade/chart-detail-landscape";
 
 export default async function ChartDetailPage({
@@ -15,9 +16,7 @@ export default async function ChartDetailPage({
   const { symbol } = await params;
   const decodedSymbol = decodeURIComponent(symbol);
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
 
   const { data: stock } = await supabase

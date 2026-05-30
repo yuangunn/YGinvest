@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/user";
 import { PageHeader } from "@/components/yg/page-header";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -28,9 +29,7 @@ const STATUS_TONE: Record<string, { bg: string; fg: string }> = {
 
 export default async function RoomsPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
 
   const { data: rooms } = await supabase

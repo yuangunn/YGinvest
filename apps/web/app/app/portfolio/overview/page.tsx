@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/user";
 import { AllocationDonut } from "@/components/allocation-donut";
 import { getSelectedPortfolioId } from "@/lib/portfolio-context";
 import { PageHeader } from "@/components/yg/page-header";
@@ -12,9 +13,7 @@ import { fetchUsdKrwRate } from "@/lib/fx";
 
 export default async function PortfolioOverview() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
 
   const portfolioId = await getSelectedPortfolioId(supabase, user.id);

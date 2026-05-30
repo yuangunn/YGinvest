@@ -9,6 +9,7 @@ import {
   ChevronLeft,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/user";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   MACRO_SCENARIOS,
@@ -51,9 +52,7 @@ const IMPACT_LABEL: Record<
 
 export default async function MacroGuidePage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
 
   return (

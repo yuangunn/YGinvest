@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/user";
 import { CancelOrderButton } from "@/components/cancel-order-button";
 import { getSelectedPortfolioId } from "@/lib/portfolio-context";
 import { PageHeader } from "@/components/yg/page-header";
@@ -18,9 +19,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 export default async function OrdersPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
 
   const portfolioId = await getSelectedPortfolioId(supabase, user.id);

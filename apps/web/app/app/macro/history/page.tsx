@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { BookOpen } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/user";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { HISTORICAL_EVENTS } from "@/lib/historical-events";
 
@@ -12,9 +13,7 @@ const REGION_LABEL: Record<string, string> = {
 
 export default async function MacroHistoryPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
 
   // 시간순 정렬 (최신부터)
