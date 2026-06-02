@@ -5,7 +5,7 @@
   "start_url": "/app/dashboard",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0a0a0a",
+  "background_color": "#ffffff",
   "theme_color": "#2563eb",
   "lang": "ko",
   "icons": [

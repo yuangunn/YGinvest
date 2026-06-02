@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Toaster } from "sonner";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import { BrandSplash } from "@/components/brand-splash";
 
 export const metadata: Metadata = {
   title: "YGinvest",
@@ -46,6 +47,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <BrandSplash />
           {children}
           <Toaster position="top-center" richColors closeButton />
         </ThemeProvider>
