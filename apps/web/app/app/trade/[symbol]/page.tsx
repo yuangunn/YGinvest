@@ -22,6 +22,7 @@ import { TradeNotes } from "@/components/trade-notes";
 import { EtfInfoCard } from "@/components/etf-info-card";
 import { EtfHoldingsList } from "@/components/etf-holdings-list";
 import { getSelectedPortfolioId } from "@/lib/portfolio-context";
+import { previousClose } from "@/lib/price-delta";
 
 const KRW = new Intl.NumberFormat("ko-KR", { style: "currency", currency: "KRW", maximumFractionDigits: 0 });
 const USD = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
@@ -88,6 +89,10 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
   const symbolName = stock.name_ko ?? stock.name;
   // 기본 정보 카드의 fmt 헬퍼 (KRW vs USD)
   const fmt = stock.currency === "KRW" ? KRW : USD;
+
+  // 전일 대비 변동 계산용 직전 거래일 종가 (lib/price-delta).
+  const lastNum = stock.last_price ? Number(stock.last_price) : null;
+  const prevClose = previousClose(bars ?? [], lastNum);
 
   return (
     <div style={{ paddingBottom: 16 }}>
@@ -194,6 +199,7 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
           stock.fifty_two_week_low ? Number(stock.fifty_two_week_low) : null
         }
         symbol={stock.symbol}
+        prevClose={prevClose}
         isEtf={stock.instrument_type === "etf"}
       />
 

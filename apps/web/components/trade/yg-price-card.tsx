@@ -3,6 +3,7 @@
 
 import { fmt } from "@/lib/yg-fmt";
 import { DeltaText } from "@/components/yg/delta-text";
+import { priceDelta } from "@/lib/price-delta";
 import { FreshnessIndicator } from "@/components/freshness-indicator";
 import { StockThemes } from "@/components/stock-themes";
 import { Suspense } from "react";
@@ -16,6 +17,8 @@ type Props = {
   fiftyTwoWeekHigh: number | null;
   fiftyTwoWeekLow: number | null;
   symbol: string;
+  /** 직전 거래일 종가 — 전일 대비 변동 계산용 */
+  prevClose?: number | null;
   isEtf?: boolean;
 };
 
@@ -27,6 +30,7 @@ export function YGPriceCard({
   fiftyTwoWeekHigh,
   fiftyTwoWeekLow,
   symbol,
+  prevClose,
   isEtf,
 }: Props) {
   const isKRW = currency === "KRW";
@@ -35,6 +39,9 @@ export function YGPriceCard({
       ? fmt.krw(lastPrice)
       : fmt.usd(lastPrice)
     : "—";
+
+  // 전일 대비 변동 (절대 + %)
+  const delta = priceDelta(lastPrice, prevClose ?? null);
 
   // 52w 범위에서 변동률 (참고용)
   let rangePct: number | null = null;
@@ -92,6 +99,23 @@ export function YGPriceCard({
           </span>
         )}
       </div>
+
+      {/* 전일 대비 변동 */}
+      {delta && (
+        <div style={{ marginTop: 8 }}>
+          <DeltaText pct={delta.pct} abs={delta.abs} size={15} />
+          <span
+            style={{
+              marginLeft: 6,
+              fontSize: 11,
+              color: "var(--yg-fg-tertiary)",
+              fontWeight: 600,
+            }}
+          >
+            전일 대비
+          </span>
+        </div>
+      )}
 
       <div
         style={{
@@ -188,16 +212,6 @@ export function YGPriceCard({
           <StockRatingBadge symbol={symbol} />
         </Suspense>
       </div>
-
-      <DeltaSuffix lastPrice={lastPrice} currency={currency} />
     </div>
   );
 }
-
-// 변동률 (server) — change_pct는 별도 API에서 가져와야 하므로 placeholder
-function DeltaSuffix({}: { lastPrice: number | null; currency: string }) {
-  // 변동률 계산을 위한 별도 데이터가 없으므로 plain. 추후 stock_bars 직전 종가로 계산.
-  return null;
-}
-
-void DeltaText;
