@@ -1,6 +1,7 @@
-// Plan #44: 거래 내역 — YG 디자인.
+// Plan #44: 거래 내역 — YG 디자인. (페이지네이션 지원)
 
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/user";
 import { getSelectedPortfolioId } from "@/lib/portfolio-context";
@@ -8,44 +9,76 @@ import { PageHeader } from "@/components/yg/page-header";
 import { TickerBadge } from "@/components/yg/ticker-badge";
 import { fmt as ygFmt } from "@/lib/yg-fmt";
 
+const PAGE_SIZE = 20;
+
 function priceFmt(amount: number, currency: string) {
   return currency === "KRW" ? ygFmt.krw(amount) : ygFmt.usd(amount);
 }
 
-export default async function TransactionsPage() {
+// searchParams의 페이지 번호 파싱 (1부터, 잘못된 값은 1로)
+function parsePage(v: string | undefined): number {
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
+}
+
+export default async function TransactionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tp?: string; fp?: string; dp?: string }>;
+}) {
   const supabase = await createClient();
   const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
+
+  const params = await searchParams;
+  const tPage = parsePage(params.tp); // 체결
+  const fPage = parsePage(params.fp); // 환전
+  const dPage = parsePage(params.dp); // 배당
+
+  const rangeFor = (page: number): [number, number] => {
+    const from = (page - 1) * PAGE_SIZE;
+    return [from, from + PAGE_SIZE - 1];
+  };
 
   const portfolioId = await getSelectedPortfolioId(supabase, user.id);
   const [trades, fx, dividends] = portfolioId
     ? await Promise.all([
         supabase
           .from("trades")
-          .select("*")
+          .select("*", { count: "exact" })
           .eq("portfolio_id", portfolioId)
           .order("executed_at", { ascending: false })
-          .limit(50),
+          .range(...rangeFor(tPage)),
         supabase
           .from("fx_transactions")
-          .select("*")
+          .select("*", { count: "exact" })
           .eq("portfolio_id", portfolioId)
           .order("executed_at", { ascending: false })
-          .limit(50),
+          .range(...rangeFor(fPage)),
         supabase
           .from("dividend_payouts")
-          .select("*")
+          .select("*", { count: "exact" })
           .eq("portfolio_id", portfolioId)
           .order("executed_at", { ascending: false })
-          .limit(50),
+          .range(...rangeFor(dPage)),
       ])
-    : [{ data: null }, { data: null }, { data: null }];
+    : [
+        { data: null, count: 0 },
+        { data: null, count: 0 },
+        { data: null, count: 0 },
+      ];
 
   return (
     <div style={{ paddingBottom: 16 }}>
       <PageHeader title="거래 내역" sub="체결 · 환전 · 배당" />
 
-      <Section title="체결" count={trades.data?.length ?? 0}>
+      <Section
+        title="체결"
+        total={trades.count ?? 0}
+        page={tPage}
+        pageParam="tp"
+        otherParams={{ fp: fPage, dp: dPage }}
+      >
         {!trades.data?.length ? (
           <EmptyRow text="체결 없음" />
         ) : (
@@ -122,7 +155,13 @@ export default async function TransactionsPage() {
         )}
       </Section>
 
-      <Section title="환전" count={fx.data?.length ?? 0}>
+      <Section
+        title="환전"
+        total={fx.count ?? 0}
+        page={fPage}
+        pageParam="fp"
+        otherParams={{ tp: tPage, dp: dPage }}
+      >
         {!fx.data?.length ? (
           <EmptyRow text="환전 없음" />
         ) : (
@@ -163,7 +202,13 @@ export default async function TransactionsPage() {
         )}
       </Section>
 
-      <Section title="배당" count={dividends.data?.length ?? 0}>
+      <Section
+        title="배당"
+        total={dividends.count ?? 0}
+        page={dPage}
+        pageParam="dp"
+        otherParams={{ tp: tPage, fp: fPage }}
+      >
         {!dividends.data?.length ? (
           <EmptyRow text="배당 없음" />
         ) : (
@@ -223,13 +268,34 @@ export default async function TransactionsPage() {
 
 function Section({
   title,
-  count,
+  total,
+  page,
+  pageParam,
+  otherParams,
   children,
 }: {
   title: string;
-  count: number;
+  total: number;
+  page: number;
+  pageParam: string;
+  otherParams: Record<string, number>;
   children: React.ReactNode;
 }) {
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const hasPrev = page > 1;
+  const hasNext = page < totalPages;
+
+  // 다른 섹션 페이지는 유지하면서 이 섹션 페이지만 바꾸는 링크 생성
+  const linkTo = (p: number) => {
+    const sp = new URLSearchParams();
+    for (const [k, v] of Object.entries(otherParams)) {
+      if (v > 1) sp.set(k, String(v));
+    }
+    if (p > 1) sp.set(pageParam, String(p));
+    const qs = sp.toString();
+    return qs ? `?${qs}` : "?";
+  };
+
   return (
     <div style={{ padding: "16px 20px 0" }}>
       <div
@@ -259,13 +325,90 @@ function Section({
             color: "var(--yg-fg-tertiary)",
           }}
         >
-          {count}건
+          총 {total}건
         </span>
       </div>
       <div className="yg-card" style={{ padding: 18 }}>
         {children}
       </div>
+
+      {totalPages > 1 && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 14,
+            marginTop: 10,
+          }}
+        >
+          <PagerLink
+            href={linkTo(page - 1)}
+            disabled={!hasPrev}
+            label="‹ 이전"
+          />
+          <span
+            className="yg-num"
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              color: "var(--yg-fg-tertiary)",
+            }}
+          >
+            {page} / {totalPages}
+          </span>
+          <PagerLink
+            href={linkTo(page + 1)}
+            disabled={!hasNext}
+            label="다음 ›"
+          />
+        </div>
+      )}
     </div>
+  );
+}
+
+function PagerLink({
+  href,
+  disabled,
+  label,
+}: {
+  href: string;
+  disabled: boolean;
+  label: string;
+}) {
+  if (disabled) {
+    return (
+      <span
+        style={{
+          fontSize: 13,
+          fontWeight: 700,
+          color: "var(--yg-fg-faint)",
+          padding: "6px 12px",
+          opacity: 0.5,
+        }}
+      >
+        {label}
+      </span>
+    );
+  }
+  return (
+    <Link
+      href={href}
+      scroll={false}
+      className="yg-tap"
+      style={{
+        fontSize: 13,
+        fontWeight: 800,
+        color: "var(--yg-fg-primary)",
+        padding: "6px 12px",
+        borderRadius: 8,
+        background: "var(--yg-bg-tint-ink)",
+        textDecoration: "none",
+      }}
+    >
+      {label}
+    </Link>
   );
 }
 
