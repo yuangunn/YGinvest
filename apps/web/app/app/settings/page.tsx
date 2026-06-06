@@ -182,6 +182,20 @@ export default async function SettingsPage() {
               />
             ))}
           </div>
+
+          {/* 가격 알림은 종목 상세에서 개별 설정 — 여기 토글과 별개 */}
+          <p
+            style={{
+              margin: "12px 0 0",
+              fontSize: 12,
+              lineHeight: 1.5,
+              color: "var(--yg-fg-tertiary)",
+            }}
+          >
+            💡 <strong>가격 알림</strong>은 각 종목 상세 페이지에서 목표가를
+            설정하면 자동으로 푸시됩니다. 해제하려면 해당 종목에서 알림을
+            삭제하세요.
+          </p>
         </div>
 
         {/* 외부 링크 */}
