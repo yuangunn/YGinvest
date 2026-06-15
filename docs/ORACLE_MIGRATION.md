@@ -227,12 +227,35 @@ sudo systemctl reload caddy
 이미 적용됨 (5-D). 컨테이너 crash 또는 VM 재부팅 시 자동 시작.
 
 ### 8-B. Heartbeat 모니터링
-Worker는 이미 `heartbeat` cron이 매 60초 supabase에 기록. Health 페이지에서 확인:
+Worker는 `heartbeat` cron이 매 60초 supabase `worker_heartbeat` 테이블에 ts 기록
+(Plan #48). Health 페이지에서 확인:
 - https://yginvest.vercel.app/app/health
 
 마지막 fetch 시각이 10분+ 오래되면 worker 다운 신호.
 
-### 8-C. (선택) Uptime Robot
+### 8-C. 외부 Dead-man Monitor (필수) — Plan #48
+
+> ⚠️ **중요**: 워커 안의 `health_monitor`(매 15분)는 워커가 죽으면 알림도 같이
+> 죽는다. 실제로 2026-06-05 워커 다운 후 **9일간 무음 장애**가 발생했다.
+> 그래서 워커 *밖*에서 도는 독립 감시자가 반드시 필요하다.
+
+GitHub Actions(`.github/workflows/worker-deadman.yml`)가 매 15분
+`scripts/deadman_monitor.py`를 실행해 `worker_heartbeat.ts` 신선도를 검사한다.
+ts가 `STALE_THRESHOLD_MIN`(기본 15분)보다 오래되면 → 워커 다운으로 보고 Telegram 알림
+(+복구 시 복구 알림). 워커/VM이 통째로 꺼져도 GitHub에서 돌기 때문에 알림이 나간다.
+
+**활성화 — repo secrets 등록** (GitHub → Settings → Secrets and variables → Actions):
+| Secret | 값 |
+|--------|----|
+| `SUPABASE_URL` | `https://hhkcttwzqiklvxcuzazd.supabase.co` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service_role 키 |
+| `TELEGRAM_BOT_TOKEN` | 워커와 동일 토큰 |
+| `TELEGRAM_CHAT_ID` | 워커와 동일 chat id |
+
+(선택) repo variables 로 임계치 조정: `DEADMAN_STALE_THRESHOLD_MIN`, `DEADMAN_DEDUP_MIN`.
+secrets 미등록 시 워크플로는 자동 skip(안전). 수동 테스트는 Actions 탭 → Run workflow.
+
+### 8-D. (선택) Uptime Robot
 - https://uptimerobot.com/ 무료 가입
 - Monitor 추가: HTTP, URL = `http://<ORACLE_IP>:8080/healthz` (또는 worker가 응답할 수 있는 path)
 - 다운 시 이메일 알림
