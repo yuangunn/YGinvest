@@ -260,6 +260,17 @@ secrets 미등록 시 워크플로는 자동 skip(안전). 수동 테스트는 A
 - Monitor 추가: HTTP, URL = `http://<ORACLE_IP>:8080/healthz` (또는 worker가 응답할 수 있는 path)
 - 다운 시 이메일 알림
 
+### 8-E. Supabase Keep-alive (필수) — Plan #48
+
+Supabase 무료 티어는 **7일간 DB 활동이 없으면 자동 pause** 된다. 지금까지 Supabase를
+깨워둔 건 워커 cron뿐이라, 워커가 죽으면(2026-06-05 9일 다운) Supabase까지 pause 됐다.
+
+`.github/workflows/supabase-keepalive.yml` 가 워커와 무관하게 **하루 4회(6시간마다)**
+Supabase REST를 익명 SELECT로 ping → DB 활동 발생 → pause 타이머 리셋.
+
+**활성화 — repo secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY` (미설정 시 자동 skip).
+빈도 조정은 워크플로의 `cron` 수정. (7일 규칙엔 1일 1회로도 충분하나 4회로 실패 여유 확보.)
+
 ---
 
 ## 9️⃣ 갱신 (코드 업데이트)
