@@ -3,6 +3,8 @@ from datetime import UTC, datetime
 import yfinance as yf
 from tenacity import retry, stop_after_attempt, wait_exponential
 
+from ygworker.data_sources.yf_session import get_yf_session
+
 
 @retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=0.5, min=0.5, max=2))
 def fetch_news(symbol: str, limit: int = 10) -> list[dict]:
@@ -12,7 +14,7 @@ def fetch_news(symbol: str, limit: int = 10) -> list[dict]:
     가 top-level이었으나, 현재는 `{id, content: {title, provider, clickThroughUrl, pubDate, ...}}`
     구조. 두 shape 모두 지원하도록 폴백을 둠.
     """
-    raw = yf.Ticker(symbol).news or []
+    raw = yf.Ticker(symbol, session=get_yf_session()).news or []
     out: list[dict] = []
     for item in raw[:limit]:
         try:
@@ -77,7 +79,7 @@ def _normalize_pub_date(value: object) -> str | None:
 @retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=0.5, min=0.5, max=2))
 def fetch_key_metrics(symbol: str) -> dict:
     """yfinance Ticker.info에서 핵심 재무 지표만 추출."""
-    info = yf.Ticker(symbol).info or {}
+    info = yf.Ticker(symbol, session=get_yf_session()).info or {}
     return {
         "trailing_eps": info.get("trailingEps"),
         "forward_pe": info.get("forwardPE"),

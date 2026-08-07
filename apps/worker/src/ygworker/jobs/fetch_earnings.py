@@ -8,6 +8,8 @@ from typing import Any
 
 import yfinance as yf
 
+from ygworker.data_sources.yf_session import get_yf_session
+
 
 def _to_iso_date(ts: Any) -> str | None:
     """timestamp/datetime을 ISO date string으로."""
@@ -59,7 +61,7 @@ def run_fetch_earnings(supabase: Any, logger: Any, batch_size: int = 20) -> None
 
     for sym in symbols:
         try:
-            ticker = yf.Ticker(sym)
+            ticker = yf.Ticker(sym, session=get_yf_session())
             # earnings_dates: date-indexed DF; cols: EPS Estimate, Reported EPS, Surprise(%)
             df = ticker.earnings_dates
         except Exception as exc:

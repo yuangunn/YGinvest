@@ -11,6 +11,8 @@ from typing import Any
 import yfinance as yf
 from tenacity import retry, stop_after_attempt, wait_exponential
 
+from ygworker.data_sources.yf_session import get_yf_session
+
 
 @retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=0.5, min=0.5, max=2))
 def fetch_dividends(symbol: str, today: date) -> list[dict]:
@@ -18,7 +20,7 @@ def fetch_dividends(symbol: str, today: date) -> list[dict]:
 
     Returns: list of {ex_date: date, amount_per_share: float}
     """
-    series = yf.Ticker(symbol).dividends
+    series = yf.Ticker(symbol, session=get_yf_session()).dividends
     if series is None or len(series) == 0:
         return []
 
@@ -43,7 +45,7 @@ def fetch_splits(symbol: str, today: date) -> list[dict]:
 
     Returns: list of {ex_date: date, ratio: float, action_type: 'split'|'reverse_split'}
     """
-    series = yf.Ticker(symbol).splits
+    series = yf.Ticker(symbol, session=get_yf_session()).splits
     if series is None or len(series) == 0:
         return []
 

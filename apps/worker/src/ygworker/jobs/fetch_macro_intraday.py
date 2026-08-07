@@ -20,6 +20,8 @@ from typing import Any
 
 import yfinance as yf
 
+from ygworker.data_sources.yf_session import get_yf_session
+
 # 우리 symbol → yfinance ticker 매핑 (fetch_macro_indicators와 동일)
 INTRADAY_SYMBOLS: dict[str, str] = {
     "KOSPI": "^KS11",
@@ -62,7 +64,7 @@ def run_fetch_macro_intraday(supabase: Any, logger: Any) -> None:
 
     for our_sym, yf_sym in INTRADAY_SYMBOLS.items():
         try:
-            price = _safe_price(yf.Ticker(yf_sym))
+            price = _safe_price(yf.Ticker(yf_sym, session=get_yf_session()))
             if price is None:
                 failed.append(our_sym)
                 continue

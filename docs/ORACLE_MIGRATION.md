@@ -357,13 +357,20 @@ OK 확인 후:
 (crontab -l 2>/dev/null; echo "0 5 * * 1 docker restart yginvest-worker") | crontab -
 ```
 
-누수 원인 추적: 열린 FD 추이를 관찰.
+근본 원인 (확정): **yfinance**. `yf.Ticker()`/`yf.download()`가 호출마다 새
+`curl_cffi.Session(impersonate="chrome")`를 만들고 닫지 않는다
+(`yfinance/base.py`, `multi.py`, `scrapers/history.py`). fetch_prices(5분 cron)가
+세션 없이 호출 → 매번 세션(=소켓/FD)이 누적 → ~2개월 후 Errno 24.
+(scrapling `naver_news`는 RPC 전용이라 거의 안 불려 무관.)
+
+수정 (Plan #48): `data_sources/yf_session.py`의 공유 세션 1개를 모든 yfinance
+호출에 `session=get_yf_session()`으로 전달 → 세션 재사용으로 누수 제거.
+
+FD 추이 관찰 (여전히 유용):
 ```bash
-docker exec yginvest-worker sh -c 'ls /proc/1/fd | wc -l'   # 시간대별로 증가하는지
-docker exec yginvest-worker sh -c 'ls -l /proc/1/fd | grep socket | wc -l'  # 소켓 누수?
+docker exec yginvest-worker sh -c 'ls /proc/1/fd | wc -l'   # 증가하지 않고 안정적이어야
 ```
-유력 후보: `naver_news.py`의 `scrapling.Fetcher.get()` 세션 미반환, yfinance/curl-cffi 세션.
-heartbeat가 이제 `meta.fd_open`을 기록하므로 `worker_heartbeat` 테이블에서도 추이 확인 가능.
+heartbeat가 `worker_heartbeat.meta.fd_open`을 기록하므로 DB에서도 추이 확인 가능.
 
 ### 가격 fetch 안 됨
 - yfinance가 ARM에서 timeout 종종 발생 — retry 로직 이미 있음

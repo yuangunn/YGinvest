@@ -3,6 +3,8 @@ from dataclasses import dataclass
 import yfinance as yf
 from tenacity import retry, stop_after_attempt, wait_exponential
 
+from ygworker.data_sources.yf_session import get_yf_session
+
 # Yahoo의 exchange 코드 → 우리 market enum 매핑
 _EXCHANGE_TO_MARKET: dict[str, str] = {
     "NMS": "NASDAQ",     # NASDAQ Global Select
@@ -46,7 +48,7 @@ def _market_from_info(info: dict, symbol: str) -> str:
 @retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=0.5, min=0.5, max=2))
 def fetch_quote(symbol: str) -> YahooQuote | None:
     """yfinance에서 1개 종목 시세를 가져옴. 빈/유효하지 않은 응답은 None 반환."""
-    info = yf.Ticker(symbol).info
+    info = yf.Ticker(symbol, session=get_yf_session()).info
     if not info or not info.get("regularMarketPrice"):
         return None
 
@@ -98,6 +100,7 @@ def fetch_closes_batch(symbols: list[str]) -> dict[str, float]:
             threads=True,
             progress=False,
             auto_adjust=True,
+            session=get_yf_session(),
         )
     except Exception:
         return {}
@@ -137,7 +140,7 @@ def fetch_history(symbol: str, period: str = "60d", interval: str = "15m") -> li
     period: '1d', '5d', '60d', '1y', '2y', '5y', '10y', 'max'
     interval: '15m', '1h', '1d'
     """
-    df = yf.Ticker(symbol).history(period=period, interval=interval)
+    df = yf.Ticker(symbol, session=get_yf_session()).history(period=period, interval=interval)
     if df is None or df.empty:
         return []
     out: list[dict] = []
