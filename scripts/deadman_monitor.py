@@ -106,14 +106,14 @@ def _last_worker_state(url: str, key: str) -> str | None:
         return None
 
 
-def _recent_down_alert(url: str, key: str) -> bool:
-    """DEDUP_MIN 내 worker_down alert가 있으면 True (재알림 억제)."""
+def _recent_alert_key(url: str, key: str, alert_key: str) -> bool:
+    """DEDUP_MIN 내 해당 alert_key 가 있으면 True (재알림 억제)."""
     try:
         cutoff = (datetime.now(UTC) - timedelta(minutes=DEDUP_MIN)).isoformat()
         rows = _rest_get(
             url,
             key,
-            f"health_alerts?alert_key=eq.worker_down&ts=gte.{cutoff}"
+            f"health_alerts?alert_key=eq.{alert_key}&ts=gte.{cutoff}"
             "&select=ts&limit=1",
         )
         return bool(rows)
@@ -148,13 +148,15 @@ def main() -> int:
     # 1) heartbeat ts 조회
     age_min: float | None = None
     last_ts_str = "never"
+    meta: dict = {}
     query_error: str | None = None
     try:
-        rows = _rest_get(url, key, "worker_heartbeat?id=eq.worker&select=ts&limit=1")
+        rows = _rest_get(url, key, "worker_heartbeat?id=eq.worker&select=ts,meta&limit=1")
         if rows:
             last_ts = _parse_ts(rows[0]["ts"])
             last_ts_str = rows[0]["ts"]
             age_min = (datetime.now(UTC) - last_ts).total_seconds() / 60
+            meta = rows[0].get("meta") or {}
     except urllib.error.URLError as e:
         query_error = f"Supabase 도달 실패: {e}"
     except Exception as e:
@@ -186,7 +188,7 @@ def main() -> int:
 
     if down:
         # DEDUP_MIN 내 이미 down 알림 보냈으면 skip (도배 방지)
-        if _recent_down_alert(url, key):
+        if _recent_alert_key(url, key, "worker_down"):
             _log("최근 worker_down 알림 있음 — 재알림 skip")
             return 0
         msg = (
@@ -205,6 +207,26 @@ def main() -> int:
             return 1
         _record(url, key, "worker_down", "critical", msg, ctx)
         return 0
+
+    # FD 누수 조기 경보 (2026-06-05 장애 원인). soft limit의 85% 넘으면 먹통 전에 알림.
+    fd_open = meta.get("fd_open", -1)
+    fd_limit = meta.get("fd_limit", -1)
+    if fd_limit > 0 and fd_open >= 0 and fd_open >= fd_limit * 0.85:
+        if not _recent_alert_key(url, key, "worker_fd_high"):
+            ratio = fd_open / fd_limit * 100
+            fd_msg = (
+                "⚠️ YGinvest 워커 FD 고갈 임박 (외부 모니터)\n"
+                f"  열린 FD {fd_open}/{fd_limit} ({ratio:.0f}%)\n"
+                "  FD 누수로 곧 먹통(Errno 24) 위험 → 재배포 권장:\n"
+                "  ssh -i ~/.ssh/oracle-yginvest.key ubuntu@168.110.114.1 'bash ~/redeploy.sh'"
+            )
+            try:
+                _send_telegram(tg_token, tg_chat, fd_msg)
+                _log(f"Telegram worker_fd_high 알림 전송 ({fd_open}/{fd_limit})")
+            except Exception as e:
+                _log(f"ERROR: Telegram 전송 실패 — {e}")
+            _record(url, key, "worker_fd_high", "warning", fd_msg,
+                    {"fd_open": fd_open, "fd_limit": fd_limit})
 
     # 정상 — 직전이 down이었으면 복구 알림 1회
     if last_state == "worker_down":

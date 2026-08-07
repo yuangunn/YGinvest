@@ -244,6 +244,10 @@ GitHub Actions(`.github/workflows/worker-deadman.yml`)가 매 15분
 ts가 `STALE_THRESHOLD_MIN`(기본 15분)보다 오래되면 → 워커 다운으로 보고 Telegram 알림
 (+복구 시 복구 알림). 워커/VM이 통째로 꺼져도 GitHub에서 돌기 때문에 알림이 나간다.
 
+또한 heartbeat가 자기 **FD(파일 디스크립터) 사용량**을 `worker_heartbeat.meta`에 기록하고,
+모니터는 FD가 soft limit의 85%를 넘으면 **먹통(Errno 24) 되기 전에** 경보한다.
+(2026-06-05 장애는 컨테이너가 죽지 않고 FD 고갈로 먹통이 된 케이스였다 — 아래 트러블슈팅 참조.)
+
 **활성화 — repo secrets 등록** (GitHub → Settings → Secrets and variables → Actions):
 | Secret | 값 |
 |--------|----|
@@ -334,6 +338,32 @@ OK 확인 후:
 - Oracle Security List에 8080 인바운드 추가됐는지 확인
 - VM 내부 `sudo ufw status`로 ufw 8080 허용 확인
 - `curl http://<ORACLE_IP>:8080/rpc/...` 로컬에서 테스트
+
+### 워커가 "Up"인데 아무것도 안 함 — FD 누수 (Errno 24)
+
+증상: `docker ps`에는 `Up`인데 로그에 `OSError: [Errno 24] Too many open files`가
+반복되고 heartbeat·가격·환율이 전부 멈춤. **컨테이너가 crash를 안 하므로
+`--restart`가 안 먹는다** (2026-06-05 9일 장애의 실제 원인).
+
+즉시 복구: `bash ~/redeploy.sh` (재빌드 시 FD 카운터 리셋).
+
+재발 방지 (근본 누수 수정 전 하드닝):
+```bash
+# 1) FD soft limit 대폭 상향 (docker run에 --ulimit 추가)
+#    redeploy.sh 의 docker run 줄에 아래 플래그를 넣는다:
+#    --ulimit nofile=1048576:1048576
+
+# 2) 주간 자동 재시작 (누수가 쌓이기 전에 리셋) — VM crontab
+(crontab -l 2>/dev/null; echo "0 5 * * 1 docker restart yginvest-worker") | crontab -
+```
+
+누수 원인 추적: 열린 FD 추이를 관찰.
+```bash
+docker exec yginvest-worker sh -c 'ls /proc/1/fd | wc -l'   # 시간대별로 증가하는지
+docker exec yginvest-worker sh -c 'ls -l /proc/1/fd | grep socket | wc -l'  # 소켓 누수?
+```
+유력 후보: `naver_news.py`의 `scrapling.Fetcher.get()` 세션 미반환, yfinance/curl-cffi 세션.
+heartbeat가 이제 `meta.fd_open`을 기록하므로 `worker_heartbeat` 테이블에서도 추이 확인 가능.
 
 ### 가격 fetch 안 됨
 - yfinance가 ARM에서 timeout 종종 발생 — retry 로직 이미 있음

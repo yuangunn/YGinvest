@@ -35,6 +35,10 @@ def test_heartbeat_writes_worker_heartbeat_row():
     args, kwargs = upsert_mock.call_args
     assert args[0]["id"] == "worker"
     assert "ts" in args[0]
+    # FD 누수 조기경보용 meta (fd_open/fd_limit) 도 함께 기록.
+    assert "meta" in args[0]
+    assert "fd_open" in args[0]["meta"]
+    assert "fd_limit" in args[0]["meta"]
     assert kwargs["on_conflict"] == "id"
 
 
