@@ -39,6 +39,11 @@ extend-exclude = ["scripts/"]
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "N"]
 
+[tool.ruff.lint.per-file-ignores]
+# ETF 마스터는 긴 한글/영문 설명 문자열이 본질적인 데이터 테이블 — 줄바꿈이
+# 오히려 가독성을 해쳐 E501만 예외 처리.
+"src/ygworker/data_sources/etf_master.py" = ["E501"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"

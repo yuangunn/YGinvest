@@ -19,11 +19,13 @@ from typing import Any
 import yfinance as yf
 from tenacity import retry, stop_after_attempt, wait_exponential
 
+from ygworker.data_sources.yf_session import get_yf_session
+
 
 @retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=0.5, min=0.5, max=2))
 def _fetch_etf_info(symbol: str) -> tuple[dict, Any]:
     """yfinance Ticker.info + funds_data를 retry 래핑."""
-    ticker = yf.Ticker(symbol)
+    ticker = yf.Ticker(symbol, session=get_yf_session())
     info = ticker.info or {}
     return info, ticker
 

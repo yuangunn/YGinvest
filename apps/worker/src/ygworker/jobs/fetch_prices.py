@@ -14,6 +14,7 @@ import yfinance as yf
 
 from ygworker.data_sources.fdr import _fetch_listing
 from ygworker.data_sources.yahoo import fetch_closes_batch
+from ygworker.data_sources.yf_session import get_yf_session
 
 # yfinance batch는 200개 권장 (메모리 안정성)
 BATCH_SIZE = 200
@@ -25,7 +26,9 @@ PER_SYMBOL_FALLBACK_LIMIT = 100
 def _fetch_one_history(symbol: str) -> float | None:
     """단일 종목 yfinance.history(period='5d') fallback."""
     try:
-        df = yf.Ticker(symbol).history(period="5d", interval="1d", auto_adjust=True)
+        df = yf.Ticker(symbol, session=get_yf_session()).history(
+            period="5d", interval="1d", auto_adjust=True
+        )
         if df is None or df.empty:
             return None
         cleaned = df["Close"].dropna() if "Close" in df.columns else None

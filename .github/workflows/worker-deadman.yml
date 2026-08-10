@@ -1,0 +1,59 @@
+name: Worker Dead-man Monitor
+
+# Plan #48: 워커 외부 생존 감시.
+# 기존 health_monitor 는 워커 프로세스 *안*에서 돌아 워커가 죽으면 알림도 죽는다.
+# 이 워크플로는 워커와 독립적으로 GitHub에서 돌면서 worker_heartbeat.ts 가
+# 오래됐는지 검사 → 다운 시 Telegram 알림. (2026-06-05 워커 9일 무음 장애 재발 방지)
+
+on:
+  schedule:
+    # 매 15분. GitHub Actions schedule 은 best-effort라 지연될 수 있어
+    # STALE_THRESHOLD_MIN 을 넉넉히(기본 15분) 잡는다.
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {} # 수동 실행
+
+concurrency:
+  group: worker-deadman
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check secrets configured
+        id: check_secrets
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$TELEGRAM_BOT_TOKEN" ]; then
+            echo "::notice::deadman secrets 미설정 — skip. SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY / TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID 를 repo secrets에 추가하면 활성화."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Python
+        if: steps.check_secrets.outputs.skip != 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run dead-man monitor
+        if: steps.check_secrets.outputs.skip != 'true'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          # 임계치 튜닝 (선택) — repo variables 로 override 가능
+          STALE_THRESHOLD_MIN: ${{ vars.DEADMAN_STALE_THRESHOLD_MIN || '15' }}
+          DEDUP_MIN: ${{ vars.DEADMAN_DEDUP_MIN || '60' }}
+        run: python scripts/deadman_monitor.py

@@ -227,15 +227,53 @@ sudo systemctl reload caddy
 이미 적용됨 (5-D). 컨테이너 crash 또는 VM 재부팅 시 자동 시작.
 
 ### 8-B. Heartbeat 모니터링
-Worker는 이미 `heartbeat` cron이 매 60초 supabase에 기록. Health 페이지에서 확인:
+Worker는 `heartbeat` cron이 매 60초 supabase `worker_heartbeat` 테이블에 ts 기록
+(Plan #48). Health 페이지에서 확인:
 - https://yginvest.vercel.app/app/health
 
 마지막 fetch 시각이 10분+ 오래되면 worker 다운 신호.
 
-### 8-C. (선택) Uptime Robot
+### 8-C. 외부 Dead-man Monitor (필수) — Plan #48
+
+> ⚠️ **중요**: 워커 안의 `health_monitor`(매 15분)는 워커가 죽으면 알림도 같이
+> 죽는다. 실제로 2026-06-05 워커 다운 후 **9일간 무음 장애**가 발생했다.
+> 그래서 워커 *밖*에서 도는 독립 감시자가 반드시 필요하다.
+
+GitHub Actions(`.github/workflows/worker-deadman.yml`)가 매 15분
+`scripts/deadman_monitor.py`를 실행해 `worker_heartbeat.ts` 신선도를 검사한다.
+ts가 `STALE_THRESHOLD_MIN`(기본 15분)보다 오래되면 → 워커 다운으로 보고 Telegram 알림
+(+복구 시 복구 알림). 워커/VM이 통째로 꺼져도 GitHub에서 돌기 때문에 알림이 나간다.
+
+또한 heartbeat가 자기 **FD(파일 디스크립터) 사용량**을 `worker_heartbeat.meta`에 기록하고,
+모니터는 FD가 soft limit의 85%를 넘으면 **먹통(Errno 24) 되기 전에** 경보한다.
+(2026-06-05 장애는 컨테이너가 죽지 않고 FD 고갈로 먹통이 된 케이스였다 — 아래 트러블슈팅 참조.)
+
+**활성화 — repo secrets 등록** (GitHub → Settings → Secrets and variables → Actions):
+| Secret | 값 |
+|--------|----|
+| `SUPABASE_URL` | `https://hhkcttwzqiklvxcuzazd.supabase.co` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service_role 키 |
+| `TELEGRAM_BOT_TOKEN` | 워커와 동일 토큰 |
+| `TELEGRAM_CHAT_ID` | 워커와 동일 chat id |
+
+(선택) repo variables 로 임계치 조정: `DEADMAN_STALE_THRESHOLD_MIN`, `DEADMAN_DEDUP_MIN`.
+secrets 미등록 시 워크플로는 자동 skip(안전). 수동 테스트는 Actions 탭 → Run workflow.
+
+### 8-D. (선택) Uptime Robot
 - https://uptimerobot.com/ 무료 가입
 - Monitor 추가: HTTP, URL = `http://<ORACLE_IP>:8080/healthz` (또는 worker가 응답할 수 있는 path)
 - 다운 시 이메일 알림
+
+### 8-E. Supabase Keep-alive (필수) — Plan #48
+
+Supabase 무료 티어는 **7일간 DB 활동이 없으면 자동 pause** 된다. 지금까지 Supabase를
+깨워둔 건 워커 cron뿐이라, 워커가 죽으면(2026-06-05 9일 다운) Supabase까지 pause 됐다.
+
+`.github/workflows/supabase-keepalive.yml` 가 워커와 무관하게 **하루 4회(6시간마다)**
+Supabase REST를 익명 SELECT로 ping → DB 활동 발생 → pause 타이머 리셋.
+
+**활성화 — repo secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY` (미설정 시 자동 skip).
+빈도 조정은 워크플로의 `cron` 수정. (7일 규칙엔 1일 1회로도 충분하나 4회로 실패 여유 확보.)
 
 ---
 
@@ -300,6 +338,39 @@ OK 확인 후:
 - Oracle Security List에 8080 인바운드 추가됐는지 확인
 - VM 내부 `sudo ufw status`로 ufw 8080 허용 확인
 - `curl http://<ORACLE_IP>:8080/rpc/...` 로컬에서 테스트
+
+### 워커가 "Up"인데 아무것도 안 함 — FD 누수 (Errno 24)
+
+증상: `docker ps`에는 `Up`인데 로그에 `OSError: [Errno 24] Too many open files`가
+반복되고 heartbeat·가격·환율이 전부 멈춤. **컨테이너가 crash를 안 하므로
+`--restart`가 안 먹는다** (2026-06-05 9일 장애의 실제 원인).
+
+즉시 복구: `bash ~/redeploy.sh` (재빌드 시 FD 카운터 리셋).
+
+재발 방지 (근본 누수 수정 전 하드닝):
+```bash
+# 1) FD soft limit 대폭 상향 (docker run에 --ulimit 추가)
+#    redeploy.sh 의 docker run 줄에 아래 플래그를 넣는다:
+#    --ulimit nofile=1048576:1048576
+
+# 2) 주간 자동 재시작 (누수가 쌓이기 전에 리셋) — VM crontab
+(crontab -l 2>/dev/null; echo "0 5 * * 1 docker restart yginvest-worker") | crontab -
+```
+
+근본 원인 (확정): **yfinance**. `yf.Ticker()`/`yf.download()`가 호출마다 새
+`curl_cffi.Session(impersonate="chrome")`를 만들고 닫지 않는다
+(`yfinance/base.py`, `multi.py`, `scrapers/history.py`). fetch_prices(5분 cron)가
+세션 없이 호출 → 매번 세션(=소켓/FD)이 누적 → ~2개월 후 Errno 24.
+(scrapling `naver_news`는 RPC 전용이라 거의 안 불려 무관.)
+
+수정 (Plan #48): `data_sources/yf_session.py`의 공유 세션 1개를 모든 yfinance
+호출에 `session=get_yf_session()`으로 전달 → 세션 재사용으로 누수 제거.
+
+FD 추이 관찰 (여전히 유용):
+```bash
+docker exec yginvest-worker sh -c 'ls /proc/1/fd | wc -l'   # 증가하지 않고 안정적이어야
+```
+heartbeat가 `worker_heartbeat.meta.fd_open`을 기록하므로 DB에서도 추이 확인 가능.
 
 ### 가격 fetch 안 됨
 - yfinance가 ARM에서 timeout 종종 발생 — retry 로직 이미 있음

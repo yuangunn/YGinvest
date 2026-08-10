@@ -59,7 +59,8 @@ def _fetch_reb_indices(api_key: str) -> dict[str, float]:
     payload = resp.json()
 
     # R-ONE 응답 구조 (가변적, 인증 후 실제 확인 필요):
-    # {"SttsApiTblData": [{"head": [...]}, {"row": [{"CLS_NM": "서울", "DTA_VAL": "108.42", ...}, ...]}]}
+    # {"SttsApiTblData": [{"head": [...]},
+    #   {"row": [{"CLS_NM": "서울", "DTA_VAL": "108.42", ...}, ...]}]}
     out: dict[str, float] = {}
     try:
         data_section = payload.get("SttsApiTblData") or []

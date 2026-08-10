@@ -14,6 +14,8 @@ from typing import Any
 
 import yfinance as yf
 
+from ygworker.data_sources.yf_session import get_yf_session
+
 
 def _safe_float(v: Any) -> float | None:
     if v is None:
@@ -65,6 +67,7 @@ def run_fetch_macro_indicators(supabase: Any, logger: Any) -> None:
                 progress=False,
                 auto_adjust=False,
                 threads=False,
+                session=get_yf_session(),
             )
         except Exception as exc:
             failed += 1

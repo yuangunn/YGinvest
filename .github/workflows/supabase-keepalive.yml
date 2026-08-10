@@ -1,0 +1,60 @@
+name: Supabase Keep-alive
+
+# Plan #48: Supabase 무료 티어 pause 방지 (워커 독립).
+#
+# 문제: Supabase 무료 프로젝트는 7일간 DB 활동이 없으면 자동 pause 된다.
+# 지금까지 Supabase를 깨워둔 건 워커의 cron 잡뿐 → 워커가 죽으면(2026-06-05
+# 이후 9일 다운) 아무도 DB를 건드리지 않아 Supabase까지 pause 됐다.
+# 알림이 워커와 함께 죽던 사각지대와 동일한 구조.
+#
+# 해결: GitHub Actions가 워커와 무관하게 하루 4회 Supabase REST를 ping.
+# 가벼운 익명 SELECT 1건이면 DB 활동으로 기록돼 pause 타이머가 리셋된다.
+#
+# 참고: 7일 pause 규칙엔 1일 1회로도 충분하지만, 4회로 두면 개별 run 실패에도
+# 여유가 있다. 빈도는 vars.KEEPALIVE_CRON 로 조정 가능.
+
+on:
+  schedule:
+    # 6시간마다 = 하루 4회 (00/06/12/18 UTC)
+    - cron: "0 */6 * * *"
+  workflow_dispatch: {} # 수동 실행
+
+concurrency:
+  group: supabase-keepalive
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check secrets configured
+        id: check_secrets
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::notice::keepalive secrets 미설정 — skip. SUPABASE_URL / SUPABASE_ANON_KEY 를 repo secrets에 추가하면 활성화."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Ping Supabase REST (DB 활동 발생)
+        if: steps.check_secrets.outputs.skip != 'true'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+          url="${SUPABASE_URL%/}/rest/v1/stocks?select=symbol&limit=1"
+          # -sS 조용히 + 실패 시 에러, --fail 로 4xx/5xx면 non-zero exit (run 빨간불 → GitHub 알림)
+          code=$(curl -sS -o /dev/null -w '%{http_code}' --fail-with-body \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            "$url")
+          echo "Supabase keep-alive ping OK (HTTP $code)"
