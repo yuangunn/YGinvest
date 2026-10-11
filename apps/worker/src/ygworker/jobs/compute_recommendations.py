@@ -56,10 +56,10 @@ def run_compute_recommendations(supabase: Any, logger: Any) -> None:
     # 1000+ symbols을 한 번에 .in_()으로 보내면 URL 길이 + 처리 시간 초과 → 끊김.
     cutoff = (date.today() - timedelta(days=14)).isoformat()
     bars: list[dict] = []
-    SYMBOL_CHUNK = 200
+    symbol_chunk = 200
     page_size = 1000
-    for ci in range(0, len(symbols), SYMBOL_CHUNK):
-        sym_chunk = symbols[ci:ci + SYMBOL_CHUNK]
+    for ci in range(0, len(symbols), symbol_chunk):
+        sym_chunk = symbols[ci:ci + symbol_chunk]
         offset = 0
         while True:
             try:

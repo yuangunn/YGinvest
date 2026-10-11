@@ -3,8 +3,11 @@
 매일 오전 08:00 KST 실행 — 내일 일정 중 importance>=2인 이벤트를 모든
 사용자(설정 켠 사람)에게 1회 push.
 """
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
+
+KST = ZoneInfo("Asia/Seoul")
 
 KIND_ICON = {
     "fomc": "🏦",
@@ -15,9 +18,15 @@ KIND_ICON = {
 }
 
 
+def _tomorrow_kst(now: datetime | None = None):
+    now_kst = (now or datetime.now(KST)).astimezone(KST)
+    return (now_kst + timedelta(days=1)).date()
+
+
 def run_notify_economic_events(supabase: Any, logger: Any) -> None:
-    # 내일 = now + 1d (KST), 발표 보통 KST 기준 매크로 이벤트
-    tomorrow = (datetime.now(UTC) + timedelta(days=1)).date().isoformat()
+    # 내일 = KST 기준 now + 1d. event_date 는 KST 날짜라서 UTC 로 계산하면
+    # 08:00 KST(= 23:00 UTC 전날) 실행 시 "내일"이 오늘이 되어 당일 이벤트를 알렸다.
+    tomorrow = _tomorrow_kst().isoformat()
 
     rows = (
         supabase.table("economic_events")

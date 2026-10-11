@@ -51,7 +51,8 @@ KR_ETFS: list[EtfMasterEntry] = [
                    "sector", "KODEX", "KRX 반도체"),
     EtfMasterEntry("139260.KS", "KRX_KS", "KRW", "TIGER 200 IT", "TIGER 200 IT",
                    "sector", "TIGER", "KOSPI 200 IT"),
-    EtfMasterEntry("381180.KS", "KRX_KS", "KRW", "TIGER 미국필라델피아반도체나스닥", "TIGER US PHLX Semi",
+    EtfMasterEntry("381180.KS", "KRX_KS", "KRW",
+                   "TIGER 미국필라델피아반도체나스닥", "TIGER US PHLX Semi",
                    "sector", "TIGER", "PHLX Semiconductor"),
     EtfMasterEntry("469150.KS", "KRX_KS", "KRW", "KODEX 미국AI테크TOP10", "KODEX US AI Tech TOP 10",
                    "thematic", "KODEX", "Solactive US AI Tech TOP 10"),
@@ -61,15 +62,18 @@ KR_ETFS: list[EtfMasterEntry] = [
                    "thematic", "TIGER", "KRX 2차전지"),
     EtfMasterEntry("305720.KS", "KRX_KS", "KRW", "KODEX 2차전지산업", "KODEX Battery Industry",
                    "thematic", "KODEX", "KRX 2차전지"),
-    EtfMasterEntry("455860.KS", "KRX_KS", "KRW", "TIGER 미국테슬라채권혼합Fn", "TIGER Tesla Bond Mix",
+    EtfMasterEntry("455860.KS", "KRX_KS", "KRW",
+                   "TIGER 미국테슬라채권혼합Fn", "TIGER Tesla Bond Mix",
                    "thematic", "TIGER", None),
 
     # ── 배당 ──────────────────────────────────────────────────────
     EtfMasterEntry("211900.KS", "KRX_KS", "KRW", "KODEX 배당성장", "KODEX Dividend Growth",
                    "dividend", "KODEX", "FnGuide 배당성장"),
-    EtfMasterEntry("458730.KS", "KRX_KS", "KRW", "TIGER 미국배당다우존스", "TIGER US Schwab Dividend",
+    EtfMasterEntry("458730.KS", "KRX_KS", "KRW",
+                   "TIGER 미국배당다우존스", "TIGER US Schwab Dividend",
                    "dividend", "TIGER", "Dow Jones US Dividend 100"),
-    EtfMasterEntry("466920.KS", "KRX_KS", "KRW", "SOL 미국배당다우존스(H)", "SOL US Dividend Hedged",
+    EtfMasterEntry("466920.KS", "KRX_KS", "KRW",
+                   "SOL 미국배당다우존스(H)", "SOL US Dividend Hedged",
                    "dividend", "SOL", "Dow Jones US Dividend 100"),
 
     # ── 채권 ──────────────────────────────────────────────────────
@@ -77,7 +81,8 @@ KR_ETFS: list[EtfMasterEntry] = [
                    "bond", "KODEX", "KAP 10Y KTB"),
     EtfMasterEntry("305080.KS", "KRX_KS", "KRW", "TIGER 미국채10년선물", "TIGER US 10Y T-Note",
                    "bond", "TIGER", "US Treasury 10Y"),
-    EtfMasterEntry("305090.KS", "KRX_KS", "KRW", "TIGER 미국달러단기채권액티브", "TIGER USD Short-Term Bond",
+    EtfMasterEntry("305090.KS", "KRX_KS", "KRW",
+                   "TIGER 미국달러단기채권액티브", "TIGER USD Short-Term Bond",
                    "bond", "TIGER", None),
 
     # ── 원자재 ────────────────────────────────────────────────────
@@ -85,15 +90,18 @@ KR_ETFS: list[EtfMasterEntry] = [
                    "commodity", "KODEX", "S&P GSCI Gold"),
     EtfMasterEntry("261220.KS", "KRX_KS", "KRW", "KODEX WTI원유선물(H)", "KODEX WTI Crude Hedged",
                    "commodity", "KODEX", "S&P GSCI WTI"),
-    EtfMasterEntry("130680.KS", "KRX_KS", "KRW", "TIGER 원유선물Enhanced(H)", "TIGER Crude Enhanced",
+    EtfMasterEntry("130680.KS", "KRX_KS", "KRW",
+                   "TIGER 원유선물Enhanced(H)", "TIGER Crude Enhanced",
                    "commodity", "TIGER", None),
 
     # ── 인버스 / 레버리지 ──────────────────────────────────────────
     EtfMasterEntry("122630.KS", "KRX_KS", "KRW", "KODEX 레버리지", "KODEX Leverage",
                    "leveraged_inverse", "KODEX", "KOSPI 200 2X"),
-    EtfMasterEntry("252670.KS", "KRX_KS", "KRW", "KODEX 200선물인버스2X", "KODEX 200 Futures Inverse 2X",
+    EtfMasterEntry("252670.KS", "KRX_KS", "KRW",
+                   "KODEX 200선물인버스2X", "KODEX 200 Futures Inverse 2X",
                    "leveraged_inverse", "KODEX", "KOSPI 200 Inverse 2X"),
-    EtfMasterEntry("233740.KS", "KRX_KS", "KRW", "KODEX 코스닥150 레버리지", "KODEX KOSDAQ150 Leverage",
+    EtfMasterEntry("233740.KS", "KRX_KS", "KRW",
+                   "KODEX 코스닥150 레버리지", "KODEX KOSDAQ150 Leverage",
                    "leveraged_inverse", "KODEX", "KOSDAQ 150 2X"),
 
     # ── 헬스케어 / 바이오 ──────────────────────────────────────────
@@ -129,7 +137,8 @@ US_ETFS: list[EtfMasterEntry] = [
                    "sector", "SPDR", "S&P Tech Select"),
     EtfMasterEntry("XLE", "NYSE", "USD", "Energy Select Sector", "Energy Select Sector SPDR Fund",
                    "sector", "SPDR", "S&P Energy Select"),
-    EtfMasterEntry("XLF", "NYSE", "USD", "Financial Select Sector", "Financial Select Sector SPDR Fund",
+    EtfMasterEntry("XLF", "NYSE", "USD",
+                   "Financial Select Sector", "Financial Select Sector SPDR Fund",
                    "sector", "SPDR", "S&P Financial Select"),
     EtfMasterEntry("ARKK", "NYSE", "USD", "ARK 혁신 ETF", "ARK Innovation ETF",
                    "thematic", "ARK", None),
@@ -151,7 +160,8 @@ US_ETFS: list[EtfMasterEntry] = [
     # ── Bond ──────────────────────────────────────────────────────
     EtfMasterEntry("AGG", "NYSE", "USD", "iShares Core 채권", "iShares Core US Aggregate Bond ETF",
                    "bond", "iShares", "Bloomberg US Aggregate"),
-    EtfMasterEntry("TLT", "NASDAQ", "USD", "iShares 20년+ 국채", "iShares 20+ Year Treasury Bond ETF",
+    EtfMasterEntry("TLT", "NASDAQ", "USD",
+                   "iShares 20년+ 국채", "iShares 20+ Year Treasury Bond ETF",
                    "bond", "iShares", "ICE US Treasury 20+"),
 
     # ── Commodity ─────────────────────────────────────────────────

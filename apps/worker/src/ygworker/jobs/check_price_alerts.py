@@ -3,7 +3,12 @@
 알고리즘:
 1. price_alerts where status='active' 가져오기
 2. 각 alert의 symbol → stocks.last_price와 비교
-3. 조건 만족 시 status='triggered', push notification 전송
+3. 조건 만족 시 push notification enqueue → 성공하면 status='triggered'
+
+순서가 중요하다 (quick-fix #10): 예전에는 triggered 로 먼저 바꾼 뒤 enqueue 했기
+때문에 enqueue 가 실패하면(알림 큐 타입 CHECK 위반 등) 알림이 발송 없이 소모됐다.
+지금은 enqueue 가 실패하면 알림을 active 로 남겨 다음 실행에서 다시 시도한다.
+enqueue 는 dedup_key(price_alert:<id>) 로 멱등이라 중복 발송은 없다.
 """
 from datetime import UTC, datetime
 from typing import Any
@@ -51,24 +56,7 @@ def run_check_price_alerts(supabase: Any, logger: Any) -> None:
         if not hit:
             continue
 
-        # Mark triggered
-        try:
-            supabase.table("price_alerts").update(
-                {
-                    "status": "triggered",
-                    "triggered_at": now_iso,
-                    "triggered_price": price,
-                }
-            ).eq("id", alert["id"]).execute()
-        except Exception as exc:
-            logger.warning(
-                "check_price_alerts.update_failed",
-                alert_id=alert["id"],
-                error=str(exc),
-            )
-            continue
-
-        # Enqueue push notification via RPC
+        # 1) Enqueue push notification via RPC (먼저 — 실패 시 알림을 소모하지 않음)
         display_name = stock.get("name_ko") or stock.get("name") or alert["symbol"]
         currency = stock.get("currency", "KRW")
         cond_label = "이상 도달" if cond == "above" else "이하 도달"
@@ -86,10 +74,27 @@ def run_check_price_alerts(supabase: Any, logger: Any) -> None:
                     "p_dedup_key": f"price_alert:{alert['id']}",
                 },
             ).execute()
-            triggered += 1
         except Exception as exc:
             logger.warning(
                 "check_price_alerts.notify_failed",
+                alert_id=alert["id"],
+                error=str(exc),
+            )
+            continue
+
+        # 2) Mark triggered (enqueue 성공 후)
+        try:
+            supabase.table("price_alerts").update(
+                {
+                    "status": "triggered",
+                    "triggered_at": now_iso,
+                    "triggered_price": price,
+                }
+            ).eq("id", alert["id"]).execute()
+            triggered += 1
+        except Exception as exc:
+            logger.warning(
+                "check_price_alerts.update_failed",
                 alert_id=alert["id"],
                 error=str(exc),
             )
