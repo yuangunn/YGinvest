@@ -12,9 +12,10 @@ test.describe("Auth flow", () => {
     await page.getByRole("button", { name: /^가입$/i }).click();
 
     await expect(page).toHaveURL(/\/app\/dashboard/, { timeout: 15_000 });
-    await expect(page.getByText(/KRW 잔고/i)).toBeVisible();
+    // Plan #41 YG Asset Hero: "원화 · 시작 …" / "달러 · 시작 …" 라벨
+    await expect(page.getByText(/원화 · 시작/)).toBeVisible();
     await expect(page.getByText(/₩100,000,000/).first()).toBeVisible();
-    await expect(page.getByText(/USD 잔고/i)).toBeVisible();
+    await expect(page.getByText(/달러 · 시작/)).toBeVisible();
     await expect(page.getByText(/\$0\.00/).first()).toBeVisible();
   });
 

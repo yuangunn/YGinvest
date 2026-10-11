@@ -43,6 +43,9 @@ select = ["E", "F", "W", "I", "B", "UP", "N"]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 pythonpath = ["src"]
+markers = [
+  "integration: 라이브 Supabase(로컬 supabase start 또는 클라우드)가 필요한 테스트",
+]
 
 [tool.uv]
 package = false

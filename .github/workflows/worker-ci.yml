@@ -3,13 +3,16 @@ on:
   push:
     paths:
       - "apps/worker/**"
+      - "supabase/**"
       - ".github/workflows/worker-ci.yml"
   pull_request:
     paths:
       - "apps/worker/**"
+      - "supabase/**"
       - ".github/workflows/worker-ci.yml"
 
 jobs:
+  # 1) 린트 + 단위 테스트 (라이브 Supabase 불필요)
   ruff-pytest:
     runs-on: ubuntu-latest
     defaults:
@@ -24,5 +27,42 @@ jobs:
         run: pip install uv
       - run: uv sync
       - run: uv run ruff check .
-      - run: uv run pytest tests/test_heartbeat.py -v
-        # 통합 테스트 (test_signup_trigger.py)는 Supabase 인스턴스 필요 → 로컬에서만
+      - run: uv run pytest -m "not integration" -v
+
+  # 2) DB 계약 테스트 — 로컬 Supabase 에 마이그레이션을 적용하고 PG 함수를 실제로 호출
+  #    (지정가 매도, 환전, 배당/분할, 알림 enqueue, 가입 트리거, 방 생성 …).
+  #    마이그레이션과 워커 코드가 어긋나는 것(열 이름, CHECK 제약, 집계+FOR UPDATE)을
+  #    배포 전에 잡는 안전망.
+  db-contract-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/worker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Install uv
+        run: pip install uv
+      - run: uv sync
+      - name: Start local Supabase (migrations applied on start)
+        working-directory: .
+        run: supabase start -x studio,imgproxy,inbucket,edge-runtime,logflare,vector,realtime,storage-api
+      - name: Export local Supabase credentials
+        working-directory: .
+        run: |
+          eval "$(supabase status -o env)"
+          {
+            echo "SUPABASE_URL=$API_URL"
+            echo "SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+          } >> "$GITHUB_ENV"
+      - run: uv run pytest -m integration -v
+      - name: Stop local Supabase
+        if: always()
+        working-directory: .
+        run: supabase stop --no-backup
