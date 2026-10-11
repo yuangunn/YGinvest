@@ -18,6 +18,15 @@ export async function POST(request: Request) {
     p_to_currency: to_currency,
     p_from_amount: from_amount,
   });
-  if (error) return NextResponse.json({ error: error.message }, { status: 422 });
+  if (error) {
+    // 환율이 24시간 넘게 갱신되지 않으면 PG 함수가 fx_rate_stale 로 거부한다 (워커 중단 등).
+    if (error.message.includes("fx_rate_stale")) {
+      return NextResponse.json(
+        { error: "환율 정보가 오래되어 지금은 환전할 수 없어요. 잠시 후 다시 시도해 주세요." },
+        { status: 503 },
+      );
+    }
+    return NextResponse.json({ error: error.message }, { status: 422 });
+  }
   return NextResponse.json(data);
 }

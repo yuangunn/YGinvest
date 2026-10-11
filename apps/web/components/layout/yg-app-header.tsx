@@ -2,18 +2,32 @@
 //
 // 다이나믹 아일랜드/펀치홀 회피: env(safe-area-inset-top).
 // 디자인: Pretendard, deep ink brand, minimal icons.
+//
+// 포트폴리오 전환(PortfolioSwitcher): 친구방에 가입해 포트폴리오가 2개 이상일 때만
+// 노출. Plan #42 헤더 개편 때 떨어져 나가 방 포트폴리오로 거래할 방법이 없었다.
 
 import Link from "next/link";
 import { YGLogo, YGIcon } from "@/components/yg/icon";
 import { ChangelogLink } from "@/components/changelog-link";
 import { ThemeToggleYG } from "@/components/yg/theme-toggle-yg";
+import {
+  PortfolioSwitcher,
+  type SwitchablePortfolio,
+} from "@/components/portfolio-switcher";
 
 type Props = {
   isAdmin: boolean;
   latestChangelogSha: string | null;
+  portfolios?: SwitchablePortfolio[];
+  selectedPortfolioId?: string | null;
 };
 
-export function YGAppHeader({ isAdmin, latestChangelogSha }: Props) {
+export function YGAppHeader({
+  isAdmin,
+  latestChangelogSha,
+  portfolios = [],
+  selectedPortfolioId = null,
+}: Props) {
   return (
     <header
       style={{
@@ -80,6 +94,12 @@ export function YGAppHeader({ isAdmin, latestChangelogSha }: Props) {
             color: "var(--yg-fg-secondary)",
           }}
         >
+          {portfolios.length > 1 && (
+            <PortfolioSwitcher
+              portfolios={portfolios}
+              selectedId={selectedPortfolioId}
+            />
+          )}
           <ChangelogLink latestSha={latestChangelogSha} />
           <ThemeToggleYG />
           {isAdmin && (
