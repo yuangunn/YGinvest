@@ -1,11 +1,27 @@
-// Plan #27.4: Admin trigger — Railway worker가 cron을 누락한 경우 수동으로
+// Plan #27.4: Admin trigger — 워커가 cron을 누락한 경우 수동으로
 // 거시경제 지표 fetch를 발동. 호출은 idempotent + 부담 적음 (소수 ticker만).
+//
+// 보안 강화: 관리자(is_admin)만 호출 가능. 이전에는 인증 없이 누구나 워커 잡을
+// 띄울 수 있었다.
 
 import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { getIsAdmin } from "@/lib/auth-admin";
 
 export const maxDuration = 120;
 
 export async function POST() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  if (!(await getIsAdmin(supabase, user.id))) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+
   const workerUrl = process.env.WORKER_RPC_URL;
   const workerSecret = process.env.WORKER_RPC_SECRET;
   if (!workerUrl || !workerSecret) {

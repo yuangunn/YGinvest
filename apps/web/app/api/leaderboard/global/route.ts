@@ -1,5 +1,9 @@
 // Plan #46: 글로벌 리더보드 — MV 기반 (opt-in 사용자만).
 //
+// 보안 강화: MV(leaderboard_rankings)를 직접 읽지 않고 leaderboard_public 뷰를
+// 읽는다. 뷰는 visibility='anonymous' 사용자의 user_id/nickname 을 NULL 로 가리고,
+// 본인 여부는 is_me 로만 알려준다 (익명 사용자 식별 불가).
+//
 // Query: ?category=overall|return_30d|sharpe&limit=100
 // 응답: { leaderboard: [...], me: { rank, ... } | null }
 
@@ -10,10 +14,10 @@ type Category = "overall" | "return_30d" | "sharpe";
 const VALID_CATEGORIES = new Set<Category>(["overall", "return_30d", "sharpe"]);
 
 type RankingRow = {
-  user_id: string;
+  user_id: string | null; // visibility='public' 일 때만 채워짐
   visibility: "public" | "anonymous";
   nickname: string | null;
-  portfolio_id: string;
+  is_me: boolean;
   return_overall_pct: number | null;
   return_30d_pct: number | null;
   sharpe_30d: number | null;
@@ -57,9 +61,9 @@ export async function GET(request: Request) {
   // 자격: trade_count >= 5
   // return_30d / sharpe는 NULL 제외
   let query = supabase
-    .from("leaderboard_rankings")
+    .from("leaderboard_public")
     .select(
-      "user_id, visibility, nickname, portfolio_id, return_overall_pct, return_30d_pct, sharpe_30d, trade_count, snapshot_ts, qualified, portfolio_age",
+      "user_id, visibility, nickname, is_me, return_overall_pct, return_30d_pct, sharpe_30d, trade_count, snapshot_ts, qualified, portfolio_age",
     )
     .eq("qualified", true);
 
@@ -86,25 +90,25 @@ export async function GET(request: Request) {
   let meRank: number | null = null;
   let meRow: RankingRow | null = null;
 
-  const meInList = list.findIndex((r) => r.user_id === user.id);
+  const meInList = list.findIndex((r) => r.is_me);
   if (meInList >= 0) {
     meRank = meInList + 1;
     meRow = list[meInList];
   } else {
     // 본인이 opt-in 했는지 + 자격 있는지 확인 후 전체 등수 계산
     const { data: meRowsRaw } = await supabase
-      .from("leaderboard_rankings")
+      .from("leaderboard_public")
       .select(
-        "user_id, visibility, nickname, portfolio_id, return_overall_pct, return_30d_pct, sharpe_30d, trade_count, snapshot_ts, qualified, portfolio_age",
+        "user_id, visibility, nickname, is_me, return_overall_pct, return_30d_pct, sharpe_30d, trade_count, snapshot_ts, qualified, portfolio_age",
       )
-      .eq("user_id", user.id)
+      .eq("is_me", true)
       .maybeSingle();
     const meCandidate = meRowsRaw as RankingRow | null;
     if (meCandidate && meCandidate.qualified) {
       const myVal = meCandidate[orderCol] as number | null;
       if (myVal !== null) {
         const { count } = await supabase
-          .from("leaderboard_rankings")
+          .from("leaderboard_public")
           .select("*", { count: "exact", head: true })
           .eq("qualified", true)
           .gt(orderCol, myVal);
@@ -118,14 +122,14 @@ export async function GET(request: Request) {
     category,
     leaderboard: list.map((r, i) => ({
       rank: i + 1,
-      user_id: r.user_id === user.id ? r.user_id : null, // 본인 식별용
+      user_id: r.is_me ? user.id : null, // 본인 식별용
       nickname: displayName(r),
       return_overall_pct: r.return_overall_pct,
       return_30d_pct: r.return_30d_pct,
       sharpe_30d: r.sharpe_30d,
       trade_count: r.trade_count,
       snapshot_ts: r.snapshot_ts,
-      is_me: r.user_id === user.id,
+      is_me: r.is_me,
     })),
     me: meRow
       ? {
