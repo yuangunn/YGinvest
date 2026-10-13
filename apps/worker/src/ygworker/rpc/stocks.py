@@ -1,3 +1,4 @@
+import hmac
 from datetime import UTC, datetime
 from typing import Any
 
@@ -29,7 +30,9 @@ def make_router(supabase: Any, secret: str) -> APIRouter:
     import structlog
 
     def _check_secret(x_worker_secret: str | None = Header(default=None)) -> None:
-        if x_worker_secret != secret:
+        # 보안 강화: 타이밍 공격에 안전한 상수 시간 비교
+        supplied = (x_worker_secret or "").encode("utf-8")
+        if not hmac.compare_digest(supplied, secret.encode("utf-8")):
             raise HTTPException(status_code=401, detail="unauthorized")
 
     @router.post("/rpc/enrich_now")

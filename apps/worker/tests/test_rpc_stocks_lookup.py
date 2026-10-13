@@ -144,3 +144,13 @@ def test_financials_returns_metrics(mock_metrics, client):
     body = r.json()
     assert body["trailing_eps"] == 6.32
     assert body["forward_pe"] == 28.5
+
+
+def test_lookup_empty_secret_header_returns_401(client):
+    c, _ = client
+    r = c.post(
+        "/rpc/stocks/lookup",
+        json={"symbol": "AAPL"},
+        headers={"X-Worker-Secret": ""},
+    )
+    assert r.status_code == 401

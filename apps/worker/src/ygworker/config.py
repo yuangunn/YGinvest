@@ -10,9 +10,11 @@ load_dotenv()
 class Settings:
     supabase_url: str
     supabase_service_role_key: str
+    # 보안 강화: 기본값 없음. 미설정이면 부팅 시 즉시 실패 (예전엔 "dev-secret-change-me"
+    # 로 조용히 기동해 Vercel→워커 RPC 가 사실상 무인증이 될 수 있었다).
+    rpc_secret: str
     log_level: str = "INFO"
     rpc_port: int = 8080
-    rpc_secret: str = "dev-secret-change-me"
     vapid_private_key: str = ""
     vapid_subject: str = "mailto:rms6654@gmail.com"
 
@@ -23,7 +25,7 @@ def load_settings() -> Settings:
         supabase_service_role_key=_required("SUPABASE_SERVICE_ROLE_KEY"),
         log_level=os.environ.get("LOG_LEVEL", "INFO"),
         rpc_port=int(os.environ.get("WORKER_RPC_PORT", "8080")),
-        rpc_secret=os.environ.get("WORKER_RPC_SECRET", "dev-secret-change-me"),
+        rpc_secret=_required("WORKER_RPC_SECRET"),
         vapid_private_key=os.environ.get("VAPID_PRIVATE_KEY", ""),
         vapid_subject=os.environ.get("VAPID_SUBJECT", "mailto:rms6654@gmail.com"),
     )

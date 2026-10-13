@@ -1,19 +1,35 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getIsAdmin } from "@/lib/auth-admin";
 
 /**
  * Admin: trigger worker enrichment job to populate sector/PER/52w on all stocks.
  *
- * Auth: requires the caller to be the project admin via X-Admin-Secret header
- *   matching SUPABASE_SERVICE_ROLE_KEY (already in env, no new secret needed).
+ * 보안 강화: 관리자(is_admin)만 호출 가능. 이전에는 인증 없이 누구나 수십 분짜리
+ * yfinance 전수 조회를 워커에 띄울 수 있었다 (워커 스레드풀 고갈 → 가격 갱신·매칭 중단).
  *
  * Returns the worker's result summary.
  */
 export const maxDuration = 300; // 5 min — yfinance fetching 200+ symbols is slow
 
+async function requireAdmin() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  if (!(await getIsAdmin(supabase, user.id))) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+  return null;
+}
+
 export async function POST() {
-  // 인증 없음 — idempotent enrichment trigger. 결과는 모두 공개 데이터(sector/PER/52w).
-  // 호출 자체는 무겁지만 worker 내부에 retry 가드 있음.
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
   const workerUrl = process.env.WORKER_RPC_URL;
   const workerSecret = process.env.WORKER_RPC_SECRET;
   if (!workerUrl || !workerSecret) {
@@ -47,13 +63,11 @@ export async function POST() {
   }
 }
 
-// Quick check route (HEAD) to verify worker is reachable
+// Quick check route to verify worker is reachable (admin only)
 export async function GET() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
-  }
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
   const workerUrl = process.env.WORKER_RPC_URL;
   if (!workerUrl) {
     return NextResponse.json({ configured: false });
