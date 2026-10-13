@@ -42,7 +42,7 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
   if (!stock) notFound();
 
   const portfolioId = await getSelectedPortfolioId(supabase, user.id);
-  const [{ data: portfolio }, { data: bars }, { data: watch }, { data: alerts }, { data: holding }] =
+  const [{ data: portfolio }, { data: barsDesc }, { data: watch }, { data: alerts }, { data: holding }] =
     await Promise.all([
       portfolioId
         ? supabase
@@ -51,12 +51,13 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
             .eq("id", portfolioId)
             .single()
         : Promise.resolve({ data: null }),
+      // 최신 365봉 (내림차순 limit 후 아래에서 오름차순으로 뒤집음)
       supabase
         .from("stock_bars")
         .select("ts, open, high, low, close, volume")
         .eq("symbol", decodedSymbol)
         .eq("interval", "1d")
-        .order("ts", { ascending: true })
+        .order("ts", { ascending: false })
         .limit(365),
       portfolioId
         ? supabase
@@ -86,13 +87,14 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
         : Promise.resolve({ data: null }),
     ]);
 
+  const bars = (barsDesc ?? []).reverse();
   const symbolName = stock.name_ko ?? stock.name;
   // 기본 정보 카드의 fmt 헬퍼 (KRW vs USD)
   const fmt = stock.currency === "KRW" ? KRW : USD;
 
   // 전일 대비 변동 계산용 직전 거래일 종가 (lib/price-delta).
   const lastNum = stock.last_price ? Number(stock.last_price) : null;
-  const prevClose = previousClose(bars ?? [], lastNum);
+  const prevClose = previousClose(bars, lastNum);
 
   return (
     <div style={{ paddingBottom: 16 }}>
@@ -206,7 +208,7 @@ export default async function StockDetail({ params }: { params: Promise<{ symbol
       {/* Plan #45: YG 차트 카드 — 일관된 margin 0 20px */}
       <YGChartCard
         symbol={stock.symbol}
-        initialBars={(bars ?? []).map((b) => ({ ...b, ts: String(b.ts) }))}
+        initialBars={bars.map((b) => ({ ...b, ts: String(b.ts) }))}
         currency={stock.currency as "KRW" | "USD"}
       />
 

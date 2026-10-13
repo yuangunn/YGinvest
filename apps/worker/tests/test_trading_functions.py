@@ -214,6 +214,76 @@ def test_limit_buy_reserves_balance(admin, cleanup_user):
     assert order["status"] == "pending"
 
 
+def test_limit_sell_is_accepted_and_capped_by_holdings(admin, cleanup_user):
+    """지정가 매도 (quick-fix #5): 예전에는 sum() ... FOR UPDATE 때문에 100% 예외였다."""
+    _, email, pid = _make_user_with_portfolio(admin, cleanup_user)
+    _ensure_stock(admin, "TEST_LSELL", currency="USD", price=50.0)
+    admin.table("portfolios").update({"usd_balance": 1000}).eq("id", pid).execute()
+
+    uc = _user_client(admin, email)
+    uc.rpc(
+        "place_market_order",
+        {"p_portfolio_id": pid, "p_symbol": "TEST_LSELL", "p_side": "buy", "p_quantity": 10},
+    ).execute()
+
+    # 6주 지정가 매도 → pending, 예약금 없음
+    res = uc.rpc(
+        "place_limit_order",
+        {
+            "p_portfolio_id": pid,
+            "p_symbol": "TEST_LSELL",
+            "p_side": "sell",
+            "p_quantity": 6,
+            "p_limit_price": 80,
+        },
+    ).execute()
+    assert res.data["reserved_amount"] == 0
+    order = (
+        admin.table("orders").select("*").eq("id", res.data["order_id"]).single().execute().data
+    )
+    assert order["status"] == "pending"
+    assert order["side"] == "sell"
+
+    # 펜딩 6 + 5 > 보유 10 → 거부
+    with pytest.raises(APIError) as exc:
+        uc.rpc(
+            "place_limit_order",
+            {
+                "p_portfolio_id": pid,
+                "p_symbol": "TEST_LSELL",
+                "p_side": "sell",
+                "p_quantity": 5,
+                "p_limit_price": 80,
+            },
+        ).execute()
+    assert "insufficient_holdings" in str(exc.value)
+
+    # 펜딩 6 + 4 = 보유 10 → 허용
+    res2 = uc.rpc(
+        "place_limit_order",
+        {
+            "p_portfolio_id": pid,
+            "p_symbol": "TEST_LSELL",
+            "p_side": "sell",
+            "p_quantity": 4,
+            "p_limit_price": 80,
+        },
+    ).execute()
+    assert res2.data["order_id"]
+
+    # 보유 수량은 체결 전까지 그대로
+    holding = (
+        admin.table("holdings")
+        .select("quantity")
+        .eq("portfolio_id", pid)
+        .eq("symbol", "TEST_LSELL")
+        .single()
+        .execute()
+        .data
+    )
+    assert float(holding["quantity"]) == 10
+
+
 def test_cancel_pending_restores_balance(admin, cleanup_user):
     _, email, pid = _make_user_with_portfolio(admin, cleanup_user)
     _ensure_stock(admin, "TEST_CXL", currency="USD", price=100.0)

@@ -16,6 +16,10 @@ import { PullToRefresh } from "@/components/pull-to-refresh";
 import { YGAppHeader } from "@/components/layout/yg-app-header";
 import { YGBottomNav } from "@/components/layout/yg-bottom-nav";
 import { getIsAdmin } from "@/lib/auth-admin";
+import {
+  getSelectedPortfolioId,
+  listUserPortfolios,
+} from "@/lib/portfolio-context";
 import changelogData from "@/lib/changelog-data.json";
 
 export default async function AppLayout({
@@ -27,7 +31,11 @@ export default async function AppLayout({
   if (!user) redirect("/auth/login");
 
   const supabase = await createClient();
-  const isAdmin = await getIsAdmin(supabase, user.id);
+  const [isAdmin, portfolios, selectedPortfolioId] = await Promise.all([
+    getIsAdmin(supabase, user.id),
+    listUserPortfolios(supabase, user.id),
+    getSelectedPortfolioId(supabase, user.id),
+  ]);
   const latestChangelogSha =
     (changelogData as { sha: string }[])[0]?.sha ?? null;
 
@@ -47,6 +55,8 @@ export default async function AppLayout({
       <YGAppHeader
         isAdmin={isAdmin}
         latestChangelogSha={latestChangelogSha}
+        portfolios={portfolios}
+        selectedPortfolioId={selectedPortfolioId}
       />
       <MarketStatusBar />
       <InstallBanner />

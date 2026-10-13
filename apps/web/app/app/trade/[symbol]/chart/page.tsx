@@ -26,13 +26,15 @@ export default async function ChartDetailPage({
     .single();
   if (!stock) notFound();
 
-  const { data: bars } = await supabase
+  // 최신 365봉 (내림차순 limit 후 오름차순으로 뒤집음)
+  const { data: barsDesc } = await supabase
     .from("stock_bars")
     .select("ts, open, high, low, close, volume")
     .eq("symbol", decodedSymbol)
     .eq("interval", "1d")
-    .order("ts", { ascending: true })
+    .order("ts", { ascending: false })
     .limit(365);
+  const bars = (barsDesc ?? []).reverse();
 
   const symbolName = stock.name_ko ?? stock.name;
 
@@ -43,7 +45,7 @@ export default async function ChartDetailPage({
       market={stock.market}
       currency={stock.currency}
       lastPrice={stock.last_price ? Number(stock.last_price) : null}
-      initialBars={(bars ?? []).map((b) => ({ ...b, ts: String(b.ts) }))}
+      initialBars={bars.map((b) => ({ ...b, ts: String(b.ts) }))}
     />
   );
 }
