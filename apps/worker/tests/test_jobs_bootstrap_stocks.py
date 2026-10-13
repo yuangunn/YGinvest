@@ -11,14 +11,17 @@ def test_bootstrap_skips_if_table_not_empty(mock_kr, mock_us):
     select_mock = (
         fake_supabase.table.return_value.select.return_value.limit.return_value.execute
     )
-    select_mock.return_value.data = [{"symbol": "AAPL"}]
+    # 코드는 select(count="exact") 의 .count 로 "이미 채워짐"(>= 100)을 판단한다
+    select_mock.return_value.count = 3000
     logger = MagicMock()
 
     run_bootstrap_stocks(fake_supabase, logger)
 
     mock_kr.assert_not_called()
     mock_us.assert_not_called()
-    logger.info.assert_called_with("bootstrap_stocks.skip", reason="already_populated")
+    logger.info.assert_called_with(
+        "bootstrap_stocks.skip", reason="already_populated", existing=3000
+    )
 
 
 @patch("ygworker.jobs.bootstrap_stocks.fetch_us_close")
@@ -28,7 +31,7 @@ def test_bootstrap_inserts_kr_top_and_us_top(mock_kr, mock_us):
     select_mock = (
         fake_supabase.table.return_value.select.return_value.limit.return_value.execute
     )
-    select_mock.return_value.data = []
+    select_mock.return_value.count = 0
     upsert_mock = fake_supabase.table.return_value.upsert.return_value.execute
     upsert_mock.return_value.data = []
     logger = MagicMock()
@@ -64,7 +67,7 @@ def test_bootstrap_inserts_us_with_null_price_on_fetch_failure(mock_kr, mock_us)
     select_mock = (
         fake_supabase.table.return_value.select.return_value.limit.return_value.execute
     )
-    select_mock.return_value.data = []
+    select_mock.return_value.count = 0
     logger = MagicMock()
 
     mock_kr.return_value = []

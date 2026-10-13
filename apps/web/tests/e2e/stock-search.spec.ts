@@ -16,7 +16,7 @@ test.describe("Stock search flow", () => {
   test("search by Korean name returns Samsung", async ({ page }) => {
     await signupAndGoToSearch(page);
 
-    await page.getByPlaceholder(/종목명 또는 심볼/i).fill("삼성전자");
+    await page.getByPlaceholder(/종목명 또는 티커/i).fill("삼성전자");
 
     // 결과 카드에 "삼성전자" 표시 (카드 안의 이름)
     await expect(page.getByText("삼성전자").first()).toBeVisible({ timeout: 10_000 });
@@ -31,14 +31,14 @@ test.describe("Stock search flow", () => {
   test("search by US ticker returns AAPL", async ({ page }) => {
     await signupAndGoToSearch(page);
 
-    await page.getByPlaceholder(/종목명 또는 심볼/i).fill("AAPL");
+    await page.getByPlaceholder(/종목명 또는 티커/i).fill("AAPL");
     await expect(page.getByText("AAPL").first()).toBeVisible({ timeout: 10_000 });
   });
 
   test("unknown symbol shows ad-hoc lookup option", async ({ page }) => {
     await signupAndGoToSearch(page);
 
-    await page.getByPlaceholder(/종목명 또는 심볼/i).fill("ZZZNOTREAL");
+    await page.getByPlaceholder(/종목명 또는 티커/i).fill("ZZZNOTREAL");
     await expect(page.getByText(/로컬 캐시에 없는 종목/)).toBeVisible({ timeout: 5_000 });
   });
 });
